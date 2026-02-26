@@ -1,0 +1,9 @@
+{
+  "dev": {
+    "run": "npm run dev"
+  },
+  "_source-config": "spacetime.local.json",
+  "server": "maincloud",
+  "module-path": "./spacetimedb",
+  "database": "ong-wong-2026-6fgnk"
+}

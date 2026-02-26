@@ -1,0 +1,41 @@
+# Node dependencies
+node_modules/
+spacetimedb/node_modules/
+
+# Next.js build artifacts
+.next/
+out/
+
+# Generic build outputs
+build/
+dist/
+coverage/
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Env files
+.env
+.env.*
+!.env.example
+
+# TypeScript
+*.tsbuildinfo
+
+# OS/editor
+.DS_Store
+Thumbs.db
+
+# Temporary files
+*.tmp
+*.temp
+
+# SpacetimeDB generated build output
+spacetimedb/dist/
+
+# Local tooling cache
+.cache/
