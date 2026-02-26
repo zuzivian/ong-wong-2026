@@ -24,7 +24,8 @@ export default function HomePage({ searchParams }: HomePageProps) {
                 <Icon name="how_to_reg" className="button-icon" /> RSVP Now
               </Link>
               <Link href="/event-details" className="button-secondary">
-                <Icon name="arrow_outward" className="button-icon" /> Event Details
+                <Icon name="arrow_outward" className="button-icon" /> Event
+                Details
               </Link>
             </div>
           </div>
@@ -39,12 +40,13 @@ export default function HomePage({ searchParams }: HomePageProps) {
               <span>Welcome</span>
             </h2>
             <p>
-              We warmly invite you to celebrate our covenant service and reception. Your love,
-              prayers, and presence mean a great deal to us and our families.
+              We warmly invite you to celebrate our covenant service and
+              reception. Your love, prayers, and presence mean a great deal to
+              us and our families.
             </p>
             <p>
-              This site includes schedule updates, venue guidance, and your RSVP dashboard in one
-              place.
+              This site includes schedule updates, venue guidance, and your RSVP
+              dashboard in one place.
             </p>
           </div>
           <div>
@@ -83,7 +85,10 @@ export default function HomePage({ searchParams }: HomePageProps) {
             <h3>Venue</h3>
             <p>The Singapore Thomson Road Baptist Church</p>
             <p>45 Thomson Road, Singapore 307584</p>
-            <p>Ceremony in the sanctuary, reception immediately after in the hall.</p>
+            <p>
+              Ceremony in the sanctuary, reception immediately after in the
+              hall.
+            </p>
             <div className="map-wrap">
               <iframe
                 title="Wedding venue map"
@@ -96,7 +101,7 @@ export default function HomePage({ searchParams }: HomePageProps) {
               <a
                 href="https://maps.google.com/?q=45+Thomson+Road+Singapore+307584"
                 target="_blank"
-                rel="noreferrer"
+                rel="noopener noreferrer"
               >
                 Open in Maps
                 <Icon name="arrow_outward" className="inline-icon" />
@@ -111,7 +116,10 @@ export default function HomePage({ searchParams }: HomePageProps) {
             <p>
               Current scheme: <strong>{variantMeta.label}</strong>
             </p>
-            <p>RSVP deadline: to be confirmed once catering timeline is finalized.</p>
+            <p>
+              RSVP deadline: to be confirmed once catering timeline is
+              finalized.
+            </p>
             <p>Dress code: formal with modest church-appropriate attire.</p>
             <p>
               For common guest questions, visit <Link href="/faq">FAQ</Link>.

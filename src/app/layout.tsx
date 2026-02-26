@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import { Suspense } from 'react';
 import Icon from '@/components/icon';
 import ThemeBar from '@/components/theme-bar';
 import SiteMotion from '@/components/site-motion';
@@ -41,9 +42,13 @@ export default function RootLayout({
           </div>
         </header>
         <main className="site-main">
-          <SiteMotion>{children}</SiteMotion>
+          <Suspense fallback={children}>
+            <SiteMotion>{children}</SiteMotion>
+          </Suspense>
         </main>
-        <ThemeBar />
+        <Suspense fallback={null}>
+          <ThemeBar />
+        </Suspense>
       </body>
     </html>
   );
