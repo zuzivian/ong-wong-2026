@@ -5,6 +5,7 @@ spacetimedb/node_modules/
 # Next.js build artifacts
 .next/
 out/
+.vercel/
 
 # Generic build outputs
 build/
