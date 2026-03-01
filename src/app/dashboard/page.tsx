@@ -443,7 +443,7 @@ export default function DashboardPage() {
   };
 
   return (
-    <>
+    <div className="dashboard-page">
       <section className="page-head">
         <h1 className="heading-with-icon">
           <Icon name="dashboard" className="heading-icon" />
@@ -840,6 +840,6 @@ export default function DashboardPage() {
           </section>
         </>
       ) : null}
-    </>
+    </div>
   );
 }

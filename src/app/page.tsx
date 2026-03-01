@@ -107,13 +107,12 @@ export default function HomePage() {
             </div>
             <h3>Guest Info</h3>
             <p>
-              Current scheme: <strong>{variantMeta.label}</strong>
+              <b>RSVP deadline: </b>30 June 2026. Please RSVP for each guest in
+              your party, including children.
             </p>
             <p>
-              RSVP deadline: to be confirmed once catering timeline is
-              finalized.
+              <b>Dress code: </b>formal with modest church-appropriate attire.
             </p>
-            <p>Dress code: formal with modest church-appropriate attire.</p>
             <p>
               For common guest questions, visit <Link href="/faq">FAQ</Link>.
             </p>

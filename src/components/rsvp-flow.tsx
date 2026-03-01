@@ -66,6 +66,7 @@ export default function RsvpFlow({ initialToken }: RsvpFlowProps) {
   const [configRows] = useDebugTable<any>('rsvp.config', tables.config);
 
   const [step, setStep] = useState(1);
+  const [isEditingStep, setIsEditingStep] = useState(false);
 
   const [lookupFirstName, setLookupFirstName] = useState('');
   const [lookupLastName, setLookupLastName] = useState('');
@@ -139,16 +140,17 @@ export default function RsvpFlow({ initialToken }: RsvpFlowProps) {
 
   const isInviteCodeSatisfied = Boolean(normalizedInitialToken) || Boolean(normalizedInviteCode);
 
-  const isDietarySatisfied =
-    dietaryMode === 'none' || (dietaryMode === 'add' && dietaryNotes.trim().length > 0);
-
-  const isContactSatisfied =
-    contactMode === 'skip' ||
-    (contactMode === 'add' && (contactEmail.trim().length > 0 || contactPhone.trim().length > 0));
-
   const companionAllowed = activeGuest?.canAddCompanions ?? false;
   const maxCompanions = Number(activeGuest?.maxCompanions ?? 0n);
   const hasVerifiedSession = Boolean(activeSession && activeGuest);
+
+  useEffect(() => {
+    if ((step === 1 || step === 2) && !normalizedInitialToken) {
+      setIsEditingStep(true);
+      return;
+    }
+    setIsEditingStep(false);
+  }, [normalizedInitialToken, step]);
 
   useEffect(() => {
     if (step === 2 && verificationState === 'verifying' && hasVerifiedSession) {
@@ -158,14 +160,39 @@ export default function RsvpFlow({ initialToken }: RsvpFlowProps) {
     }
   }, [hasVerifiedSession, step, verificationState]);
 
-  const canMoveForward =
-    (step === 1 && isNameSatisfied) ||
-    (step === 2 && isInviteCodeSatisfied) ||
-    (step === 3 && hasVerifiedSession && attendance !== '') ||
-    (step === 4 && isDietarySatisfied) ||
-    (step === 5 && isContactSatisfied) ||
-    step === 6 ||
-    step === 7;
+  const canSubmitCurrentStep = useMemo(() => {
+    if (step === 1) {
+      return isNameSatisfied;
+    }
+
+    if (step === 2) {
+      return isInviteCodeSatisfied;
+    }
+
+    if (step === 3) {
+      return hasVerifiedSession && (!isEditingStep || attendance !== '');
+    }
+
+    if (step === 4) {
+      return !isEditingStep || dietaryNotes.trim().length > 0;
+    }
+
+    if (step === 5) {
+      return !isEditingStep || contactEmail.trim().length > 0 || contactPhone.trim().length > 0;
+    }
+
+    return true;
+  }, [
+    attendance,
+    contactEmail,
+    contactPhone,
+    dietaryNotes,
+    hasVerifiedSession,
+    isEditingStep,
+    isInviteCodeSatisfied,
+    isNameSatisfied,
+    step,
+  ]);
 
   useEffect(() => {
     if (!activeGuest || hydratedGuestId.current === activeGuest.id) {
@@ -220,6 +247,49 @@ export default function RsvpFlow({ initialToken }: RsvpFlowProps) {
     setLookupError('');
   };
 
+  const applyDefaultForStep = (targetStep: number) => {
+    if (targetStep === 3) {
+      setAttendance((currentAttendance) => currentAttendance || 'attending');
+      return;
+    }
+
+    if (targetStep === 4) {
+      setDietaryMode('none');
+      setDietaryNotes('');
+      return;
+    }
+
+    if (targetStep === 5) {
+      setContactMode('skip');
+      setContactEmail('');
+      setContactPhone('');
+      return;
+    }
+
+    if (targetStep === 6) {
+      setCompanionName('');
+      setCompanionDietary('');
+    }
+  };
+
+  const openEditForCurrentStep = () => {
+    setLookupError('');
+    setSubmitError('');
+
+    if (step === 4) {
+      setDietaryMode('add');
+    }
+    if (step === 5) {
+      setContactMode('add');
+    }
+    setIsEditingStep(true);
+  };
+
+  const useDefaultForCurrentStep = () => {
+    applyDefaultForStep(step);
+    setIsEditingStep(false);
+  };
+
   const onSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setLookupError('');
@@ -228,11 +298,11 @@ export default function RsvpFlow({ initialToken }: RsvpFlowProps) {
       setVerificationMessage('');
     }
 
-    if (!canMoveForward) {
+    if (!canSubmitCurrentStep) {
       return;
     }
 
-    if (!connection) {
+    if ((step === 2 || step === totalSteps) && !connection) {
       setLookupError('Connection is still starting. Please try again in a moment.');
       return;
     }
@@ -242,9 +312,9 @@ export default function RsvpFlow({ initialToken }: RsvpFlowProps) {
       setVerificationMessage('Verifying invitation details...');
       try {
         if (normalizedInitialToken) {
-          await connection.reducers.identifyGuestByToken({ token: normalizedInitialToken });
+          await connection!.reducers.identifyGuestByToken({ token: normalizedInitialToken });
         } else {
-          await connection.reducers.identifyGuestByFallback({
+          await connection!.reducers.identifyGuestByFallback({
             firstName: lookupFirstName.trim(),
             lastName: lookupLastName.trim(),
             inviteCode: normalizedInviteCode,
@@ -263,7 +333,11 @@ export default function RsvpFlow({ initialToken }: RsvpFlowProps) {
     }
 
     if (step < totalSteps) {
+      if (!isEditingStep) {
+        applyDefaultForStep(step);
+      }
       setStep((current) => current + 1);
+      setIsEditingStep(false);
       return;
     }
 
@@ -274,7 +348,7 @@ export default function RsvpFlow({ initialToken }: RsvpFlowProps) {
 
     setIsSubmitting(true);
     try {
-      await connection.reducers.submitRsvp({
+      await connection!.reducers.submitRsvp({
         attendance: attendance === 'attending',
         dietaryNotes: dietaryMode === 'add' ? dietaryNotes.trim() : undefined,
         notes: undefined,
@@ -298,6 +372,12 @@ export default function RsvpFlow({ initialToken }: RsvpFlowProps) {
   };
 
   const current = STEP_META[step - 1];
+  const showNameEditor = step === 1 && (isEditingStep || !normalizedInitialToken);
+  const showInviteEditor = step === 2 && (isEditingStep || !normalizedInitialToken);
+  const hasDefaultPath = step > 2 || Boolean(normalizedInitialToken);
+  const editToggleDisabled = (step === 1 || step === 2) && !normalizedInitialToken;
+  const isVerifying = step === 2 && verificationState === 'verifying';
+  const attendancePreview = attendance === 'declining' ? 'Regretfully Decline' : 'Joyfully Accept';
 
   if (submitted) {
     return (
@@ -345,10 +425,11 @@ export default function RsvpFlow({ initialToken }: RsvpFlowProps) {
         {step === 1 ? (
           <fieldset>
             <legend>Name Details</legend>
-            {normalizedInitialToken ? (
-              <p className="small-note">Invitation link detected. Continue to verify and proceed.</p>
-            ) : (
+            {showNameEditor ? (
               <>
+                <p className="small-note">
+                  Enter your invitation name details to continue.
+                </p>
                 <label>
                   First name
                   <input
@@ -368,6 +449,10 @@ export default function RsvpFlow({ initialToken }: RsvpFlowProps) {
                   />
                 </label>
               </>
+            ) : (
+              <p className="small-note">
+                We detected an invitation link. Continue with the default invitation details.
+              </p>
             )}
           </fieldset>
         ) : null}
@@ -375,10 +460,9 @@ export default function RsvpFlow({ initialToken }: RsvpFlowProps) {
         {step === 2 ? (
           <fieldset>
             <legend>Invite Code</legend>
-            {normalizedInitialToken ? (
-              <p className="small-note">Invite code already verified via direct invitation link.</p>
-            ) : (
+            {showInviteEditor ? (
               <>
+                <p className="small-note">Enter the invite code from your invitation card.</p>
                 <label>
                   Invite code
                   <input
@@ -392,6 +476,8 @@ export default function RsvpFlow({ initialToken }: RsvpFlowProps) {
                   Please contact us if you cannot locate your invite code.
                 </p>
               </>
+            ) : (
+              <p className="small-note">Invite code is already embedded in your invitation link.</p>
             )}
             {verificationState === 'verified' ? (
               <p className="small-note">Status: Verified</p>
@@ -408,102 +494,77 @@ export default function RsvpFlow({ initialToken }: RsvpFlowProps) {
         {step === 3 ? (
           <fieldset>
             <legend>Attendance</legend>
-            <div className="option-row">
-              <button
-                type="button"
-                className={`option-chip ${attendance === 'attending' ? 'active' : ''}`}
-                onClick={() => {
-                  setAttendance('attending');
-                  setStep(4);
-                }}
-              >
-                <Icon name="check_circle" className="inline-icon" /> Joyfully Accept
-              </button>
-              <button
-                type="button"
-                className={`option-chip ${attendance === 'declining' ? 'active' : ''}`}
-                onClick={() => {
-                  setAttendance('declining');
-                  setStep(4);
-                }}
-              >
-                <Icon name="cancel" className="inline-icon" /> Regretfully Decline
-              </button>
-            </div>
+            {isEditingStep ? (
+              <>
+                <p className="small-note">Choose your attendance response.</p>
+                <label className="radio-row">
+                  <input
+                    type="radio"
+                    name="attendance"
+                    checked={attendance === 'attending'}
+                    onChange={() => setAttendance('attending')}
+                  />
+                  Joyfully Accept
+                </label>
+                <label className="radio-row">
+                  <input
+                    type="radio"
+                    name="attendance"
+                    checked={attendance === 'declining'}
+                    onChange={() => setAttendance('declining')}
+                  />
+                  Regretfully Decline
+                </label>
+              </>
+            ) : (
+              <p className="small-note">Default response: {attendancePreview}</p>
+            )}
           </fieldset>
         ) : null}
 
         {step === 4 ? (
           <fieldset>
             <legend>Dietary Requirements</legend>
-            <div className="option-row">
-              <button
-                type="button"
-                className={`option-chip ${dietaryMode === 'none' ? 'active' : ''}`}
-                onClick={() => {
-                  setDietaryMode('none');
-                  setDietaryNotes('');
-                  setStep(5);
-                }}
-              >
-                <Icon name="done_all" className="inline-icon" /> No dietary restrictions
-              </button>
-              <button
-                type="button"
-                className={`option-chip ${dietaryMode === 'add' ? 'active' : ''}`}
-                onClick={() => setDietaryMode('add')}
-              >
-                <Icon name="edit_note" className="inline-icon" /> Add dietary notes
-              </button>
-            </div>
-
-            {dietaryMode === 'add' ? (
+            {isEditingStep ? (
               <label>
                 Dietary notes
                 <textarea
                   value={dietaryNotes}
-                  onChange={(event) => setDietaryNotes(event.target.value)}
+                  onChange={(event) => {
+                    setDietaryMode('add');
+                    setDietaryNotes(event.target.value);
+                  }}
                   rows={4}
                   placeholder="Please include allergies, vegetarian requirements, or other needs."
                 />
               </label>
-            ) : null}
+            ) : (
+              <>
+                <p className="small-note">Default response: No dietary restrictions.</p>
+                {dietaryMode === 'add' && dietaryNotes.trim().length > 0 ? (
+                  <p className="small-note">
+                    Saved dietary notes exist and will be replaced if you continue with default.
+                  </p>
+                ) : null}
+              </>
+            )}
           </fieldset>
         ) : null}
 
         {step === 5 ? (
           <fieldset>
             <legend>Contact Details</legend>
-            <div className="option-row">
-              <button
-                type="button"
-                className={`option-chip ${contactMode === 'skip' ? 'active' : ''}`}
-                onClick={() => {
-                  setContactMode('skip');
-                  setContactEmail('');
-                  setContactPhone('');
-                  setStep(6);
-                }}
-              >
-                <Icon name="check_circle" className="inline-icon" /> Skip contact details
-              </button>
-              <button
-                type="button"
-                className={`option-chip ${contactMode === 'add' ? 'active' : ''}`}
-                onClick={() => setContactMode('add')}
-              >
-                <Icon name="edit_square" className="inline-icon" /> Add contact details
-              </button>
-            </div>
-
-            {contactMode === 'add' ? (
+            {isEditingStep ? (
               <>
                 <label>
                   Email (optional)
                   <input
                     type="email"
                     value={contactEmail}
-                    onChange={(event) => setContactEmail(event.target.value)}
+                    onChange={(event) => {
+                      setContactMode('add');
+                      setContactEmail(event.target.value);
+                    }}
                     placeholder="name@email.com"
                   />
                 </label>
@@ -511,12 +572,24 @@ export default function RsvpFlow({ initialToken }: RsvpFlowProps) {
                   Phone (optional)
                   <input
                     value={contactPhone}
-                    onChange={(event) => setContactPhone(event.target.value)}
+                    onChange={(event) => {
+                      setContactMode('add');
+                      setContactPhone(event.target.value);
+                    }}
                     placeholder="+65 ..."
                   />
                 </label>
               </>
-            ) : null}
+            ) : (
+              <>
+                <p className="small-note">Default response: Skip contact details.</p>
+                {(contactEmail || contactPhone) ? (
+                  <p className="small-note">
+                    Saved contact details exist and will be removed if you continue with default.
+                  </p>
+                ) : null}
+              </>
+            )}
           </fieldset>
         ) : null}
 
@@ -528,34 +601,33 @@ export default function RsvpFlow({ initialToken }: RsvpFlowProps) {
                 <p className="small-note">
                   Invitation allowance: up to {maxCompanions} loved one(s).
                 </p>
-                <div className="option-row">
-                  <button
-                    type="button"
-                    className="option-chip"
-                    onClick={() => setStep(7)}
-                  >
-                    <Icon name="check_circle" className="inline-icon" /> No loved ones to add
-                  </button>
-                </div>
-                <label>
-                  Name
-                  <input
-                    value={companionName}
-                    onChange={(event) => setCompanionName(event.target.value)}
-                    placeholder="Companion full name"
-                  />
-                </label>
-                <label>
-                  Dietary requirements
-                  <input
-                    value={companionDietary}
-                    onChange={(event) => setCompanionDietary(event.target.value)}
-                    placeholder="Optional dietary notes"
-                  />
-                </label>
-                <button type="button" className="button-secondary" onClick={addCompanion}>
-                  <Icon name="person_add" className="button-icon" /> Add loved one
-                </button>
+                {isEditingStep ? (
+                  <>
+                    <label>
+                      Name
+                      <input
+                        value={companionName}
+                        onChange={(event) => setCompanionName(event.target.value)}
+                        placeholder="Companion full name"
+                      />
+                    </label>
+                    <label>
+                      Dietary requirements
+                      <input
+                        value={companionDietary}
+                        onChange={(event) => setCompanionDietary(event.target.value)}
+                        placeholder="Optional dietary notes"
+                      />
+                    </label>
+                    <button type="button" className="button-secondary" onClick={addCompanion}>
+                      <Icon name="person_add" className="button-icon" /> Add loved one
+                    </button>
+                  </>
+                ) : (
+                  <p className="small-note">
+                    Default response: Continue with the current loved ones list.
+                  </p>
+                )}
 
                 {companions.length > 0 ? (
                   <ul className="companion-list">
@@ -609,34 +681,81 @@ export default function RsvpFlow({ initialToken }: RsvpFlowProps) {
           </fieldset>
         ) : null}
 
-        <div className="cta-row">
-          {step > 1 ? (
+        {step < totalSteps ? (
+          <div className="cta-row">
             <button
               type="button"
-              className="button-secondary"
+              className="button-back-small"
+              disabled={step === 1 || isVerifying}
               onClick={() => setStep((currentStep) => currentStep - 1)}
             >
               <Icon name="arrow_back" className="button-icon" /> Back
             </button>
-          ) : null}
 
-          <button
-            type="submit"
-            className="button-primary"
-            disabled={!canMoveForward || (step === totalSteps && (isSubmitting || isRsvpClosed))}
-          >
-            {step < totalSteps ? (
-              <>
-                Continue <Icon name="arrow_forward" className="button-icon" />
-              </>
-            ) : (
+            <button
+              type="button"
+              className="button-secondary"
+              disabled={editToggleDisabled || isVerifying}
+              onClick={() => {
+                if (isEditingStep && hasDefaultPath) {
+                  useDefaultForCurrentStep();
+                  return;
+                }
+                openEditForCurrentStep();
+              }}
+            >
+              {isEditingStep && hasDefaultPath ? 'Use default' : 'Edit'}
+            </button>
+
+            <button
+              type="submit"
+              className="button-primary"
+              disabled={!canSubmitCurrentStep || isVerifying}
+            >
+              {isEditingStep ? (
+                <>
+                  Save and Continue <Icon name="arrow_forward" className="button-icon" />
+                </>
+              ) : (
+                <>
+                  Continue with Default <Icon name="arrow_forward" className="button-icon" />
+                </>
+              )}
+            </button>
+          </div>
+        ) : (
+          <div className="cta-row">
+            <button
+              type="button"
+              className="button-back-small"
+              onClick={() => setStep((currentStep) => currentStep - 1)}
+            >
+              <Icon name="arrow_back" className="button-icon" /> Back
+            </button>
+
+            <button
+              type="button"
+              className="button-secondary"
+              onClick={() => {
+                setStep(3);
+                setIsEditingStep(true);
+              }}
+            >
+              Edit
+            </button>
+
+            <button
+              type="submit"
+              className="button-primary"
+              disabled={isSubmitting || isRsvpClosed}
+            >
               <>
                 {isSubmitting ? 'Submitting...' : 'Submit RSVP'}{' '}
                 <Icon name="task_alt" className="button-icon" />
               </>
-            )}
-          </button>
-        </div>
+            </button>
+          </div>
+        )}
       </form>
     </section>
   );
