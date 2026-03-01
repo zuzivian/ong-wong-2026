@@ -45,6 +45,22 @@ function requireGuestForSender(ctx: Parameters<typeof identify_guest_by_token>[0
   return { session, guest };
 }
 
+function requireGuestMessageForSender(
+  ctx: Parameters<typeof identify_guest_by_token>[0],
+  messageId: bigint
+) {
+  const { guest } = requireGuestForSender(ctx);
+  const guestMessage = ctx.db.guest_message.id.find(messageId);
+  if (!guestMessage) {
+    throw new SenderError('Message not found.');
+  }
+  if (guestMessage.guestId !== guest.id) {
+    throw new SenderError('You can only manage your own messages.');
+  }
+
+  return guestMessage;
+}
+
 function isRsvpCutoffReached(ctx: Parameters<typeof identify_guest_by_token>[0]): boolean {
   const config = ctx.db.config.id.find(SESSION_CONFIG_ID);
   if (!config || !config.globalRsvpCutoffAt) {
@@ -320,5 +336,35 @@ export const send_guest_message = spacetimedb.reducer(
       status: RSVP_MESSAGE_NEW,
       createdAt: ctx.timestamp,
     });
+  }
+);
+
+export const update_guest_message = spacetimedb.reducer(
+  {
+    messageId: t.u64(),
+    message: t.string(),
+  },
+  (ctx, { messageId, message }) => {
+    const trimmed = message.trim();
+    if (!trimmed) {
+      throw new SenderError('Message is required.');
+    }
+
+    const existingMessage = requireGuestMessageForSender(ctx, messageId);
+    ctx.db.guest_message.id.update({
+      ...existingMessage,
+      message: trimmed,
+      status: RSVP_MESSAGE_NEW,
+    });
+  }
+);
+
+export const delete_guest_message = spacetimedb.reducer(
+  {
+    messageId: t.u64(),
+  },
+  (ctx, { messageId }) => {
+    const existingMessage = requireGuestMessageForSender(ctx, messageId);
+    ctx.db.guest_message.id.delete(existingMessage.id);
   }
 );

@@ -1,7 +1,121 @@
 import Link from 'next/link';
+import { cookies } from 'next/headers';
+import { redirect } from 'next/navigation';
 import Icon from '@/components/icon';
+import { UNLOCK_COOKIE_NAME, verifyUnlockSession } from '@/lib/invite-unlock';
 
-export default function EventDetailsPage() {
+const SCHEDULE_ITEMS = [
+  {
+    icon: 'meeting_room',
+    time: '9:30 AM',
+    title: 'Doors Open',
+    description: 'Guest check-in begins and ushers will assist with seating.',
+  },
+  {
+    icon: 'chair_alt',
+    time: '9:50 AM',
+    title: 'Be Seated By',
+    description: 'Please be seated before the bridal procession begins.',
+  },
+  {
+    icon: 'favorite',
+    time: '10:00 AM',
+    title: 'Service Starts',
+    description: 'Wedding service at The Singapore Thomson Road Baptist Church.',
+  },
+  {
+    icon: 'celebration',
+    time: '12:00 PM',
+    title: 'Reception',
+    description: 'Reception to follow in the church hall.',
+  },
+] as const;
+
+const BUS_STOPS = [
+  {
+    name: 'Opp United Sq',
+    stopCode: '50029',
+    road: 'Thomson Road',
+    walkMinutes: 3,
+    services: '56, 57, 131, 131A, 141, 166, 851, 980',
+  },
+  {
+    name: 'United Sq / Bef Novena Stn',
+    stopCode: '50021',
+    road: 'Thomson Road',
+    walkMinutes: 4,
+    services: '56, 57, 131, 141, 166, 851, 980',
+  },
+  {
+    name: 'St. Joseph Instn Jnr',
+    stopCode: '50119',
+    road: 'Moulmein Road',
+    walkMinutes: 6,
+    services: '21, 124, 518, 518A, 680, 681, 682, 683',
+  },
+] as const;
+
+const MALL_PARKING_OPTIONS = [
+  {
+    name: 'United Square',
+    address: '101 Thomson Road',
+    walkMinutes: 4,
+    mapUrl: 'https://maps.google.com/?q=101+Thomson+Road+Singapore',
+  },
+  {
+    name: 'Velocity @ Novena Square',
+    address: '238 Thomson Road',
+    walkMinutes: 8,
+    mapUrl: 'https://maps.google.com/?q=238+Thomson+Road+Singapore',
+  },
+  {
+    name: 'Square 2',
+    address: '10 Sinaran Drive',
+    walkMinutes: 10,
+    mapUrl: 'https://maps.google.com/?q=10+Sinaran+Drive+Singapore',
+  },
+  {
+    name: 'Goldhill Plaza',
+    address: '1 Goldhill Plaza',
+    walkMinutes: 6,
+    mapUrl: 'https://maps.google.com/?q=1+Goldhill+Plaza+Singapore',
+  },
+] as const;
+
+const HDB_PARKING_OPTIONS = [
+  {
+    carpark: 'KJM1',
+    address: 'Blk 37A Cambridge Road',
+    walkMinutes: 7,
+    note: 'Multi-storey, short-term WHOLE DAY parking',
+  },
+  {
+    carpark: 'KJ3',
+    address: 'Blk 48/48A Durham Road',
+    walkMinutes: 9,
+    note: 'Surface lot, short-term WHOLE DAY parking',
+  },
+  {
+    carpark: 'KJ2',
+    address: 'Blk 49/50 Dorset Road',
+    walkMinutes: 11,
+    note: 'Surface lot, short-term WHOLE DAY parking',
+  },
+  {
+    carpark: 'BR9',
+    address: 'Blk 69 Moulmein Road',
+    walkMinutes: 12,
+    note: 'Surface lot, short-term WHOLE DAY parking',
+  },
+] as const;
+
+export default async function EventDetailsPage() {
+  const unlockCookie = cookies().get(UNLOCK_COOKIE_NAME)?.value;
+  const isUnlocked = await verifyUnlockSession(unlockCookie);
+  if (!isUnlocked) {
+    redirect('/');
+  }
+
   return (
     <>
       <section className="section-band section-band-title">
@@ -21,22 +135,20 @@ export default function EventDetailsPage() {
             <span>Schedule</span>
           </h2>
           <ol className="timeline">
-            <li>
-              <strong>Doors Open - 9:30 AM</strong>
-              <p>Guest check-in begins and ushers will assist with seating.</p>
-            </li>
-            <li>
-              <strong>Be Seated By - 9:50 AM</strong>
-              <p>Please be seated before the bridal procession begins.</p>
-            </li>
-            <li>
-              <strong>Service Starts - 10:00 AM</strong>
-              <p>Wedding service at The Singapore Thomson Road Baptist Church.</p>
-            </li>
-            <li>
-              <strong>Reception - 12:00 PM</strong>
-              <p>Reception to follow in the church hall.</p>
-            </li>
+            {SCHEDULE_ITEMS.map((item) => (
+              <li key={`${item.time}-${item.title}`}>
+                <div className="timeline-stop-head">
+                  <span className="timeline-marker">
+                    <Icon name={item.icon} className="timeline-marker-icon" />
+                  </span>
+                  <p className="timeline-time">{item.time}</p>
+                </div>
+                <div className="timeline-card">
+                  <strong className="timeline-title">{item.title}</strong>
+                  <p>{item.description}</p>
+                </div>
+              </li>
+            ))}
           </ol>
         </div>
       </section>
@@ -75,15 +187,59 @@ export default function EventDetailsPage() {
           <div className="card">
             <h2 className="heading-with-icon">
               <Icon name="local_taxi" className="heading-icon" />
-              <span>Transport and Parking</span>
+              <span>Getting There and Parking</span>
             </h2>
             <p>
-              The venue is accessible by private-hire, taxi, and public transport routes near
-              Thomson Road.
+              The closest MRT is <strong>Novena (NS20)</strong>. If you are taking taxi or
+              ride-hail, set drop-off as <strong>45 Thomson Road, Singapore 307584</strong>.
             </p>
+            <p className="detail-strong">By MRT (recommended)</p>
+            <ol className="mini-timeline">
+              <li>Take the North-South Line to Novena (NS20).</li>
+              <li>Use Exit A toward Velocity / United Square.</li>
+              <li>Walk south along Thomson Road for about 8 to 10 minutes (around 700m).</li>
+              <li>The church is at 45 Thomson Road, before the Balestier Road junction.</li>
+            </ol>
+            <p className="detail-strong">By bus (closest stops)</p>
+            <ul className="mini-timeline">
+              {BUS_STOPS.map((stop) => (
+                <li key={stop.stopCode}>
+                  <strong>
+                    {stop.name} ({stop.stopCode})
+                  </strong>{' '}
+                  on {stop.road} - about {stop.walkMinutes} minutes&apos; walk. Services:{' '}
+                  {stop.services}.
+                </li>
+              ))}
+            </ul>
+            <p className="detail-strong">Nearby mall parking</p>
+            <ul className="mini-timeline">
+              {MALL_PARKING_OPTIONS.map((option) => (
+                <li key={option.name}>
+                  <a href={option.mapUrl} target="_blank" rel="noreferrer">
+                    <strong>{option.name}</strong>
+                  </a>{' '}
+                  ({option.address}) - around {option.walkMinutes} minutes&apos; walk.
+                </li>
+              ))}
+            </ul>
+            <p className="detail-strong">Nearby HDB parking alternatives</p>
+            <ul className="mini-timeline">
+              {HDB_PARKING_OPTIONS.map((option) => (
+                <li key={option.carpark}>
+                  <strong>
+                    HDB {option.carpark} - {option.address}
+                  </strong>{' '}
+                  ({option.note}), around {option.walkMinutes} minutes&apos; walk.
+                </li>
+              ))}
+            </ul>
             <p>
-              Limited parking lots may be available on-site; nearby alternatives can be used if
-              the church lots are full.
+              Church parking is limited. We strongly recommend allowing a small buffer for weekend
+              traffic and parking queues.
+            </p>
+            <p className="small-note">
+              Transport and parking details were cross-checked on 1 Mar 2026.
             </p>
           </div>
           <div className="card">
@@ -92,11 +248,14 @@ export default function EventDetailsPage() {
               <span>What to Expect</span>
             </h2>
             <p>
-              The service and reception are planned with a formal tone. We kindly ask guests to
-              arrive punctually and be seated before the service begins.
+              We are so grateful to celebrate this joyful day with you. Please come as you are,
+              arrive a little early, and settle in before the service begins.
             </p>
             <p>
-              Reception refreshments, family photos, and fellowship will follow in the church hall.
+              Our ceremony is a Christian wedding service in church, shaped by Samuel&apos;s home
+              community at Bethesda Bedok Tampines Church. You can expect worship songs, a short Bible
+              message, prayers, and the exchange of vows. After the service, we&apos;ll continue the
+              celebration with refreshments, photos, and fellowship in the church hall.
             </p>
           </div>
         </div>

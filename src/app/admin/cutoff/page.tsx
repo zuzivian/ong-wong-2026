@@ -20,7 +20,7 @@ function timestampToInputValue(value: Timestamp): string {
 export default function AdminCutoffPage() {
   const db = useSpacetimeDB();
   const connection = db.getConnection() as DbConnection | null;
-  const [configRows, isReady] = useDebugTable<any>('admin.config', tables.config);
+  const [configRows, isLoading] = useDebugTable<any>('admin.config', tables.config);
   const config = useMemo(() => configRows.find((row) => row.id === 1n), [configRows]);
 
   const [value, setValue] = useState('');
@@ -87,8 +87,8 @@ export default function AdminCutoffPage() {
       </section>
 
       <section className="card">
-        {!isReady ? <p>Loading current configuration...</p> : null}
-        {isReady ? (
+        {isLoading ? <p>Loading current configuration...</p> : null}
+        {!isLoading ? (
           <>
             <p>
               Current cutoff:{' '}

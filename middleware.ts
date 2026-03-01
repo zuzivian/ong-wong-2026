@@ -1,9 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { UNLOCK_COOKIE_NAME, verifyUnlockSession } from './src/lib/invite-unlock';
+import {
+  createUnlockSession,
+  readUnlockSession,
+  UNLOCK_COOKIE_NAME,
+  UNLOCK_SESSION_TTL_SECONDS,
+} from './src/lib/invite-unlock';
 
 const PUBLIC_PATHS = new Set([
   '/',
-  '/unlock',
   '/favicon.ico',
   '/robots.txt',
   '/sitemap.xml',
@@ -22,10 +26,6 @@ function isPublicPath(pathname: string): boolean {
     return true;
   }
 
-  if (pathname === '/unlock' || pathname.startsWith('/unlock/')) {
-    return true;
-  }
-
   // Public assets under /public are requested as /<file.ext>.
   if (/\.[a-zA-Z0-9]+$/.test(pathname)) {
     return true;
@@ -35,21 +35,40 @@ function isPublicPath(pathname: string): boolean {
 }
 
 export async function middleware(request: NextRequest) {
-  const { pathname, search } = request.nextUrl;
+  const { pathname } = request.nextUrl;
+
+  // Legacy unlock route now lives on home.
+  if (pathname === '/unlock' || pathname.startsWith('/unlock/')) {
+    const redirectUrl = request.nextUrl.clone();
+    redirectUrl.pathname = '/';
+    redirectUrl.search = '';
+    return NextResponse.redirect(redirectUrl);
+  }
+
   if (isPublicPath(pathname)) {
     return NextResponse.next();
   }
 
   const sessionValue = request.cookies.get(UNLOCK_COOKIE_NAME)?.value;
-  const isUnlocked = await verifyUnlockSession(sessionValue);
-  if (isUnlocked) {
-    return NextResponse.next();
+  const session = await readUnlockSession(sessionValue);
+  if (session) {
+    const response = NextResponse.next();
+    const refreshedSession = await createUnlockSession(session.inviteCode);
+    response.cookies.set({
+      name: UNLOCK_COOKIE_NAME,
+      value: refreshedSession,
+      httpOnly: true,
+      sameSite: 'lax',
+      secure: process.env.NODE_ENV === 'production',
+      path: '/',
+      maxAge: UNLOCK_SESSION_TTL_SECONDS,
+    });
+    return response;
   }
 
   const redirectUrl = request.nextUrl.clone();
-  redirectUrl.pathname = '/unlock';
+  redirectUrl.pathname = '/';
   redirectUrl.search = '';
-  redirectUrl.searchParams.set('next', `${pathname}${search}`);
 
   return NextResponse.redirect(redirectUrl);
 }

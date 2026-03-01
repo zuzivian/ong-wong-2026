@@ -55,23 +55,6 @@ Wedding date: **15 August 2026**
 
 Visual system is **not finalized yet**.
 
-Three variants remain in active review:
-
-1. `heirloom`
-2. `botanical`
-3. `chapel`
-
-Preview routes:
-
-- `/?v=heirloom|botanical|chapel`
-- `/rsvp?v=heirloom|botanical|chapel`
-- `/design-lab` (internal review)
-
-Current behavior:
-
-- Floating theme switcher is available for live comparison.
-- Homepage hero uses uploaded couple photos mapped by variant.
-
 ## 7. Venue Information
 
 - Venue name: **The Singapore Thomson Road Baptist Church**
@@ -104,12 +87,11 @@ Access behavior:
 Flow is currently implemented as a **7-step wizard**:
 
 1. Confirm name
-2. Enter invite code (or skip if token route)
-3. Attendance
-4. Dietary requirements
-5. Contact details (optional)
-6. Add loved ones (if invitation allows)
-7. Review and submit
+2. Attendance
+3. Dietary requirements
+4. Contact details (optional)
+5. Add loved ones (if invitation allows)
+6. Review and submit
 
 Pre-step route:
 
@@ -166,7 +148,6 @@ Implemented entities:
 ## 13. Outstanding Decisions
 
 1. Final RSVP cutoff date/time (operational value to be set)
-2. Final visual system selection (`heirloom` vs `botanical` vs `chapel`)
 
 ## 14. Gaps and Changes Needed Next
 
@@ -177,8 +158,24 @@ Implemented entities:
 
 ## 15. Immediate Next Steps
 
-1. Keep visual variants live while gathering feedback; do not freeze palette/typography yet.
 2. Finalize route-level acceptance criteria and sign off MVP behavior.
 3. Decide final home-page content density (summary vs deep details).
 4. Set RSVP cutoff operational process (owner + update procedure).
 5. After design decision, remove internal design-review artifacts from public navigation surface.
+
+## 16. Known Bugs and UX Issues
+
+1. After RSVPing, the website becomes locked again.
+2. The "Add Loved Ones" step is confusing.
+3. The dietary restrictions step is still getting skipped during RSVP.
+4. Add default multiple-choice dietary options (for example: vegetarian), while keeping open-ended input for other needs.
+5. Home page has two RSVP buttons that effectively do the same thing.
+6. Unlocked menu ribbon does not include all useful routes, including Home and Guest Dashboard.
+7. RSVP ribbon should clearly highlight what each step is.
+8. RSVP flow should save each step to the database as users progress.
+
+## 17. Possible Future Features
+
+1. Add to Google Calendar.
+2. Send a copy of the RSVP response by email.
+3. Keep legal/invited guest names fixed during RSVP, but allow preferred names to be submitted.

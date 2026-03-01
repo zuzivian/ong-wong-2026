@@ -77,6 +77,5 @@ export function useDebugTable<RowType = unknown>(
     }
   }, [isLoading, label, rows.length]);
 
-  const isReady = !isLoading;
-  return [rows as readonly RowType[], isReady];
+  return [rows as readonly RowType[], isLoading];
 }

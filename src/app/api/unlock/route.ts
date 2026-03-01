@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { DbConnection } from '@/module_bindings';
 import {
   createUnlockSession,
+  readUnlockSession,
   UNLOCK_COOKIE_NAME,
   UNLOCK_SESSION_TTL_SECONDS,
 } from '@/lib/invite-unlock';
@@ -10,6 +11,11 @@ export const runtime = 'nodejs';
 
 type UnlockRequestBody = {
   inviteCode?: unknown;
+};
+
+type UnlockSessionResponse = {
+  ok: boolean;
+  inviteCode: string | null;
 };
 
 const DEFAULT_QUERY_TIMEOUT_MS = 8000;
@@ -167,7 +173,7 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const session = await createUnlockSession();
+  const session = await createUnlockSession(inviteCode);
   if (!session) {
     return NextResponse.json(
       { ok: false, error: 'Invite unlock secret is missing. Please contact the hosts.' },
@@ -186,6 +192,28 @@ export async function POST(request: NextRequest) {
     maxAge: UNLOCK_SESSION_TTL_SECONDS,
   });
   return response;
+}
+
+export async function GET(request: NextRequest) {
+  const sessionValue = request.cookies.get(UNLOCK_COOKIE_NAME)?.value;
+  const session = await readUnlockSession(sessionValue);
+
+  if (!session) {
+    return NextResponse.json<UnlockSessionResponse>(
+      { ok: false, inviteCode: null },
+      {
+        status: 401,
+        headers: { 'Cache-Control': 'no-store' },
+      }
+    );
+  }
+
+  return NextResponse.json<UnlockSessionResponse>(
+    { ok: true, inviteCode: session.inviteCode ?? null },
+    {
+      headers: { 'Cache-Control': 'no-store' },
+    }
+  );
 }
 
 export async function DELETE() {

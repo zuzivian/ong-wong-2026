@@ -4,6 +4,7 @@ spacetimedb/node_modules/
 
 # Next.js build artifacts
 .next/
+.next-dev/
 out/
 .vercel/
 

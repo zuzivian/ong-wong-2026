@@ -35,11 +35,13 @@ import {
 
 // Import all reducer arg schemas
 import ClearGuestSessionReducer from "./clear_guest_session_reducer";
+import DeleteGuestMessageReducer from "./delete_guest_message_reducer";
 import IdentifyGuestByFallbackReducer from "./identify_guest_by_fallback_reducer";
 import IdentifyGuestByTokenReducer from "./identify_guest_by_token_reducer";
 import SendGuestMessageReducer from "./send_guest_message_reducer";
 import SetGlobalRsvpCutoffReducer from "./set_global_rsvp_cutoff_reducer";
 import SubmitRsvpReducer from "./submit_rsvp_reducer";
+import UpdateGuestMessageReducer from "./update_guest_message_reducer";
 import UpdateGuestPhoneReducer from "./update_guest_phone_reducer";
 
 // Import all procedure arg schemas
@@ -148,11 +150,13 @@ const tablesSchema = __schema({
 /** The schema information for all reducers in this module. This is defined the same way as the reducers would have been defined in the server, except the body of the reducer is omitted in code generation. */
 const reducersSchema = __reducers(
   __reducerSchema("clear_guest_session", ClearGuestSessionReducer),
+  __reducerSchema("delete_guest_message", DeleteGuestMessageReducer),
   __reducerSchema("identify_guest_by_fallback", IdentifyGuestByFallbackReducer),
   __reducerSchema("identify_guest_by_token", IdentifyGuestByTokenReducer),
   __reducerSchema("send_guest_message", SendGuestMessageReducer),
   __reducerSchema("set_global_rsvp_cutoff", SetGlobalRsvpCutoffReducer),
   __reducerSchema("submit_rsvp", SubmitRsvpReducer),
+  __reducerSchema("update_guest_message", UpdateGuestMessageReducer),
   __reducerSchema("update_guest_phone", UpdateGuestPhoneReducer),
 );
 

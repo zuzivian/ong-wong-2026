@@ -1,13 +1,20 @@
 'use client';
 
 import Link from 'next/link';
-import { FormEvent, useEffect, useMemo, useState } from 'react';
+import { FormEvent, useEffect, useMemo, useRef, useState } from 'react';
 import { useSpacetimeDB } from 'spacetimedb/react';
 import Icon from '@/components/icon';
 import { DbConnection, tables } from '@/module_bindings';
 import { useDebugTable } from '@/lib/use-debug-table';
+import { normalizeInviteCode } from '@/lib/unlock-client';
 
 type EditableField = 'attendance' | 'dietaryNotes' | 'notes' | 'contactEmail' | 'contactPhone';
+
+type CompanionDraft = {
+  name: string;
+  dietaryNotes: string;
+  relationship: string;
+};
 
 type SubmitPatch = {
   attendance?: boolean;
@@ -15,6 +22,11 @@ type SubmitPatch = {
   notes?: string | undefined;
   contactEmail?: string | undefined;
   contactPhone?: string | undefined;
+};
+
+type UnlockCookieResponse = {
+  ok?: boolean;
+  inviteCode?: string | null;
 };
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -51,6 +63,17 @@ function toErrorMessage(error: unknown, fallback: string): string {
   return error instanceof Error ? error.message : fallback;
 }
 
+function toMessageStatusLabel(status: string): string {
+  const normalizedStatus = status.trim().toLowerCase();
+  if (!normalizedStatus || normalizedStatus === 'new') {
+    return 'Awaiting response';
+  }
+  if (normalizedStatus === 'updated') {
+    return 'Updated';
+  }
+  return status;
+}
+
 function isValidEmail(email: string): boolean {
   return EMAIL_PATTERN.test(email);
 }
@@ -68,21 +91,20 @@ export default function DashboardPage() {
   const connection = db.getConnection() as DbConnection | null;
   const senderIdentity = db.identity;
 
-  const [guestRows, guestReady] = useDebugTable<any>('dashboard.guest', tables.guest);
-  const [sessionRows, sessionReady] = useDebugTable<any>('dashboard.guest_session', tables.guest_session);
-  const [rsvpRows] = useDebugTable<any>('dashboard.rsvp_response', tables.rsvp_response);
-  const [companionRows] = useDebugTable<any>('dashboard.companion', tables.companion);
-  const [messageRows] = useDebugTable<any>('dashboard.guest_message', tables.guest_message);
-  const [configRows] = useDebugTable<any>('dashboard.config', tables.config);
-
   const [messageDraft, setMessageDraft] = useState('');
   const [messageError, setMessageError] = useState('');
-  const [lookupFirstName, setLookupFirstName] = useState('');
-  const [lookupLastName, setLookupLastName] = useState('');
-  const [lookupPassword, setLookupPassword] = useState('');
+  const [messageStatus, setMessageStatus] = useState('');
+  const [editingMessageId, setEditingMessageId] = useState<bigint | null>(null);
+  const [editingMessageDraft, setEditingMessageDraft] = useState('');
+  const [messageActionError, setMessageActionError] = useState('');
+  const [messageActionStatus, setMessageActionStatus] = useState('');
+  const [isSavingMessageAction, setIsSavingMessageAction] = useState(false);
   const [lookupError, setLookupError] = useState('');
   const [lookupStatus, setLookupStatus] = useState('');
   const [isLookingUp, setIsLookingUp] = useState(false);
+  const [unlockInviteCode, setUnlockInviteCode] = useState('');
+  const [unlockCodeReady, setUnlockCodeReady] = useState(false);
+  const autoLookupAttemptRef = useRef<string | null>(null);
 
   const [editingField, setEditingField] = useState<EditableField | null>(null);
   const [feedbackField, setFeedbackField] = useState<EditableField | null>(null);
@@ -95,24 +117,87 @@ export default function DashboardPage() {
   const [notesDraft, setNotesDraft] = useState('');
   const [contactEmailDraft, setContactEmailDraft] = useState('');
   const [contactPhoneDraft, setContactPhoneDraft] = useState('');
+  const [companionDrafts, setCompanionDrafts] = useState<CompanionDraft[]>([]);
+  const [isEditingCompanions, setIsEditingCompanions] = useState(false);
+  const [companionStatus, setCompanionStatus] = useState('');
+  const [companionError, setCompanionError] = useState('');
+  const [isSavingCompanions, setIsSavingCompanions] = useState(false);
+
+  const sessionQuery = useMemo(() => {
+    if (!senderIdentity) {
+      return tables.guest_session.where((row) => row.guestId.eq(0n));
+    }
+    return tables.guest_session.where((row) => row.sender.eq(senderIdentity));
+  }, [senderIdentity]);
+  const [sessionRows] = useDebugTable<any>('dashboard.guest_session', sessionQuery);
 
   const activeSession = useMemo(() => {
-    if (!senderIdentity) {
-      return undefined;
+    return sessionRows[0];
+  }, [sessionRows]);
+  const activeSessionGuestId = activeSession?.guestId as bigint | undefined;
+
+  const guestQuery = useMemo(() => {
+    if (activeSessionGuestId !== undefined) {
+      return tables.guest.where((row) => row.id.eq(activeSessionGuestId));
     }
-    const senderHex = senderIdentity.toHexString();
-    return sessionRows.find((row) => row.sender.toHexString() === senderHex);
-  }, [senderIdentity, sessionRows]);
+    if (unlockInviteCode) {
+      return tables.guest.where((row) => row.inviteCode.eq(unlockInviteCode));
+    }
+    return tables.guest.where((row) => row.id.eq(0n));
+  }, [activeSessionGuestId, unlockInviteCode]);
+  const [guestRows, guestLoading] = useDebugTable<any>('dashboard.guest', guestQuery);
 
   const activeGuest = useMemo(
-    () => guestRows.find((row) => row.id === activeSession?.guestId),
-    [activeSession?.guestId, guestRows]
+    () => guestRows[0],
+    [guestRows]
   );
+
+  const activeGuestId = activeGuest?.id as bigint | undefined;
+
+  const rsvpQuery = useMemo(() => {
+    if (activeGuestId === undefined) {
+      return tables.rsvp_response.where((row) => row.guestId.eq(0n));
+    }
+    return tables.rsvp_response.where((row) => row.guestId.eq(activeGuestId));
+  }, [activeGuestId]);
+  const [rsvpRows] = useDebugTable<any>('dashboard.rsvp_response', rsvpQuery);
+
+  const companionQuery = useMemo(() => {
+    if (activeGuestId === undefined) {
+      return tables.companion.where((row) => row.guestId.eq(0n));
+    }
+    return tables.companion.where((row) => row.guestId.eq(activeGuestId));
+  }, [activeGuestId]);
+  const [companionRows] = useDebugTable<any>('dashboard.companion', companionQuery);
+
+  const messageQuery = useMemo(() => {
+    if (activeGuestId === undefined) {
+      return tables.guest_message.where((row) => row.guestId.eq(0n));
+    }
+    return tables.guest_message.where((row) => row.guestId.eq(activeGuestId));
+  }, [activeGuestId]);
+  const [messageRows] = useDebugTable<any>('dashboard.guest_message', messageQuery);
+
+  const configQuery = useMemo(
+    () => tables.config.where((row) => row.id.eq(1n)),
+    []
+  );
+  const [configRows] = useDebugTable<any>('dashboard.config', configQuery);
 
   const activeRsvp = useMemo(
     () => (activeGuest ? rsvpRows.find((row) => row.guestId === activeGuest.id) : undefined),
     [activeGuest, rsvpRows]
   );
+
+  const detectedGuestByUnlockCode = useMemo(() => {
+    if (!unlockInviteCode) {
+      return undefined;
+    }
+
+    return guestRows.find(
+      (row) => normalizeInviteCode(row.inviteCode) === unlockInviteCode
+    );
+  }, [guestRows, unlockInviteCode]);
 
   const guestCompanions = useMemo(
     () => (activeGuest ? companionRows.filter((row) => row.guestId === activeGuest.id) : []),
@@ -131,6 +216,17 @@ export default function DashboardPage() {
       );
   }, [activeGuest, messageRows]);
 
+  useEffect(() => {
+    if (editingMessageId === null) {
+      return;
+    }
+    const messageStillExists = guestMessages.some((message) => message.id === editingMessageId);
+    if (!messageStillExists) {
+      setEditingMessageId(null);
+      setEditingMessageDraft('');
+    }
+  }, [editingMessageId, guestMessages]);
+
   const companionPayload = useMemo(
     () =>
       guestCompanions.map((companion) => ({
@@ -141,7 +237,7 @@ export default function DashboardPage() {
     [guestCompanions]
   );
 
-  const config = useMemo(() => configRows.find((row) => row.id === 1n), [configRows]);
+  const config = useMemo(() => configRows[0], [configRows]);
 
   const isRsvpClosed = useMemo(() => {
     const cutoff = config?.globalRsvpCutoffAt;
@@ -152,8 +248,14 @@ export default function DashboardPage() {
   }, [config?.globalRsvpCutoffAt]);
 
   const attendanceLabel = toAttendanceLabel(activeRsvp?.attendance);
-  const isLoading = !guestReady || !sessionReady;
   const canEditRsvpDetails = activeRsvp?.attendance !== undefined;
+  const isAttending = activeRsvp?.attendance === true;
+  const maxCompanions = Number(activeGuest?.maxCompanions ?? 0n);
+  const canManageCompanions = Boolean(
+    activeGuest?.canAddCompanions &&
+    activeRsvp?.attendance === true &&
+    !isRsvpClosed
+  );
   const phoneChanged =
     normalizeOptionalInput(contactPhoneDraft) !== normalizeOptionalInput(activeGuest?.contactPhone);
 
@@ -162,7 +264,27 @@ export default function DashboardPage() {
     setFeedbackField(null);
     setFieldError('');
     setFieldStatus('');
+    setMessageDraft('');
+    setMessageError('');
+    setMessageStatus('');
+    setEditingMessageId(null);
+    setEditingMessageDraft('');
+    setMessageActionError('');
+    setMessageActionStatus('');
+    setCompanionStatus('');
+    setCompanionError('');
+    setIsEditingCompanions(false);
   }, [activeGuest?.id]);
+
+  useEffect(() => {
+    setCompanionDrafts(
+      guestCompanions.map((companion) => ({
+        name: companion.name,
+        dietaryNotes: companion.dietaryNotes ?? '',
+        relationship: companion.relationship ?? '',
+      }))
+    );
+  }, [guestCompanions]);
 
   useEffect(() => {
     if (!activeGuest) {
@@ -171,6 +293,82 @@ export default function DashboardPage() {
     setLookupError('');
     setLookupStatus('');
   }, [activeGuest]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadUnlockCode = async () => {
+      try {
+        const response = await fetch('/api/unlock', {
+          method: 'GET',
+          cache: 'no-store',
+        });
+        const payload = (await response.json().catch(() => null)) as UnlockCookieResponse | null;
+
+        if (!response.ok || !payload?.ok || typeof payload.inviteCode !== 'string') {
+          return;
+        }
+
+        const normalizedCode = normalizeInviteCode(payload.inviteCode);
+        if (!cancelled && normalizedCode) {
+          setUnlockInviteCode(normalizedCode);
+        }
+      } finally {
+        if (!cancelled) {
+          setUnlockCodeReady(true);
+        }
+      }
+    };
+
+    void loadUnlockCode();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!connection || !unlockCodeReady || !unlockInviteCode || guestLoading || activeGuest || isLookingUp) {
+      return;
+    }
+
+    if (!detectedGuestByUnlockCode) {
+      return;
+    }
+
+    if (autoLookupAttemptRef.current === unlockInviteCode) {
+      return;
+    }
+
+    autoLookupAttemptRef.current = unlockInviteCode;
+    setLookupError('');
+    setLookupStatus('Unlocked invite code detected. Loading your dashboard...');
+    setIsLookingUp(true);
+
+    connection.reducers.identifyGuestByFallback({
+      firstName: detectedGuestByUnlockCode.firstName,
+      lastName: detectedGuestByUnlockCode.lastName,
+      inviteCode: unlockInviteCode,
+    })
+      .then(() => {
+        setLookupStatus('Verification successful. Loading your dashboard...');
+      })
+      .catch((error) => {
+        setLookupStatus('');
+        setLookupError(toErrorMessage(error, 'Unable to load your invitation details from unlock code.'));
+      })
+      .finally(() => {
+        setIsLookingUp(false);
+      });
+  }, [
+    activeGuest,
+    connection,
+    detectedGuestByUnlockCode,
+    guestLoading,
+    isLookingUp,
+    unlockCodeReady,
+    unlockInviteCode,
+  ]);
 
   const clearFieldFeedback = () => {
     setFeedbackField(null);
@@ -375,6 +573,7 @@ export default function DashboardPage() {
   const onSendMessage = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setMessageError('');
+    setMessageStatus('');
 
     if (!connection) {
       setMessageError('Connection is still starting. Please try again.');
@@ -383,49 +582,203 @@ export default function DashboardPage() {
 
     const trimmed = messageDraft.trim();
     if (!trimmed) {
-      setMessageError('Message is required.');
+      setMessageError('Please enter a question or well wish.');
       return;
     }
 
     try {
       await connection.reducers.sendGuestMessage({ message: trimmed });
       setMessageDraft('');
+      setMessageStatus('Thank you. Your note has been sent.');
     } catch (error) {
       setMessageError(toErrorMessage(error, 'Unable to send message.'));
     }
   };
 
-  const onLookupGuest = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    setLookupError('');
-    setLookupStatus('');
+  const clearMessageActionFeedback = () => {
+    setMessageActionError('');
+    setMessageActionStatus('');
+  };
+
+  const openMessageEditor = (messageId: bigint, messageText: string) => {
+    clearMessageActionFeedback();
+    setEditingMessageId(messageId);
+    setEditingMessageDraft(messageText);
+  };
+
+  const cancelMessageEditor = () => {
+    clearMessageActionFeedback();
+    setEditingMessageId(null);
+    setEditingMessageDraft('');
+  };
+
+  const onSaveEditedMessage = async (messageId: bigint) => {
+    clearMessageActionFeedback();
+    const trimmed = editingMessageDraft.trim();
+    if (!trimmed) {
+      setMessageActionError('Please enter a question or well wish.');
+      return;
+    }
+    if (!connection) {
+      setMessageActionError('Connection is still starting. Please try again.');
+      return;
+    }
+
+    setIsSavingMessageAction(true);
+    try {
+      await connection.reducers.updateGuestMessage({
+        messageId,
+        message: trimmed,
+      });
+      setMessageActionStatus('Your note was updated.');
+      setEditingMessageId(null);
+      setEditingMessageDraft('');
+    } catch (error) {
+      setMessageActionError(toErrorMessage(error, 'Unable to update your note.'));
+    } finally {
+      setIsSavingMessageAction(false);
+    }
+  };
+
+  const onDeleteMessage = async (messageId: bigint) => {
+    clearMessageActionFeedback();
+    if (!connection) {
+      setMessageActionError('Connection is still starting. Please try again.');
+      return;
+    }
+    if (!window.confirm('Delete this question or well wish? This cannot be undone.')) {
+      return;
+    }
+
+    setIsSavingMessageAction(true);
+    try {
+      await connection.reducers.deleteGuestMessage({ messageId });
+      setMessageActionStatus('Your note was deleted.');
+      if (editingMessageId === messageId) {
+        setEditingMessageId(null);
+        setEditingMessageDraft('');
+      }
+    } catch (error) {
+      setMessageActionError(toErrorMessage(error, 'Unable to delete your note.'));
+    } finally {
+      setIsSavingMessageAction(false);
+    }
+  };
+
+  const resetCompanionDrafts = () => {
+    setCompanionDrafts(
+      guestCompanions.map((companion) => ({
+        name: companion.name,
+        dietaryNotes: companion.dietaryNotes ?? '',
+        relationship: companion.relationship ?? '',
+      }))
+    );
+  };
+
+  const openCompanionEditor = () => {
+    setCompanionError('');
+    setCompanionStatus('');
+    resetCompanionDrafts();
+    setIsEditingCompanions(true);
+  };
+
+  const cancelCompanionEditor = () => {
+    setCompanionError('');
+    setCompanionStatus('');
+    resetCompanionDrafts();
+    setIsEditingCompanions(false);
+  };
+
+  const addCompanionDraft = () => {
+    setCompanionError('');
+    setCompanionStatus('');
+    if (companionDrafts.length >= maxCompanions) {
+      setCompanionError(`You can include up to ${maxCompanions} loved one(s) on this invitation.`);
+      return;
+    }
+    setCompanionDrafts((current) => [
+      ...current,
+      {
+        name: '',
+        dietaryNotes: '',
+        relationship: '',
+      },
+    ]);
+  };
+
+  const removeCompanionDraft = (indexToRemove: number) => {
+    setCompanionError('');
+    setCompanionStatus('');
+    setCompanionDrafts((current) => current.filter((_companion, index) => index !== indexToRemove));
+  };
+
+  const updateCompanionDraft = (
+    indexToUpdate: number,
+    field: keyof CompanionDraft,
+    value: string
+  ) => {
+    setCompanionDrafts((current) =>
+      current.map((companion, index) =>
+        index === indexToUpdate ? { ...companion, [field]: value } : companion
+      )
+    );
+  };
+
+  const onSaveCompanions = async () => {
+    setCompanionError('');
+    setCompanionStatus('');
 
     if (!connection) {
-      setLookupError('Connection is still starting. Please try again.');
+      setCompanionError('Connection is still starting. Please try again.');
+      return;
+    }
+    if (!activeGuest || !activeRsvp || !activeRsvp.attendance) {
+      setCompanionError('Please confirm your attendance first.');
+      return;
+    }
+    if (isRsvpClosed) {
+      setCompanionError('RSVP updates are closed because the deadline has passed.');
+      return;
+    }
+    if (!activeGuest.canAddCompanions || maxCompanions < 1) {
+      setCompanionError('This invitation does not include loved ones.');
+      return;
+    }
+    if (companionDrafts.length > maxCompanions) {
+      setCompanionError(`You can include up to ${maxCompanions} loved one(s) on this invitation.`);
       return;
     }
 
-    const firstName = lookupFirstName.trim();
-    const lastName = lookupLastName.trim();
-    const password = lookupPassword.trim();
-
-    if (!firstName || !lastName || !password) {
-      setLookupError('First name, last name, and password are required.');
+    const hasBlankName = companionDrafts.some((companion) => companion.name.trim().length === 0);
+    if (hasBlankName) {
+      setCompanionError('Please add a name for each loved one, or remove empty rows.');
       return;
     }
 
-    setIsLookingUp(true);
+    const nextCompanions = companionDrafts
+      .map((companion) => ({
+        name: companion.name.trim(),
+        dietaryNotes: normalizeOptionalInput(companion.dietaryNotes),
+        relationship: normalizeOptionalInput(companion.relationship),
+      }))
+      .filter((companion) => companion.name.length > 0);
+
+    setIsSavingCompanions(true);
     try {
-      await connection.reducers.identifyGuestByFallback({
-        firstName,
-        lastName,
-        inviteCode: password,
+      await connection.reducers.submitRsvp({
+        attendance: true,
+        dietaryNotes: normalizeOptionalInput(activeRsvp.dietaryNotes),
+        notes: normalizeOptionalInput(activeRsvp.notes),
+        contactEmail: normalizeOptionalInput(activeGuest.contactEmail),
+        contactPhone: normalizeOptionalInput(activeGuest.contactPhone),
+        companions: nextCompanions,
       });
-      setLookupStatus('Verification successful. Loading your dashboard...');
+      setCompanionStatus('Loved ones attending were updated.');
+      setIsEditingCompanions(false);
     } catch (error) {
-      setLookupError(toErrorMessage(error, 'Unable to verify invitation details.'));
+      setCompanionError(toErrorMessage(error, 'Unable to update loved ones.'));
     } finally {
-      setIsLookingUp(false);
+      setIsSavingCompanions(false);
     }
   };
 
@@ -447,77 +800,50 @@ export default function DashboardPage() {
       <section className="page-head">
         <h1 className="heading-with-icon">
           <Icon name="dashboard" className="heading-icon" />
-          <span>Guest Dashboard</span>
+          <span>Guest Information</span>
         </h1>
-        <p>Summary view with quick per-field editing.</p>
+        <p>Welcome. You can update your RSVP details, loved ones, and notes to us here anytime.</p>
       </section>
 
-      {isLoading ? (
-        <section className="card">
-          <p>Loading your guest profile...</p>
-        </section>
-      ) : null}
-
-      {!isLoading && !activeGuest ? (
+      {!activeGuest ? (
         <section className="card">
           <h2 className="heading-with-icon">
             <Icon name="lock" className="heading-icon" />
-            <span>Find Your Invitation</span>
+            <span>Loading Invitation</span>
           </h2>
-          <p>Enter your invitation details to open your dashboard.</p>
-          <form className="form-stack" onSubmit={onLookupGuest}>
-            <label>
-              First name
-              <input
-                value={lookupFirstName}
-                onChange={(event) => setLookupFirstName(event.target.value)}
-                autoComplete="given-name"
-                placeholder="e.g. Natasha"
-              />
-            </label>
-            <label>
-              Last name
-              <input
-                value={lookupLastName}
-                onChange={(event) => setLookupLastName(event.target.value)}
-                autoComplete="family-name"
-                placeholder="e.g. Wong"
-              />
-            </label>
-            <label>
-              Password
-              <input
-                type="password"
-                value={lookupPassword}
-                onChange={(event) => setLookupPassword(event.target.value)}
-                autoComplete="current-password"
-                placeholder="Invitation password"
-              />
-            </label>
-            {lookupError ? <p className="small-note">{lookupError}</p> : null}
-            {lookupStatus ? <p className="small-note">{lookupStatus}</p> : null}
-            <div className="cta-row">
-              <button type="submit" className="button-primary" disabled={isLookingUp}>
-                <Icon name="how_to_reg" className="button-icon" />
-                {isLookingUp ? 'Checking...' : 'Open Dashboard'}
-              </button>
-            </div>
-          </form>
+          {!unlockCodeReady || isLookingUp ? (
+            <p className="small-note">We are finding your invitation details now...</p>
+          ) : null}
+          {lookupStatus ? <p className="small-note">{lookupStatus}</p> : null}
+          {lookupError ? <p className="small-note">{lookupError}</p> : null}
+          {unlockCodeReady && !unlockInviteCode ? (
+            <p className="small-note">
+              We could not find an unlocked invitation yet. Please unlock from the home page to continue.
+            </p>
+          ) : null}
+          {unlockCodeReady && unlockInviteCode && !detectedGuestByUnlockCode && !isLookingUp ? (
+            <p className="small-note">
+              We could not match that invite code yet. Please try unlocking again from the home page.
+            </p>
+          ) : null}
           <div className="cta-row">
-            <Link href="/rsvp" className="button-secondary">
-              <Icon name="arrow_outward" className="button-icon" /> Go to RSVP Instead
+            <Link href="/" className="button-secondary">
+              <Icon name="lock_open" className="button-icon" /> Go to Home to Unlock
             </Link>
           </div>
         </section>
       ) : null}
 
-      {!isLoading && activeGuest ? (
+      {activeGuest ? (
         <>
           <section className="card">
             <h2 className="heading-with-icon">
               <Icon name="person" className="heading-icon" />
-              <span>Guest Summary</span>
+              <span>Your Invitation</span>
             </h2>
+            <p className="small-note">
+              We are so grateful to celebrate with you, {activeGuest.firstName}.
+            </p>
             <p>
               <strong>Name:</strong> {activeGuest.firstName} {activeGuest.lastName}
             </p>
@@ -525,29 +851,26 @@ export default function DashboardPage() {
               <strong>Invite code:</strong> {activeGuest.inviteCode}
             </p>
             <p>
-              <strong>Loved ones allowed:</strong>{' '}
-              {activeGuest.canAddCompanions
-                ? `Yes (up to ${activeGuest.maxCompanions.toString()})`
-                : 'No'}
-            </p>
-            <p>
-              <strong>Loved ones currently added:</strong> {guestCompanions.length}
+              <strong>Loved ones currently on your RSVP:</strong> {guestCompanions.length}
             </p>
             <p className="small-note">
-              Last updated: {formatTimestamp(activeGuest.updatedAt.microsSinceUnixEpoch)}
+              Last updated {formatTimestamp(activeGuest.updatedAt.microsSinceUnixEpoch)}
             </p>
             <p className="small-note">
               {config?.globalRsvpCutoffAt
-                ? `RSVP edits close on ${formatTimestamp(config.globalRsvpCutoffAt.microsSinceUnixEpoch)}.`
-                : 'RSVP cutoff date has not been finalized yet.'}
+                ? `RSVP updates close on ${formatTimestamp(config.globalRsvpCutoffAt.microsSinceUnixEpoch)}.`
+                : 'RSVP timing is still flexible, and updates remain open.'}
             </p>
           </section>
 
           <section className="card">
             <h2 className="heading-with-icon">
               <Icon name="edit_square" className="heading-icon" />
-              <span>Edit your RSVP</span>
+              <span>Update Your RSVP</span>
             </h2>
+            <p className="small-note">
+              Please adjust anything that helps us care for you well on the day.
+            </p>
 
             <div className="rsvp-edit-grid">
               <fieldset>
@@ -591,7 +914,7 @@ export default function DashboardPage() {
                   <div className="cta-row">
                     <button
                       type="button"
-                      className="button-secondary"
+                      className="button-secondary edit-action-button"
                       onClick={() => openEditor('attendance')}
                     >
                       <Icon name="edit" className="button-icon" /> Edit
@@ -635,7 +958,7 @@ export default function DashboardPage() {
                   <div className="cta-row">
                     <button
                       type="button"
-                      className="button-secondary"
+                      className="button-secondary edit-action-button"
                       onClick={() => openEditor('dietaryNotes')}
                       disabled={!canEditRsvpDetails}
                     >
@@ -681,7 +1004,7 @@ export default function DashboardPage() {
                   <div className="cta-row">
                     <button
                       type="button"
-                      className="button-secondary"
+                      className="button-secondary edit-action-button"
                       onClick={() => openEditor('notes')}
                       disabled={!canEditRsvpDetails}
                     >
@@ -728,7 +1051,7 @@ export default function DashboardPage() {
                   <div className="cta-row">
                     <button
                       type="button"
-                      className="button-secondary"
+                      className="button-secondary edit-action-button"
                       onClick={() => openEditor('contactEmail')}
                       disabled={!canEditRsvpDetails}
                     >
@@ -773,11 +1096,17 @@ export default function DashboardPage() {
                   </div>
                 ) : (
                   <div className="cta-row">
-                    <button type="button" className="button-secondary" onClick={() => openEditor('contactPhone')}>
+                    <button
+                      type="button"
+                      className="button-secondary edit-action-button"
+                      onClick={() => openEditor('contactPhone')}
+                      disabled={!canEditRsvpDetails}
+                    >
                       <Icon name="edit" className="button-icon" /> Edit
                     </button>
                   </div>
                 )}
+                {!canEditRsvpDetails ? <p className="small-note">Set attendance first to edit this field.</p> : null}
                 {renderFieldFeedback('contactPhone')}
               </fieldset>
             </div>
@@ -785,38 +1114,246 @@ export default function DashboardPage() {
 
           <section className="card">
             <h2 className="heading-with-icon">
-              <Icon name="mail" className="heading-icon" />
-              <span>Questions</span>
+              <Icon name="group" className="heading-icon" />
+              <span>Loved Ones Attending</span>
             </h2>
-            <p className="small-note">We'll respond as soon as possible.</p>
-            <h3>Past Questions</h3>
+            {!isAttending ? (
+              <p className="small-note">
+                Once you choose &quot;Attending,&quot; you can add or update loved ones here.
+              </p>
+            ) : null}
+            {isAttending && (!activeGuest.canAddCompanions || maxCompanions < 1) ? (
+              <p className="small-note">
+                Your invitation is reserved for you, so no additional loved ones are needed here.
+              </p>
+            ) : null}
+            {isAttending && activeGuest.canAddCompanions && maxCompanions > 0 ? (
+              <>
+                <p className="small-note">
+                  You can include up to {maxCompanions} loved one(s). Currently added: {guestCompanions.length}.
+                </p>
+                {isEditingCompanions ? (
+                  <div className="form-stack">
+                    {companionDrafts.length > 0 ? (
+                      <div className="companion-stack">
+                        {companionDrafts.map((companion, index) => (
+                          <article
+                            key={`companion-draft-${index}`}
+                            className="companion-card companion-card-edit"
+                          >
+                            <div className="companion-card-head">
+                              <strong>Loved one {index + 1}</strong>
+                              <button
+                                type="button"
+                                className="button-secondary edit-action-button"
+                                onClick={() => removeCompanionDraft(index)}
+                                disabled={isSavingCompanions}
+                              >
+                                <Icon name="delete" className="button-icon" /> Remove
+                              </button>
+                            </div>
+                            <label>
+                              Full name
+                              <input
+                                value={companion.name}
+                                onChange={(event) =>
+                                  updateCompanionDraft(index, 'name', event.target.value)
+                                }
+                                placeholder="Companion full name"
+                              />
+                            </label>
+                            <label>
+                              Relationship (optional)
+                              <input
+                                value={companion.relationship}
+                                onChange={(event) =>
+                                  updateCompanionDraft(index, 'relationship', event.target.value)
+                                }
+                                placeholder="Sibling, partner, parent..."
+                              />
+                            </label>
+                            <label>
+                              Dietary notes (optional)
+                              <input
+                                value={companion.dietaryNotes}
+                                onChange={(event) =>
+                                  updateCompanionDraft(index, 'dietaryNotes', event.target.value)
+                                }
+                                placeholder="Allergies or preferences"
+                              />
+                            </label>
+                          </article>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="small-note">No loved ones added yet.</p>
+                    )}
+                    <div className="cta-row">
+                      <button
+                        type="button"
+                        className="button-secondary"
+                        onClick={addCompanionDraft}
+                        disabled={isSavingCompanions || companionDrafts.length >= maxCompanions}
+                      >
+                        <Icon name="person_add" className="button-icon" /> Add loved one
+                      </button>
+                      <button
+                        type="button"
+                        className="button-secondary edit-action-button"
+                        onClick={cancelCompanionEditor}
+                        disabled={isSavingCompanions}
+                      >
+                        <Icon name="close" className="button-icon" /> Cancel
+                      </button>
+                      <button
+                        type="button"
+                        className="button-primary"
+                        onClick={() => {
+                          void onSaveCompanions();
+                        }}
+                        disabled={isSavingCompanions}
+                      >
+                        <Icon name="check" className="button-icon" />
+                        {isSavingCompanions ? 'Saving...' : 'Save Loved Ones'}
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    {guestCompanions.length > 0 ? (
+                      <div className="companion-stack">
+                        {guestCompanions.map((companion) => (
+                          <article key={companion.id.toString()} className="companion-card">
+                            <div className="companion-card-head">
+                              <strong>{companion.name}</strong>
+                            </div>
+                            <p className="small-note">
+                              Relationship: {formatOptional(companion.relationship)}
+                            </p>
+                            <p className="small-note">
+                              Dietary notes: {formatOptional(companion.dietaryNotes)}
+                            </p>
+                          </article>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="small-note">No loved ones added yet.</p>
+                    )}
+                    <div className="cta-row">
+                      <button
+                        type="button"
+                        className="button-secondary edit-action-button"
+                        onClick={openCompanionEditor}
+                        disabled={!canManageCompanions}
+                      >
+                        <Icon name="edit" className="button-icon" /> Edit Loved Ones
+                      </button>
+                    </div>
+                  </>
+                )}
+              </>
+            ) : null}
+            {isRsvpClosed ? (
+              <p className="small-note">RSVP updates are now closed because the deadline has passed.</p>
+            ) : null}
+            {companionError ? <p className="small-note">{companionError}</p> : null}
+            {companionStatus ? <p className="small-note">{companionStatus}</p> : null}
+          </section>
+
+          <section className="card">
+            <h2 className="heading-with-icon">
+              <Icon name="mail" className="heading-icon" />
+              <span>Questions &amp; Well Wishes</span>
+            </h2>
+            <p className="small-note">Share any questions or kind notes. We will respond with care.</p>
+            <h3>Your notes</h3>
             {guestMessages.length > 0 ? (
               <ol className="faq-list">
                 {guestMessages.map((message) => (
-                  <li key={message.id.toString()}>
-                    <p>{message.message}</p>
-                    <p className="small-note">
-                      Sent {formatTimestamp(message.createdAt.microsSinceUnixEpoch)} | Status: {message.status}
-                    </p>
+                  <li key={message.id.toString()} className="dashboard-message-item">
+                    {editingMessageId === message.id ? (
+                      <div className="form-stack">
+                        <label>
+                          Edit your question or well wish
+                          <textarea
+                            rows={4}
+                            value={editingMessageDraft}
+                            onChange={(event) => setEditingMessageDraft(event.target.value)}
+                          />
+                        </label>
+                        <div className="cta-row">
+                          <button
+                            type="button"
+                            className="button-secondary edit-action-button"
+                            onClick={cancelMessageEditor}
+                            disabled={isSavingMessageAction}
+                          >
+                            <Icon name="close" className="button-icon" /> Cancel
+                          </button>
+                          <button
+                            type="button"
+                            className="button-primary"
+                            onClick={() => {
+                              void onSaveEditedMessage(message.id);
+                            }}
+                            disabled={isSavingMessageAction}
+                          >
+                            <Icon name="check" className="button-icon" />
+                            {isSavingMessageAction ? 'Saving...' : 'Save Changes'}
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <>
+                        <p>{message.message}</p>
+                        <p className="small-note">
+                          Sent {formatTimestamp(message.createdAt.microsSinceUnixEpoch)} |{' '}
+                          {toMessageStatusLabel(message.status)}
+                        </p>
+                        <div className="cta-row">
+                          <button
+                            type="button"
+                            className="button-secondary edit-action-button"
+                            onClick={() => openMessageEditor(message.id, message.message)}
+                            disabled={isSavingMessageAction}
+                          >
+                            <Icon name="edit" className="button-icon" /> Edit
+                          </button>
+                          <button
+                            type="button"
+                            className="button-secondary edit-action-button danger-action-button"
+                            onClick={() => {
+                              void onDeleteMessage(message.id);
+                            }}
+                            disabled={isSavingMessageAction}
+                          >
+                            <Icon name="delete" className="button-icon" /> Delete
+                          </button>
+                        </div>
+                      </>
+                    )}
                   </li>
                 ))}
               </ol>
             ) : (
-              <p className="small-note">You have not sent any questions yet.</p>
+              <p className="small-note">No questions or well wishes yet. You can share one below.</p>
             )}
+            {messageActionError ? <p className="small-note">{messageActionError}</p> : null}
+            {messageActionStatus ? <p className="small-note">{messageActionStatus}</p> : null}
             <form className="form-stack" onSubmit={onSendMessage}>
               <label>
-                Message
+                Question or well wish
                 <textarea
                   rows={5}
-                  placeholder="Type your question here."
+                  placeholder="Share a question, note, or well wish..."
                   value={messageDraft}
                   onChange={(event) => setMessageDraft(event.target.value)}
                 />
               </label>
               {messageError ? <p className="small-note">{messageError}</p> : null}
+              {messageStatus ? <p className="small-note">{messageStatus}</p> : null}
               <button type="submit" className="button-primary">
-                <Icon name="send" className="button-icon" /> Send Message
+                <Icon name="send" className="button-icon" /> Send Note
               </button>
             </form>
           </section>
