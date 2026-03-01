@@ -22,19 +22,19 @@ export default function EventDetailsPage() {
           </h2>
           <ol className="timeline">
             <li>
-              <strong>Doors Open — W</strong>
+              <strong>Doors Open - 9:30 AM</strong>
               <p>Guest check-in begins and ushers will assist with seating.</p>
             </li>
             <li>
-              <strong>Be Seated By — X</strong>
+              <strong>Be Seated By - 9:50 AM</strong>
               <p>Please be seated before the bridal procession begins.</p>
             </li>
             <li>
-              <strong>Service Starts — Y</strong>
+              <strong>Service Starts - 10:00 AM</strong>
               <p>Wedding service at The Singapore Thomson Road Baptist Church.</p>
             </li>
             <li>
-              <strong>Reception — Z</strong>
+              <strong>Reception - 12:00 PM</strong>
               <p>Reception to follow in the church hall.</p>
             </li>
           </ol>

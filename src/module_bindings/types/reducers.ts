@@ -3,11 +3,22 @@
 
 /* eslint-disable */
 /* tslint:disable */
-import { type Infer as __Infer } from 'spacetimedb';
+import { type Infer as __Infer } from "spacetimedb";
 
 // Import all reducer arg schemas
-import AddReducer from '../add_reducer';
-import SayHelloReducer from '../say_hello_reducer';
+import ClearGuestSessionReducer from "../clear_guest_session_reducer";
+import IdentifyGuestByFallbackReducer from "../identify_guest_by_fallback_reducer";
+import IdentifyGuestByTokenReducer from "../identify_guest_by_token_reducer";
+import SendGuestMessageReducer from "../send_guest_message_reducer";
+import SetGlobalRsvpCutoffReducer from "../set_global_rsvp_cutoff_reducer";
+import SubmitRsvpReducer from "../submit_rsvp_reducer";
+import UpdateGuestPhoneReducer from "../update_guest_phone_reducer";
 
-export type AddParams = __Infer<typeof AddReducer>;
-export type SayHelloParams = __Infer<typeof SayHelloReducer>;
+export type ClearGuestSessionParams = __Infer<typeof ClearGuestSessionReducer>;
+export type IdentifyGuestByFallbackParams = __Infer<typeof IdentifyGuestByFallbackReducer>;
+export type IdentifyGuestByTokenParams = __Infer<typeof IdentifyGuestByTokenReducer>;
+export type SendGuestMessageParams = __Infer<typeof SendGuestMessageReducer>;
+export type SetGlobalRsvpCutoffParams = __Infer<typeof SetGlobalRsvpCutoffReducer>;
+export type SubmitRsvpParams = __Infer<typeof SubmitRsvpReducer>;
+export type UpdateGuestPhoneParams = __Infer<typeof UpdateGuestPhoneReducer>;
+

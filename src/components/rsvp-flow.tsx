@@ -1,13 +1,17 @@
 'use client';
 
 import Link from 'next/link';
-import { FormEvent, useMemo, useState } from 'react';
-import { DesignVariant, getVariantMeta } from '@/lib/design-variant';
+import { FormEvent, useEffect, useMemo, useRef, useState } from 'react';
+import { useSpacetimeDB } from 'spacetimedb/react';
+import { getVariantMeta } from '@/lib/design-variant';
 import Icon from '@/components/icon';
+import { DbConnection, tables } from '@/module_bindings';
+import { useDebugTable } from '@/lib/use-debug-table';
 
 type Attendance = 'attending' | 'declining' | '';
 type DietaryMode = 'none' | 'add' | '';
 type ContactMode = 'skip' | 'add' | '';
+type VerificationState = 'idle' | 'verifying' | 'verified' | 'failed';
 
 type Companion = {
   name: string;
@@ -16,7 +20,6 @@ type Companion = {
 
 type RsvpFlowProps = {
   initialToken?: string;
-  variant?: DesignVariant;
 };
 
 const STEP_META = [
@@ -50,8 +53,17 @@ const STEP_META = [
   },
 ] as const;
 
-export default function RsvpFlow({ initialToken, variant = 'heirloom' }: RsvpFlowProps) {
-  const variantMeta = getVariantMeta(variant);
+export default function RsvpFlow({ initialToken }: RsvpFlowProps) {
+  const variantMeta = getVariantMeta();
+  const db = useSpacetimeDB();
+  const connection = db.getConnection() as DbConnection | null;
+  const senderIdentity = db.identity;
+
+  const [guestRows] = useDebugTable<any>('rsvp.guest', tables.guest);
+  const [sessionRows] = useDebugTable<any>('rsvp.guest_session', tables.guest_session);
+  const [rsvpRows] = useDebugTable<any>('rsvp.rsvp_response', tables.rsvp_response);
+  const [companionRows] = useDebugTable<any>('rsvp.companion', tables.companion);
+  const [configRows] = useDebugTable<any>('rsvp.config', tables.config);
 
   const [step, setStep] = useState(1);
 
@@ -67,25 +79,65 @@ export default function RsvpFlow({ initialToken, variant = 'heirloom' }: RsvpFlo
   const [contactEmail, setContactEmail] = useState('');
   const [contactPhone, setContactPhone] = useState('');
 
-  const [companionAllowed] = useState(true);
   const [companions, setCompanions] = useState<Companion[]>([]);
   const [companionName, setCompanionName] = useState('');
   const [companionDietary, setCompanionDietary] = useState('');
 
+  const [lookupError, setLookupError] = useState('');
+  const [submitError, setSubmitError] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [verificationState, setVerificationState] = useState<VerificationState>('idle');
+  const [verificationMessage, setVerificationMessage] = useState('');
   const [submitted, setSubmitted] = useState(false);
 
+  const hydratedGuestId = useRef<bigint | null>(null);
   const totalSteps = STEP_META.length;
+  const normalizedInitialToken = initialToken?.trim() ?? '';
+  const normalizedInviteCode = lookupInviteCode.trim().toUpperCase();
 
   const progressPercent = useMemo(
     () => Math.round((step / totalSteps) * 100),
     [step, totalSteps]
   );
 
-  const isNameSatisfied = Boolean(initialToken) || Boolean(
+  const activeSession = useMemo(() => {
+    if (!senderIdentity) {
+      return undefined;
+    }
+    const senderHex = senderIdentity.toHexString();
+    return sessionRows.find((row) => row.sender.toHexString() === senderHex);
+  }, [senderIdentity, sessionRows]);
+
+  const activeGuest = useMemo(
+    () => guestRows.find((row) => row.id === activeSession?.guestId),
+    [activeSession?.guestId, guestRows]
+  );
+
+  const activeRsvp = useMemo(
+    () => (activeGuest ? rsvpRows.find((row) => row.guestId === activeGuest.id) : undefined),
+    [activeGuest, rsvpRows]
+  );
+
+  const activeCompanions = useMemo(
+    () => (activeGuest ? companionRows.filter((row) => row.guestId === activeGuest.id) : []),
+    [activeGuest, companionRows]
+  );
+
+  const config = useMemo(() => configRows.find((row) => row.id === 1n), [configRows]);
+
+  const isRsvpClosed = useMemo(() => {
+    const cutoff = config?.globalRsvpCutoffAt;
+    if (!cutoff) {
+      return false;
+    }
+    return BigInt(Date.now()) * 1000n > cutoff.microsSinceUnixEpoch;
+  }, [config?.globalRsvpCutoffAt]);
+
+  const isNameSatisfied = Boolean(normalizedInitialToken) || Boolean(
     lookupFirstName.trim() && lookupLastName.trim()
   );
 
-  const isInviteCodeSatisfied = Boolean(initialToken) || Boolean(lookupInviteCode.trim());
+  const isInviteCodeSatisfied = Boolean(normalizedInitialToken) || Boolean(normalizedInviteCode);
 
   const isDietarySatisfied =
     dietaryMode === 'none' || (dietaryMode === 'add' && dietaryNotes.trim().length > 0);
@@ -94,17 +146,68 @@ export default function RsvpFlow({ initialToken, variant = 'heirloom' }: RsvpFlo
     contactMode === 'skip' ||
     (contactMode === 'add' && (contactEmail.trim().length > 0 || contactPhone.trim().length > 0));
 
+  const companionAllowed = activeGuest?.canAddCompanions ?? false;
+  const maxCompanions = Number(activeGuest?.maxCompanions ?? 0n);
+  const hasVerifiedSession = Boolean(activeSession && activeGuest);
+
+  useEffect(() => {
+    if (step === 2 && verificationState === 'verifying' && hasVerifiedSession) {
+      setVerificationState('verified');
+      setVerificationMessage('Invitation verified successfully.');
+      setStep(3);
+    }
+  }, [hasVerifiedSession, step, verificationState]);
+
   const canMoveForward =
     (step === 1 && isNameSatisfied) ||
     (step === 2 && isInviteCodeSatisfied) ||
-    (step === 3 && attendance !== '') ||
+    (step === 3 && hasVerifiedSession && attendance !== '') ||
     (step === 4 && isDietarySatisfied) ||
     (step === 5 && isContactSatisfied) ||
     step === 6 ||
     step === 7;
 
+  useEffect(() => {
+    if (!activeGuest || hydratedGuestId.current === activeGuest.id) {
+      return;
+    }
+
+    hydratedGuestId.current = activeGuest.id;
+    setLookupFirstName(activeGuest.firstName);
+    setLookupLastName(activeGuest.lastName);
+    setLookupInviteCode(activeGuest.inviteCode);
+    if (activeRsvp) {
+      setAttendance(activeRsvp.attendance ? 'attending' : 'declining');
+      setDietaryMode(activeRsvp.dietaryNotes ? 'add' : 'none');
+      setDietaryNotes(activeRsvp.dietaryNotes ?? '');
+    } else {
+      setAttendance('');
+      setDietaryMode('');
+      setDietaryNotes('');
+    }
+    if (activeGuest.contactEmail || activeGuest.contactPhone) {
+      setContactMode('add');
+      setContactEmail(activeGuest.contactEmail ?? '');
+      setContactPhone(activeGuest.contactPhone ?? '');
+    } else {
+      setContactMode('skip');
+      setContactEmail('');
+      setContactPhone('');
+    }
+    setCompanions(
+      activeCompanions.map((row) => ({
+        name: row.name,
+        dietaryNotes: row.dietaryNotes ?? '',
+      }))
+    );
+  }, [activeCompanions, activeGuest, activeRsvp]);
+
   const addCompanion = () => {
     if (!companionName.trim()) {
+      return;
+    }
+    if (maxCompanions > 0 && companions.length >= maxCompanions) {
+      setLookupError(`You can add up to ${maxCompanions} loved one(s) for this invitation.`);
       return;
     }
 
@@ -114,13 +217,49 @@ export default function RsvpFlow({ initialToken, variant = 'heirloom' }: RsvpFlo
     ]);
     setCompanionName('');
     setCompanionDietary('');
+    setLookupError('');
   };
 
-  const onSubmit = (event: FormEvent<HTMLFormElement>) => {
+  const onSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    setLookupError('');
+    setSubmitError('');
+    if (step !== 2) {
+      setVerificationMessage('');
+    }
 
     if (!canMoveForward) {
       return;
+    }
+
+    if (!connection) {
+      setLookupError('Connection is still starting. Please try again in a moment.');
+      return;
+    }
+
+    if (step === 2) {
+      setVerificationState('verifying');
+      setVerificationMessage('Verifying invitation details...');
+      try {
+        if (normalizedInitialToken) {
+          await connection.reducers.identifyGuestByToken({ token: normalizedInitialToken });
+        } else {
+          await connection.reducers.identifyGuestByFallback({
+            firstName: lookupFirstName.trim(),
+            lastName: lookupLastName.trim(),
+            inviteCode: normalizedInviteCode,
+          });
+        }
+      } catch (error) {
+        setVerificationState('failed');
+        setVerificationMessage('');
+        setLookupError(error instanceof Error ? error.message : 'Unable to verify invitation details.');
+        return;
+      }
+
+      if (!hasVerifiedSession) {
+        return;
+      }
     }
 
     if (step < totalSteps) {
@@ -128,7 +267,34 @@ export default function RsvpFlow({ initialToken, variant = 'heirloom' }: RsvpFlo
       return;
     }
 
-    setSubmitted(true);
+    if (isRsvpClosed) {
+      setSubmitError('RSVP edits are closed because the global cutoff has passed.');
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      await connection.reducers.submitRsvp({
+        attendance: attendance === 'attending',
+        dietaryNotes: dietaryMode === 'add' ? dietaryNotes.trim() : undefined,
+        notes: undefined,
+        contactEmail: contactMode === 'add' ? contactEmail.trim() : undefined,
+        contactPhone: contactMode === 'add' ? contactPhone.trim() : undefined,
+        companions:
+          attendance === 'attending'
+            ? companions.map((companion) => ({
+                name: companion.name.trim(),
+                dietaryNotes: companion.dietaryNotes.trim() || undefined,
+                relationship: undefined,
+              }))
+            : [],
+      });
+      setSubmitted(true);
+    } catch (error) {
+      setSubmitError(error instanceof Error ? error.message : 'Unable to submit RSVP.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const current = STEP_META[step - 1];
@@ -168,13 +334,19 @@ export default function RsvpFlow({ initialToken, variant = 'heirloom' }: RsvpFlo
       <p className="small-note">
         Step {step} of {totalSteps}
       </p>
+      {isRsvpClosed ? (
+        <p className="small-note">RSVP edits are closed because the global cutoff has passed.</p>
+      ) : null}
+      {lookupError ? <p className="small-note">{lookupError}</p> : null}
+      {submitError ? <p className="small-note">{submitError}</p> : null}
+      {verificationMessage ? <p className="small-note">{verificationMessage}</p> : null}
 
       <form onSubmit={onSubmit} className="form-stack">
         {step === 1 ? (
           <fieldset>
             <legend>Name Details</legend>
-            {initialToken ? (
-              <p className="small-note">Invitation link verified. You may continue.</p>
+            {normalizedInitialToken ? (
+              <p className="small-note">Invitation link detected. Continue to verify and proceed.</p>
             ) : (
               <>
                 <label>
@@ -203,7 +375,7 @@ export default function RsvpFlow({ initialToken, variant = 'heirloom' }: RsvpFlo
         {step === 2 ? (
           <fieldset>
             <legend>Invite Code</legend>
-            {initialToken ? (
+            {normalizedInitialToken ? (
               <p className="small-note">Invite code already verified via direct invitation link.</p>
             ) : (
               <>
@@ -221,6 +393,15 @@ export default function RsvpFlow({ initialToken, variant = 'heirloom' }: RsvpFlo
                 </p>
               </>
             )}
+            {verificationState === 'verified' ? (
+              <p className="small-note">Status: Verified</p>
+            ) : null}
+            {verificationState === 'verifying' ? (
+              <p className="small-note">Status: Verifying...</p>
+            ) : null}
+            {verificationState === 'failed' ? (
+              <p className="small-note">Status: Verification failed</p>
+            ) : null}
           </fieldset>
         ) : null}
 
@@ -344,6 +525,9 @@ export default function RsvpFlow({ initialToken, variant = 'heirloom' }: RsvpFlo
             <legend>Add loved ones</legend>
             {companionAllowed ? (
               <>
+                <p className="small-note">
+                  Invitation allowance: up to {maxCompanions} loved one(s).
+                </p>
                 <div className="option-row">
                   <button
                     type="button"
@@ -400,10 +584,10 @@ export default function RsvpFlow({ initialToken, variant = 'heirloom' }: RsvpFlo
             <ul className="review-list">
               <li>
                 <strong>Name:</strong>{' '}
-                {initialToken ? 'Verified via invitation link' : `${lookupFirstName} ${lookupLastName}`}
+                {activeGuest ? `${activeGuest.firstName} ${activeGuest.lastName}` : `${lookupFirstName} ${lookupLastName}`}
               </li>
               <li>
-                <strong>Invite code:</strong> {initialToken ? 'Verified via invitation link' : lookupInviteCode}
+                <strong>Invite code:</strong> {activeGuest ? activeGuest.inviteCode : lookupInviteCode}
               </li>
               <li>
                 <strong>Attendance:</strong>{' '}
@@ -436,14 +620,19 @@ export default function RsvpFlow({ initialToken, variant = 'heirloom' }: RsvpFlo
             </button>
           ) : null}
 
-          <button type="submit" className="button-primary" disabled={!canMoveForward}>
+          <button
+            type="submit"
+            className="button-primary"
+            disabled={!canMoveForward || (step === totalSteps && (isSubmitting || isRsvpClosed))}
+          >
             {step < totalSteps ? (
               <>
                 Continue <Icon name="arrow_forward" className="button-icon" />
               </>
             ) : (
               <>
-                Submit RSVP <Icon name="task_alt" className="button-icon" />
+                {isSubmitting ? 'Submitting...' : 'Submit RSVP'}{' '}
+                <Icon name="task_alt" className="button-icon" />
               </>
             )}
           </button>

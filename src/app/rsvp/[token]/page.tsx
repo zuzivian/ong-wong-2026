@@ -1,21 +1,17 @@
 import RsvpFlow from '@/components/rsvp-flow';
-import { getVariantMeta, parseVariant } from '@/lib/design-variant';
+import { getVariantMeta } from '@/lib/design-variant';
 
 type RsvpByTokenPageProps = {
   params: {
     token: string;
   };
-  searchParams?: {
-    v?: string;
-  };
 };
 
-export default function RsvpByTokenPage({ params, searchParams }: RsvpByTokenPageProps) {
-  const variant = parseVariant(searchParams?.v);
-  const meta = getVariantMeta(variant);
+export default function RsvpByTokenPage({ params }: RsvpByTokenPageProps) {
+  const meta = getVariantMeta();
   return (
     <div className={`theme-page ${meta.themeClass}`}>
-      <RsvpFlow initialToken={params.token} variant={variant} />
+      <RsvpFlow initialToken={params.token} />
     </div>
   );
 }

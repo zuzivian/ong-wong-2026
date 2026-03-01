@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Alex+Brush&family=Allura&family=Great+Vibes&family=Manrope:wght@400;500;600;700;800&family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,500,0,0&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Great+Vibes&family=Manrope:wght@400;500;600;700;800&family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,500,0,0&display=swap');
 
 :root {
   --font-sans: 'Manrope', 'Segoe UI', sans-serif;
@@ -249,125 +249,6 @@ a {
   --swatch-4: #23344f;
 }
 
-.theme-botanical {
-  --font-script: 'Allura', cursive;
-  --page-bg: #f3fbf2;
-  --page-bg-alt: #e8f6e7;
-  --surface: #f7fff6;
-  --surface-alt: #ddf0de;
-  --ink: #173528;
-  --ink-muted: #44695a;
-  --line: rgba(23, 53, 40, 0.17);
-  --accent: #df6d4d;
-  --accent-strong: #f18e61;
-  --accent-soft: #f9c8b7;
-  --hero-start: #d9f3d7;
-  --hero-mid: #effee9;
-  --hero-end: #f9dbc8;
-  --panel-bg: rgba(247, 255, 246, 0.91);
-  --panel-line: rgba(23, 53, 40, 0.24);
-  --band-contrast: linear-gradient(180deg, #dbf0d9, #d2e9d0);
-  --swatch-1: #f3fbf2;
-  --swatch-2: #bde4bb;
-  --swatch-3: #df6d4d;
-  --swatch-4: #234f3f;
-}
-
-.theme-chapel {
-  --font-script: 'Alex Brush', cursive;
-  --page-bg: #f4f8ff;
-  --page-bg-alt: #e8eef9;
-  --surface: #fbfdff;
-  --surface-alt: #dde8fb;
-  --ink: #15294f;
-  --ink-muted: #4b6188;
-  --line: rgba(21, 41, 79, 0.17);
-  --accent: #c99733;
-  --accent-strong: #e0b551;
-  --accent-soft: #f3ddb1;
-  --hero-start: #d9e5ff;
-  --hero-mid: #edf4ff;
-  --hero-end: #f9e8d2;
-  --panel-bg: rgba(251, 253, 255, 0.92);
-  --panel-line: rgba(21, 41, 79, 0.22);
-  --band-contrast: linear-gradient(180deg, #dce7fa, #d1def5);
-  --swatch-1: #f4f8ff;
-  --swatch-2: #d7e4ff;
-  --swatch-3: #c99733;
-  --swatch-4: #203c70;
-}
-
-body.live-theme-heirloom {
-  --font-script: 'Great Vibes', cursive;
-  --page-bg: #fff9ef;
-  --page-bg-alt: #f7efdf;
-  --surface: #fff7ea;
-  --surface-alt: #f1e5d2;
-  --ink: #1f2839;
-  --ink-muted: #5f6d84;
-  --line: rgba(31, 40, 57, 0.18);
-  --accent: #cc8618;
-  --accent-strong: #e7ac36;
-  --accent-soft: #f2d8ac;
-  --hero-start: #f3debb;
-  --hero-mid: #fff1d8;
-  --hero-end: #e5efd8;
-  --panel-bg: rgba(255, 247, 234, 0.9);
-  --panel-line: rgba(31, 40, 57, 0.22);
-  --band-contrast: linear-gradient(180deg, #f0dfbf, #e8d7b8);
-  --swatch-1: #fff9ef;
-  --swatch-2: #f3debb;
-  --swatch-3: #cc8618;
-  --swatch-4: #23344f;
-}
-
-body.live-theme-botanical {
-  --font-script: 'Allura', cursive;
-  --page-bg: #f3fbf2;
-  --page-bg-alt: #e8f6e7;
-  --surface: #f7fff6;
-  --surface-alt: #ddf0de;
-  --ink: #173528;
-  --ink-muted: #44695a;
-  --line: rgba(23, 53, 40, 0.17);
-  --accent: #df6d4d;
-  --accent-strong: #f18e61;
-  --accent-soft: #f9c8b7;
-  --hero-start: #d9f3d7;
-  --hero-mid: #effee9;
-  --hero-end: #f9dbc8;
-  --panel-bg: rgba(247, 255, 246, 0.91);
-  --panel-line: rgba(23, 53, 40, 0.24);
-  --band-contrast: linear-gradient(180deg, #dbf0d9, #d2e9d0);
-  --swatch-1: #f3fbf2;
-  --swatch-2: #bde4bb;
-  --swatch-3: #df6d4d;
-  --swatch-4: #234f3f;
-}
-
-body.live-theme-chapel {
-  --font-script: 'Alex Brush', cursive;
-  --page-bg: #f4f8ff;
-  --page-bg-alt: #e8eef9;
-  --surface: #fbfdff;
-  --surface-alt: #dde8fb;
-  --ink: #15294f;
-  --ink-muted: #4b6188;
-  --line: rgba(21, 41, 79, 0.17);
-  --accent: #c99733;
-  --accent-strong: #e0b551;
-  --accent-soft: #f3ddb1;
-  --hero-start: #d9e5ff;
-  --hero-mid: #edf4ff;
-  --hero-end: #f9e8d2;
-  --panel-bg: rgba(251, 253, 255, 0.92);
-  --panel-line: rgba(21, 41, 79, 0.22);
-  --band-contrast: linear-gradient(180deg, #dce7fa, #d1def5);
-  --swatch-1: #f4f8ff;
-  --swatch-2: #d7e4ff;
-  --swatch-3: #c99733;
-  --swatch-4: #203c70;
-}
 
 .jumbo {
   position: relative;
@@ -761,18 +642,20 @@ button.button-secondary:hover {
   transition: width 190ms ease;
 }
 
-.stepper-botanical .stepper-line {
-  background: linear-gradient(90deg, #327b5d 0%, #5ba477 50%, #df6d4d 100%);
-}
-
-.stepper-chapel .stepper-line {
-  background: linear-gradient(90deg, #3a5e99 0%, #5f7fc0 55%, var(--accent) 100%);
-}
-
 .form-stack,
 fieldset {
   display: grid;
   gap: 0.78rem;
+}
+
+.rsvp-edit-grid {
+  display: grid;
+  gap: 1.1rem;
+  grid-template-columns: 1fr;
+}
+
+.rsvp-edit-grid > fieldset {
+  padding: 1.3rem 1.2rem;
 }
 
 fieldset {
@@ -814,54 +697,27 @@ textarea {
   width: auto;
 }
 
+@media (min-width: 860px) {
+  .rsvp-edit-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1120px) {
+  .rsvp-edit-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
 .companion-list,
-.faq-list,
-.variant-list {
+.faq-list {
   margin: 0;
   padding-left: 1.15rem;
   display: grid;
   gap: 0.75rem;
 }
 
-.scheme-preview {
-  padding: 0.8rem;
-  border: 1px solid var(--line);
-  border-radius: 0.65rem;
-  background: linear-gradient(155deg, var(--surface), var(--surface-alt));
-}
-
-.scheme-swatches {
-  margin-top: 0.55rem;
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 0.35rem;
-}
-
-.scheme-swatches span {
-  display: block;
-  height: 24px;
-  border-radius: 999px;
-}
-
-.scheme-preview .scheme-swatches span:nth-child(1) {
-  background: var(--swatch-1);
-}
-
-.scheme-preview .scheme-swatches span:nth-child(2) {
-  background: var(--swatch-2);
-}
-
-.scheme-preview .scheme-swatches span:nth-child(3) {
-  background: var(--swatch-3);
-}
-
-.scheme-preview .scheme-swatches span:nth-child(4) {
-  background: var(--swatch-4);
-}
-
-.hero-heirloom,
-.hero-botanical,
-.hero-chapel {
+.hero-heirloom {
   position: relative;
 }
 
@@ -872,27 +728,13 @@ textarea {
   background-position: 78% 38%;
 }
 
-.hero-botanical {
-  background-image:
-    linear-gradient(130deg, rgba(16, 24, 16, 0.54), rgba(16, 24, 16, 0.18)),
-    url('/photos/photo-1.jpg');
-  background-position: 76% 42%;
-}
-
-.hero-chapel {
-  background-image:
-    linear-gradient(130deg, rgba(10, 20, 37, 0.54), rgba(10, 20, 37, 0.18)),
-    url('/photos/photo-3.jpg');
-  background-position: center 40%;
-}
-
 .floral-corners {
   position: relative;
 }
 
 .floral-corners::before,
 .floral-corners::after {
-  content: '✿';
+  content: '\\273F';
   position: absolute;
   color: color-mix(in srgb, var(--accent) 72%, white);
   font-size: 1.1rem;
@@ -916,10 +758,6 @@ textarea {
 
   .hero-heirloom {
     background-position: 72% 34%;
-  }
-
-  .hero-botanical {
-    background-position: 70% 40%;
   }
 
   .media-grid,
@@ -968,59 +806,6 @@ textarea {
   .hero-heirloom {
     background-position: 68% 30%;
   }
-
-  .hero-botanical {
-    background-position: 64% 38%;
-  }
-}
-
-.theme-bar {
-  position: fixed;
-  right: 1rem;
-  bottom: 1rem;
-  z-index: 60;
-  display: grid;
-  gap: 0.4rem;
-  border: 1px solid var(--line);
-  background: rgba(255, 255, 255, 0.86);
-  backdrop-filter: blur(6px);
-  border-radius: 0.75rem;
-  padding: 0.6rem;
-  box-shadow: 0 10px 24px rgba(40, 53, 77, 0.18);
-  transition: transform 220ms ease, box-shadow 220ms ease;
-}
-
-.theme-bar p {
-  margin: 0;
-  font-size: 0.75rem;
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
-  color: var(--ink-muted);
-}
-
-.theme-bar-buttons {
-  display: flex;
-  gap: 0.4rem;
-}
-
-.theme-bar-buttons a {
-  text-decoration: none;
-  border: 1px solid var(--line);
-  border-radius: 999px;
-  padding: 0.34rem 0.62rem;
-  font-size: 0.82rem;
-  background: rgba(255, 255, 255, 0.72);
-}
-
-.theme-bar-buttons a.active {
-  border-color: var(--accent);
-  background: linear-gradient(120deg, var(--accent) 0%, var(--accent-strong) 100%);
-  color: #241a0f;
-}
-
-.theme-bar:hover {
-  transform: translateY(-3px);
-  box-shadow: 0 14px 32px rgba(40, 53, 77, 0.22);
 }
 
 @keyframes routeIn {
@@ -1057,7 +842,6 @@ textarea {
   .button-primary,
   .button-secondary,
   button,
-  .theme-bar,
   .site-main::before {
     animation: none !important;
     transition: none !important;
@@ -1069,3 +853,4 @@ textarea {
     opacity: 1 !important;
   }
 }
+

@@ -13,7 +13,6 @@ const REVEAL_SELECTOR = [
   'main .link-panel',
   'main .rsvp-shell',
   'main .page-head',
-  '.theme-bar',
 ].join(', ');
 
 export default function SiteMotion({ children }: SiteMotionProps) {

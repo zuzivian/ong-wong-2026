@@ -8,9 +8,70 @@ import {
   t as __t,
   type AlgebraicTypeType as __AlgebraicTypeType,
   type Infer as __Infer,
-} from 'spacetimedb';
+} from "spacetimedb";
 
-export const Person = __t.object('Person', {
+export const Companion = __t.object("Companion", {
+  id: __t.u64(),
+  guestId: __t.u64(),
   name: __t.string(),
+  dietaryNotes: __t.option(__t.string()),
+  relationship: __t.option(__t.string()),
+  updatedAt: __t.timestamp(),
 });
-export type Person = __Infer<typeof Person>;
+export type Companion = __Infer<typeof Companion>;
+
+export const CompanionInput = __t.object("CompanionInput", {
+  name: __t.string(),
+  dietaryNotes: __t.option(__t.string()),
+  relationship: __t.option(__t.string()),
+});
+export type CompanionInput = __Infer<typeof CompanionInput>;
+
+export const Config = __t.object("Config", {
+  id: __t.u64(),
+  globalRsvpCutoffAt: __t.option(__t.timestamp()),
+  updatedAt: __t.timestamp(),
+});
+export type Config = __Infer<typeof Config>;
+
+export const Guest = __t.object("Guest", {
+  id: __t.u64(),
+  firstName: __t.string(),
+  lastName: __t.string(),
+  inviteCode: __t.string(),
+  qrToken: __t.string(),
+  canAddCompanions: __t.bool(),
+  maxCompanions: __t.u64(),
+  contactEmail: __t.option(__t.string()),
+  contactPhone: __t.option(__t.string()),
+  rsvpStatus: __t.string(),
+  updatedAt: __t.timestamp(),
+});
+export type Guest = __Infer<typeof Guest>;
+
+export const GuestMessage = __t.object("GuestMessage", {
+  id: __t.u64(),
+  guestId: __t.u64(),
+  message: __t.string(),
+  status: __t.string(),
+  createdAt: __t.timestamp(),
+});
+export type GuestMessage = __Infer<typeof GuestMessage>;
+
+export const GuestSession = __t.object("GuestSession", {
+  sender: __t.identity(),
+  guestId: __t.u64(),
+  verifiedAt: __t.timestamp(),
+});
+export type GuestSession = __Infer<typeof GuestSession>;
+
+export const RsvpResponse = __t.object("RsvpResponse", {
+  id: __t.u64(),
+  guestId: __t.u64(),
+  attendance: __t.bool(),
+  dietaryNotes: __t.option(__t.string()),
+  notes: __t.option(__t.string()),
+  updatedAt: __t.timestamp(),
+});
+export type RsvpResponse = __Infer<typeof RsvpResponse>;
+

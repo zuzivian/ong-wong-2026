@@ -8,8 +8,10 @@ import {
   t as __t,
   type AlgebraicTypeType as __AlgebraicTypeType,
   type Infer as __Infer,
-} from 'spacetimedb';
+} from "spacetimedb";
 
 export default __t.row({
-  name: __t.string(),
+  id: __t.u64().primaryKey(),
+  globalRsvpCutoffAt: __t.option(__t.timestamp()),
+  updatedAt: __t.timestamp(),
 });

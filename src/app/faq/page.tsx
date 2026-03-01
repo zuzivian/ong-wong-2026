@@ -5,7 +5,7 @@ export default function FaqPage() {
     {
       question: 'What time should guests arrive for the service?',
       answer:
-        'Please plan to arrive when doors open at W and be seated by X so the service can begin promptly at Y.',
+        'Please plan to arrive when doors open at 9:30 AM and be seated by 9:50 AM so the service can begin promptly at 10:00 AM.',
     },
     {
       question: 'Where is the ceremony and reception venue located?',
@@ -20,12 +20,12 @@ export default function FaqPage() {
     {
       question: 'How should dietary requirements be submitted?',
       answer:
-        'Please include dietary details in your RSVP flow under the “Dietary and Contact” step.',
+        'Please include dietary details in your RSVP flow under the "Dietary Requirements" step.',
     },
     {
       question: 'May I bring a companion or family member?',
       answer:
-        'If your invitation allows loved ones, you may add them during the “Add Loved Ones” step in RSVP.',
+        'If your invitation allows loved ones, you may add them during the "Add Loved Ones" step in RSVP.',
     },
     {
       question: 'Whom should I contact if I need assistance?',

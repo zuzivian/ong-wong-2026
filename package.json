@@ -11,9 +11,9 @@
     "build": "next build",
     "start": "next start",
     "generate": "cargo run -p gen-bindings -- --out-dir src/module_bindings --module-path spacetimedb && prettier --write src/module_bindings",
-    "spacetime:generate": "spacetime generate --lang typescript --out-dir src/module_bindings --project-path spacetimedb",
-    "spacetime:publish:local": "spacetime publish --project-path server --server local",
-    "spacetime:publish": "spacetime publish --project-path server --server maincloud"
+    "spacetime:generate": "spacetime generate --lang typescript --out-dir src/module_bindings --module-path spacetimedb",
+    "spacetime:publish:local": "spacetime publish --server local --module-path spacetimedb",
+    "spacetime:publish": "spacetime publish --server maincloud --module-path spacetimedb"
   },
   "dependencies": {
     "next": "^14.2.35",

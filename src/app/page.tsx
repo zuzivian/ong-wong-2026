@@ -1,16 +1,9 @@
 import Link from 'next/link';
 import Icon from '@/components/icon';
-import { getVariantMeta, parseVariant } from '@/lib/design-variant';
+import { getVariantMeta } from '@/lib/design-variant';
 
-type HomePageProps = {
-  searchParams?: {
-    v?: string;
-  };
-};
-
-export default function HomePage({ searchParams }: HomePageProps) {
-  const variant = parseVariant(searchParams?.v);
-  const variantMeta = getVariantMeta(variant);
+export default function HomePage() {
+  const variantMeta = getVariantMeta();
 
   return (
     <div className={`theme-page ${variantMeta.themeClass}`}>
@@ -20,7 +13,7 @@ export default function HomePage({ searchParams }: HomePageProps) {
             <h1 className="jumbo-title">Samuel & Natasha</h1>
             <p className="jumbo-date">15 Aug 2026</p>
             <div className="cta-row">
-              <Link href={`/rsvp?v=${variant}`} className="button-primary">
+              <Link href="/rsvp" className="button-primary">
                 <Icon name="how_to_reg" className="button-icon" /> RSVP Now
               </Link>
               <Link href="/event-details" className="button-secondary">
@@ -55,10 +48,10 @@ export default function HomePage({ searchParams }: HomePageProps) {
               <span>Schedule Snapshot</span>
             </h2>
             <ol className="mini-timeline">
-              <li>Doors open at W</li>
-              <li>Please be seated by X</li>
-              <li>Service starts at Y</li>
-              <li>Reception in church hall at Z</li>
+              <li>Doors open at 9:30 AM</li>
+              <li>Please be seated by 9:50 AM</li>
+              <li>Service starts at 10:00 AM</li>
+              <li>Reception in church hall at 12:00 PM</li>
             </ol>
           </div>
         </div>
@@ -72,10 +65,10 @@ export default function HomePage({ searchParams }: HomePageProps) {
             </div>
             <h3>Event Details</h3>
             <ol className="mini-timeline">
-              <li>Doors open at W</li>
-              <li>Please be seated by X</li>
-              <li>Service starts at Y</li>
-              <li>Reception at Z</li>
+              <li>Doors open at 9:30 AM</li>
+              <li>Please be seated by 9:50 AM</li>
+              <li>Service starts at 10:00 AM</li>
+              <li>Reception at 12:00 PM</li>
             </ol>
           </Link>
           <div className="link-panel">
