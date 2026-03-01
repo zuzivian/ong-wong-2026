@@ -1,4 +1,4 @@
-# Wedding Frontend Design Doc (v1.2)
+# Wedding Frontend Design Doc (v1.3)
 
 ## 1. Product Summary
 
@@ -20,6 +20,7 @@ Wedding date: **15 August 2026**
 ## 3. MVP Scope (Current)
 
 - Public Home
+- Invite unlock gate (`/unlock`) for non-public routes
 - Event Details
 - RSVP Flow (QR + fallback lookup)
 - Guest Dashboard
@@ -82,11 +83,17 @@ Current behavior:
 ### Public/User routes
 
 - `/` Public Home
+- `/unlock` Invite-code unlock route
 - `/event-details` Event Details
 - `/rsvp` RSVP fallback entry
 - `/rsvp/[token]` QR-linked RSVP path
 - `/dashboard` Guest Dashboard
 - `/faq` FAQ page
+
+Access behavior:
+
+- Home (`/`) and unlock endpoints stay public.
+- Non-public routes are protected by middleware and require a valid unlock cookie.
 
 ### Internal route
 
@@ -103,6 +110,10 @@ Flow is currently implemented as a **7-step wizard**:
 5. Contact details (optional)
 6. Add loved ones (if invitation allows)
 7. Review and submit
+
+Pre-step route:
+
+- Guests who are not yet unlocked are redirected to `/unlock` before entering RSVP/dashboard routes.
 
 Post-submit actions:
 
@@ -132,6 +143,7 @@ Implemented entities:
 ## 11. Authentication and Session Behavior
 
 - Guest identity is established by either token lookup or fallback name+code lookup.
+- Route-level access is controlled by signed unlock cookie (`wedding_unlock`) with 14-day TTL.
 - Verified guest mapping is stored in `GuestSession` (by authenticated sender identity).
 - Client stores Spacetime auth token in localStorage with 30-day expiry.
 - Dashboard and RSVP edits depend on active verified session.

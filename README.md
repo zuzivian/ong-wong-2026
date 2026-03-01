@@ -1,6 +1,7 @@
 # ong-wong-2026
 
 Wedding website + RSVP app for Samuel and Natasha.
+Current version: **0.0.2** (March 1, 2026)
 
 ## Tech Stack
 
@@ -14,6 +15,7 @@ Wedding website + RSVP app for Samuel and Natasha.
 Implemented routes:
 
 - `/` Home
+- `/unlock` Invite unlock entry
 - `/event-details`
 - `/rsvp`
 - `/rsvp/[token]`
@@ -24,6 +26,7 @@ Implemented routes:
 
 Core implemented capabilities:
 
+- Invite unlock gate for non-public routes (signed server cookie, 14-day TTL)
 - QR-first RSVP with fallback lookup (`firstName + lastName + inviteCode`)
 - Multi-step RSVP submission (attendance, dietary, optional contact, companions)
 - Guest dashboard with RSVP summary, companion list, and guest messaging
@@ -79,9 +82,11 @@ Create `.env.local` with:
 ```env
 NEXT_PUBLIC_SPACETIMEDB_HOST=http://127.0.0.1:3000
 NEXT_PUBLIC_SPACETIMEDB_DB_NAME=<your_db_name>
+WEDDING_UNLOCK_SECRET=<set-a-long-random-secret-for-production>
 ```
 
 If `NEXT_PUBLIC_SPACETIMEDB_HOST` is omitted, frontend defaults to `http://127.0.0.1:3000`.
+`WEDDING_UNLOCK_SECRET` should be unique per deployment environment.
 
 ## Useful Scripts
 

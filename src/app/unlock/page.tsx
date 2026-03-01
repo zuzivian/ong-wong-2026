@@ -41,7 +41,7 @@ export default function UnlockPage() {
 
     const trimmedCode = inviteCode.trim();
     if (!trimmedCode) {
-      setError('Invite code is required.');
+      setError('Please enter your invite code.');
       return;
     }
     const normalizedCode = normalizeInviteCode(trimmedCode);
@@ -56,7 +56,7 @@ export default function UnlockPage() {
       const payload = (await response.json().catch(() => null)) as UnlockResponse | null;
 
       if (!response.ok) {
-        setError(payload?.error ?? 'Unable to unlock. Please try again.');
+        setError(payload?.error ?? 'We could not open your invitation just now. Please try again.');
         return;
       }
 
@@ -67,7 +67,7 @@ export default function UnlockPage() {
       router.replace(destination);
       router.refresh();
     } catch {
-      setError('Unable to unlock right now. Please try again.');
+      setError('We could not open your invitation right now. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
@@ -77,12 +77,12 @@ export default function UnlockPage() {
     <section className="rsvp-shell">
       <h1 className="heading-with-icon">
         <Icon name="lock_open" className="heading-icon" />
-        <span>Unlock Invitation</span>
+        <span>Welcome to Our Wedding</span>
       </h1>
-      <p>Enter your personal invite code to access RSVP and full event details.</p>
+      <p>We are so glad you are here. Enter your invite code to view details and RSVP.</p>
       <form className="form-stack" onSubmit={onSubmit}>
         <label>
-          Personal invite code
+          Invite code from your invitation
           <input
             value={inviteCode}
             onChange={(event) => setInviteCode(event.target.value)}
@@ -95,7 +95,7 @@ export default function UnlockPage() {
         <div className="cta-row">
           <button type="submit" className="button-primary" disabled={isSubmitting}>
             <Icon name="lock_open_right" className="button-icon" />
-            {isSubmitting ? 'Unlocking...' : 'Unlock Site'}
+            {isSubmitting ? 'Opening...' : 'Continue to RSVP'}
           </button>
         </div>
       </form>

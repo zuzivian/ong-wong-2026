@@ -144,7 +144,7 @@ export async function POST(request: NextRequest) {
 
   if (!inviteCode) {
     return NextResponse.json(
-      { ok: false, error: 'Invite code is required.' },
+      { ok: false, error: 'Please enter your invite code.' },
       { status: 400 }
     );
   }
@@ -155,14 +155,14 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error('[unlock] Failed to validate invite code against guest table:', error);
     return NextResponse.json(
-      { ok: false, error: 'Unlock service is temporarily unavailable. Please try again shortly.' },
+      { ok: false, error: 'We are having trouble opening invitations right now. Please try again shortly.' },
       { status: 503 }
     );
   }
 
   if (!isInviteCodeValid) {
     return NextResponse.json(
-      { ok: false, error: 'Invite code is invalid. Please check your invitation.' },
+      { ok: false, error: 'That invite code does not match our list. Please check your invitation and try again.' },
       { status: 401 }
     );
   }

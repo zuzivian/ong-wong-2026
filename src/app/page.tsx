@@ -14,11 +14,11 @@ export default function HomePage() {
             <p className="jumbo-date">August 2026</p>
             <div className="cta-row">
               <Link href="/unlock" className="button-primary">
-                <Icon name="lock_open" className="button-icon" /> Unlock
-                Invitation
+                <Icon name="lock_open" className="button-icon" /> Enter Invite
+                Code
               </Link>
               <Link href="/unlock" className="button-secondary">
-                <Icon name="how_to_reg" className="button-icon" /> RSVP Access
+                <Icon name="how_to_reg" className="button-icon" /> RSVP With Us
               </Link>
             </div>
           </div>
@@ -38,20 +38,20 @@ export default function HomePage() {
               us and our families.
             </p>
             <p>
-              Full ceremony timing, venue details, RSVP, and dashboard access
-              are available after invite-code unlock.
+              Once you enter your invite code, you will see ceremony timing,
+              venue details, RSVP, and your guest dashboard.
             </p>
           </div>
           <div>
             <h2 className="heading-with-icon">
               <Icon name="schedule" className="heading-icon" />
-              <span>Access Policy</span>
+              <span>Before You RSVP</span>
             </h2>
             <ol className="mini-timeline">
-              <li>Public visitors can view this welcome page.</li>
-              <li>Invite code unlock is required for private event details.</li>
-              <li>Unlocked guests can access RSVP and dashboard pages.</li>
-              <li>If your code is missing, contact the hosts directly.</li>
+              <li>You can explore this welcome page at any time.</li>
+              <li>Your invite code opens your private wedding details.</li>
+              <li>After unlocking, you can RSVP and access your dashboard.</li>
+              <li>If your code is missing, please contact us directly.</li>
             </ol>
           </div>
         </div>
@@ -63,10 +63,10 @@ export default function HomePage() {
             <div className="panel-icon-wrap">
               <Icon name="lock_open" className="panel-icon" />
             </div>
-            <h3>Unlock With Invite Code</h3>
+            <h3>Enter Your Invite Code</h3>
             <p>
-              Use your personal invite code to open event timing, venue details,
-              RSVP, and dashboard access.
+              Use your personal invite code to view timing, venue details,
+              RSVP, and your guest dashboard.
             </p>
           </Link>
           <div className="link-panel">

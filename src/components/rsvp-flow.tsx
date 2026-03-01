@@ -28,28 +28,28 @@ type RsvpFlowProps = {
 
 const STEP_META = [
   {
-    title: 'Step 1: Confirm Invitation',
-    guidance: 'We detected your name from the invitation list using your invite code.',
+    title: 'Step 1: Welcome and Confirm Invitation',
+    guidance: 'We found your invitation details from your invite code. Please confirm your name to continue.',
   },
   {
     title: 'Step 2: Attendance',
-    guidance: 'Choose whether you can joyfully attend or respectfully decline.',
+    guidance: 'Let us know if you can celebrate with us or need to decline.',
   },
   {
     title: 'Step 3: Dietary Requirements',
-    guidance: 'If there are no dietary restrictions, simply select that option and continue.',
+    guidance: 'Share any dietary needs so we can care for you well.',
   },
   {
     title: 'Step 4: Contact Details',
-    guidance: 'If contact details are not needed, choose skip and continue.',
+    guidance: 'Add contact details if you would like wedding updates from us.',
   },
   {
     title: 'Step 5: Add Loved Ones',
-    guidance: 'Add companions or family members only if your invitation allows.',
+    guidance: 'Add loved ones if your invitation includes them.',
   },
   {
     title: 'Step 6: Review and Submit',
-    guidance: 'Review your information and submit your RSVP.',
+    guidance: 'Take one final look, then send your RSVP.',
   },
 ] as const;
 
@@ -384,7 +384,7 @@ export default function RsvpFlow({ initialToken }: RsvpFlowProps) {
     }
 
     if (isRsvpClosed) {
-      setSubmitError('RSVP edits are closed because the global cutoff has passed.');
+      setSubmitError('RSVP updates are now closed because the deadline has passed.');
       return;
     }
 
@@ -439,7 +439,7 @@ export default function RsvpFlow({ initialToken }: RsvpFlowProps) {
         return 'Use current contact details';
       }
       if (step === 5) {
-        return 'Use current companion list';
+        return 'Done editing';
       }
       return 'Use default';
     }
@@ -454,7 +454,7 @@ export default function RsvpFlow({ initialToken }: RsvpFlowProps) {
       return 'Edit contact details';
     }
     if (step === 5) {
-      return 'Edit companions';
+      return 'Edit loved ones';
     }
     return 'Edit';
   }, [hasDefaultPath, isEditingStep, step]);
@@ -474,7 +474,7 @@ export default function RsvpFlow({ initialToken }: RsvpFlowProps) {
         return 'Save Contact Details';
       }
       if (step === 5) {
-        return 'Save Companion List';
+        return 'Continue';
       }
       return 'Save and Continue';
     }
@@ -501,9 +501,9 @@ export default function RsvpFlow({ initialToken }: RsvpFlowProps) {
           <Icon name="task_alt" className="heading-icon" />
           <span>RSVP Received</span>
         </h1>
-        <p>Thank you. Your response has been recorded.</p>
+        <p>Thank you for responding. We are so grateful you are celebrating with us.</p>
         <p className="small-note">
-          You may return to your dashboard to review or edit details before the RSVP cutoff date.
+          You can return to your dashboard to review or edit details before the RSVP deadline.
         </p>
         <div className="cta-row">
           <Link href="/dashboard" className="button-primary">
@@ -519,7 +519,7 @@ export default function RsvpFlow({ initialToken }: RsvpFlowProps) {
 
   return (
     <section className={`rsvp-shell ${variantMeta.stepperClass}`}>
-      <h1>RSVP Flow</h1>
+      <h1>RSVP</h1>
       <p className="step-title">{current.title}</p>
       <p className="small-note">{current.guidance}</p>
 
@@ -530,7 +530,7 @@ export default function RsvpFlow({ initialToken }: RsvpFlowProps) {
         Step {step} of {totalSteps}
       </p>
       {isRsvpClosed ? (
-        <p className="small-note">RSVP edits are closed because the global cutoff has passed.</p>
+        <p className="small-note">RSVP updates are now closed because the deadline has passed.</p>
       ) : null}
       {lookupError ? <p className="small-note">{lookupError}</p> : null}
       {submitError ? <p className="small-note">{submitError}</p> : null}
@@ -539,21 +539,21 @@ export default function RsvpFlow({ initialToken }: RsvpFlowProps) {
       <form onSubmit={onSubmit} className="form-stack">
         {step === 1 ? (
           <fieldset>
-            <legend>Invitation Verification</legend>
+            <legend>Confirm Your Invitation</legend>
             {normalizedInitialToken ? (
-              <p className="small-note">Invite code is embedded in your invitation link.</p>
+              <p className="small-note">Your invite code is included in your invitation link.</p>
             ) : (
               <>
-                <p className="small-note">Using invite code from your unlock session.</p>
+                <p className="small-note">We are using the invite code from your unlock session.</p>
                 {normalizedInviteCode ? (
                   <p className="small-note">
-                    Invite code detected:
+                    Invite code found:
                     {' '}
                     <span className="detail-pill">{normalizedInviteCode}</span>
                   </p>
                 ) : (
                   <p className="small-note">
-                    No unlocked invite code found. Return to <Link href="/unlock">Unlock Invitation</Link> first.
+                    We could not find an unlocked invite code. Please return to <Link href="/unlock">Unlock Invitation</Link> first.
                   </p>
                 )}
               </>
@@ -561,7 +561,7 @@ export default function RsvpFlow({ initialToken }: RsvpFlowProps) {
             {showNameEditor ? (
               <>
                 <p className="small-note">
-                  Edit the detected name if it needs correction before verification.
+                  Please update your name if anything needs correcting before verification.
                 </p>
                 <label>
                   First name
@@ -599,7 +599,7 @@ export default function RsvpFlow({ initialToken }: RsvpFlowProps) {
               <p className="small-note">Status: Verifying...</p>
             ) : null}
             {verificationState === 'failed' ? (
-              <p className="small-note">Status: Verification failed</p>
+              <p className="small-note">Status: We could not verify those details</p>
             ) : null}
           </fieldset>
         ) : null}
@@ -634,10 +634,10 @@ export default function RsvpFlow({ initialToken }: RsvpFlowProps) {
               </label>
             ) : (
               <>
-                <p className="small-note">Default response: No dietary restrictions.</p>
+                <p className="small-note">Current response: No dietary restrictions.</p>
                 {dietaryMode === 'add' && dietaryNotes.trim().length > 0 ? (
                   <p className="small-note">
-                    Saved dietary notes exist and will be replaced if you continue with default.
+                    Saved dietary notes will be replaced if you continue with this option.
                   </p>
                 ) : null}
               </>
@@ -681,7 +681,7 @@ export default function RsvpFlow({ initialToken }: RsvpFlowProps) {
                   {' '}
                   <span className="detail-strong">{contactSummary}</span>
                 </p>
-                <p className="small-note">Continue to keep these details, or edit them.</p>
+                <p className="small-note">You can keep these details as-is, or update them.</p>
               </>
             )}
           </fieldset>
@@ -693,7 +693,7 @@ export default function RsvpFlow({ initialToken }: RsvpFlowProps) {
             {companionAllowed ? (
               <>
                 <p className="small-note">
-                  Invitation allowance: up to {maxCompanions} loved one(s).
+                  Your invitation allows up to {maxCompanions} loved one(s).
                 </p>
                 {isEditingStep ? (
                   <>
@@ -719,7 +719,7 @@ export default function RsvpFlow({ initialToken }: RsvpFlowProps) {
                   </>
                 ) : (
                   <p className="small-note">
-                    Default response: Continue with the current loved ones list.
+                    Current response: Continue with your current loved ones list.
                   </p>
                 )}
 
@@ -749,7 +749,7 @@ export default function RsvpFlow({ initialToken }: RsvpFlowProps) {
               </>
             ) : (
               <p className="small-note">
-                Companion options are not enabled for this invitation.
+                Companion options are not included with this invitation.
               </p>
             )}
           </fieldset>
@@ -789,7 +789,11 @@ export default function RsvpFlow({ initialToken }: RsvpFlowProps) {
               </li>
               <li>
                 <strong>Loved ones added:</strong>{' '}
-                <span className="detail-inline">{companions.length}</span>
+                <span className="detail-inline">
+                  {companions.length > 0
+                    ? `${companions.map((companion) => companion.name).join(', ')} (${companions.length})`
+                    : 'None'}
+                </span>
               </li>
             </ul>
           </fieldset>
