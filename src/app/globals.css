@@ -575,6 +575,30 @@ button.button-secondary:hover {
   font-size: 0.94rem;
 }
 
+.detail-strong {
+  color: var(--ink);
+  font-size: 1.04rem;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+}
+
+.detail-inline {
+  color: var(--ink);
+  font-weight: 700;
+}
+
+.detail-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.18rem 0.56rem;
+  border-radius: 999px;
+  font-size: 0.92rem;
+  font-weight: 800;
+  color: #241a0f;
+  background: linear-gradient(120deg, var(--accent-soft) 0%, #f7ddb0 100%);
+  border: 1px solid color-mix(in srgb, var(--accent) 40%, var(--line));
+}
+
 .timeline {
   margin: 0;
   padding-left: 1.2rem;
@@ -741,12 +765,38 @@ textarea {
   }
 }
 
-.companion-list,
 .faq-list {
   margin: 0;
   padding-left: 1.15rem;
   display: grid;
   gap: 0.75rem;
+}
+
+.companion-stack {
+  display: grid;
+  gap: 0.6rem;
+  margin-top: 0.4rem;
+}
+
+.companion-card {
+  border: 1px solid var(--line);
+  border-radius: 0.55rem;
+  padding: 0.72rem 0.82rem;
+  background: rgba(255, 255, 255, 0.7);
+  display: grid;
+  gap: 0.28rem;
+}
+
+.companion-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.companion-remove {
+  min-height: 30px;
+  padding: 0.2rem 0.6rem;
 }
 
 .hero-heirloom {

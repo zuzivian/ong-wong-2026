@@ -11,14 +11,14 @@ export default function HomePage() {
         <div className="container jumbo-inner">
           <div className="jumbo-content">
             <h1 className="jumbo-title">Samuel & Natasha</h1>
-            <p className="jumbo-date">15 Aug 2026</p>
+            <p className="jumbo-date">August 2026</p>
             <div className="cta-row">
-              <Link href="/rsvp" className="button-primary">
-                <Icon name="how_to_reg" className="button-icon" /> RSVP Now
+              <Link href="/unlock" className="button-primary">
+                <Icon name="lock_open" className="button-icon" /> Unlock
+                Invitation
               </Link>
-              <Link href="/event-details" className="button-secondary">
-                <Icon name="arrow_outward" className="button-icon" /> Event
-                Details
+              <Link href="/unlock" className="button-secondary">
+                <Icon name="how_to_reg" className="button-icon" /> RSVP Access
               </Link>
             </div>
           </div>
@@ -38,20 +38,20 @@ export default function HomePage() {
               us and our families.
             </p>
             <p>
-              This site includes schedule updates, venue guidance, and your RSVP
-              dashboard in one place.
+              Full ceremony timing, venue details, RSVP, and dashboard access
+              are available after invite-code unlock.
             </p>
           </div>
           <div>
             <h2 className="heading-with-icon">
               <Icon name="schedule" className="heading-icon" />
-              <span>Schedule Snapshot</span>
+              <span>Access Policy</span>
             </h2>
             <ol className="mini-timeline">
-              <li>Doors open at 9:30 AM</li>
-              <li>Please be seated by 9:50 AM</li>
-              <li>Service starts at 10:00 AM</li>
-              <li>Reception in church hall at 12:00 PM</li>
+              <li>Public visitors can view this welcome page.</li>
+              <li>Invite code unlock is required for private event details.</li>
+              <li>Unlocked guests can access RSVP and dashboard pages.</li>
+              <li>If your code is missing, contact the hosts directly.</li>
             </ol>
           </div>
         </div>
@@ -59,46 +59,24 @@ export default function HomePage() {
 
       <section className="section-band section-band-contrast">
         <div className="container quick-links">
-          <Link href="/event-details" className="link-panel">
+          <Link href="/unlock" className="link-panel">
             <div className="panel-icon-wrap">
-              <Icon name="event_note" className="panel-icon" />
+              <Icon name="lock_open" className="panel-icon" />
             </div>
-            <h3>Event Details</h3>
-            <ol className="mini-timeline">
-              <li>Doors open at 9:30 AM</li>
-              <li>Please be seated by 9:50 AM</li>
-              <li>Service starts at 10:00 AM</li>
-              <li>Reception at 12:00 PM</li>
-            </ol>
+            <h3>Unlock With Invite Code</h3>
+            <p>
+              Use your personal invite code to open event timing, venue details,
+              RSVP, and dashboard access.
+            </p>
           </Link>
           <div className="link-panel">
             <div className="panel-icon-wrap">
-              <Icon name="location_on" className="panel-icon" />
+              <Icon name="shield" className="panel-icon" />
             </div>
-            <h3>Venue</h3>
-            <p>The Singapore Thomson Road Baptist Church</p>
-            <p>45 Thomson Road, Singapore 307584</p>
+            <h3>Private Venue Details</h3>
             <p>
-              Ceremony in the sanctuary, reception immediately after in the
-              hall.
-            </p>
-            <div className="map-wrap">
-              <iframe
-                title="Wedding venue map"
-                src="https://maps.google.com/maps?q=45%20Thomson%20Road%20Singapore%20307584&z=15&output=embed"
-                loading="lazy"
-                referrerPolicy="no-referrer-when-downgrade"
-              />
-            </div>
-            <p>
-              <a
-                href="https://maps.google.com/?q=45+Thomson+Road+Singapore+307584"
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                Open in Maps
-                <Icon name="arrow_outward" className="inline-icon" />
-              </a>
+              Exact church address, maps, and service schedule are only visible
+              after unlock.
             </p>
           </div>
           <div className="link-panel">
@@ -107,14 +85,11 @@ export default function HomePage() {
             </div>
             <h3>Guest Info</h3>
             <p>
-              <b>RSVP deadline: </b>30 June 2026. Please RSVP for each guest in
-              your party, including children.
+              Dress code and RSVP instructions are included in the private guest
+              pages after unlock.
             </p>
             <p>
-              <b>Dress code: </b>formal with modest church-appropriate attire.
-            </p>
-            <p>
-              For common guest questions, visit <Link href="/faq">FAQ</Link>.
+              Each guest should RSVP for themselves and invited companions.
             </p>
           </div>
         </div>

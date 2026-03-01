@@ -7,6 +7,10 @@ import { getVariantMeta } from '@/lib/design-variant';
 import Icon from '@/components/icon';
 import { DbConnection, tables } from '@/module_bindings';
 import { useDebugTable } from '@/lib/use-debug-table';
+import {
+  normalizeInviteCode as normalizeUnlockedInviteCode,
+  UNLOCKED_INVITE_CODE_STORAGE_KEY,
+} from '@/lib/unlock-client';
 
 type Attendance = 'attending' | 'declining' | '';
 type DietaryMode = 'none' | 'add' | '';
@@ -24,31 +28,27 @@ type RsvpFlowProps = {
 
 const STEP_META = [
   {
-    title: 'Step 1: Confirm Your Name',
-    guidance: 'Start with your first and last name exactly as shown on your invitation.',
+    title: 'Step 1: Confirm Invitation',
+    guidance: 'We detected your name from the invitation list using your invite code.',
   },
   {
-    title: 'Step 2: Enter Invite Code',
-    guidance: 'Enter your invite code so we can match your RSVP to the correct invitation.',
+    title: 'Step 2: Attendance',
+    guidance: 'Choose whether you can joyfully attend or respectfully decline.',
   },
   {
-    title: 'Step 3: Attendance',
-    guidance: 'Choose whether you can joyfully attend or regretfully decline.',
-  },
-  {
-    title: 'Step 4: Dietary Requirements',
+    title: 'Step 3: Dietary Requirements',
     guidance: 'If there are no dietary restrictions, simply select that option and continue.',
   },
   {
-    title: 'Step 5: Contact Details',
+    title: 'Step 4: Contact Details',
     guidance: 'If contact details are not needed, choose skip and continue.',
   },
   {
-    title: 'Step 6: Add Loved Ones',
+    title: 'Step 5: Add Loved Ones',
     guidance: 'Add companions or family members only if your invitation allows.',
   },
   {
-    title: 'Step 7: Review and Submit',
+    title: 'Step 6: Review and Submit',
     guidance: 'Review your information and submit your RSVP.',
   },
 ] as const;
@@ -70,7 +70,14 @@ export default function RsvpFlow({ initialToken }: RsvpFlowProps) {
 
   const [lookupFirstName, setLookupFirstName] = useState('');
   const [lookupLastName, setLookupLastName] = useState('');
-  const [lookupInviteCode, setLookupInviteCode] = useState('');
+  const [lookupInviteCode, setLookupInviteCode] = useState(() => {
+    if (typeof window === 'undefined') {
+      return '';
+    }
+    return normalizeUnlockedInviteCode(
+      window.localStorage.getItem(UNLOCKED_INVITE_CODE_STORAGE_KEY) ?? ''
+    );
+  });
 
   const [attendance, setAttendance] = useState<Attendance>('');
   const [dietaryMode, setDietaryMode] = useState<DietaryMode>('');
@@ -139,45 +146,58 @@ export default function RsvpFlow({ initialToken }: RsvpFlowProps) {
   );
 
   const isInviteCodeSatisfied = Boolean(normalizedInitialToken) || Boolean(normalizedInviteCode);
+  const detectedGuestByInviteCode = useMemo(() => {
+    if (!normalizedInviteCode) {
+      return undefined;
+    }
+
+    return guestRows.find(
+      (row) => normalizeUnlockedInviteCode(row.inviteCode) === normalizedInviteCode
+    );
+  }, [guestRows, normalizedInviteCode]);
+  const hasDetectedName = Boolean(detectedGuestByInviteCode);
 
   const companionAllowed = activeGuest?.canAddCompanions ?? false;
   const maxCompanions = Number(activeGuest?.maxCompanions ?? 0n);
-  const hasVerifiedSession = Boolean(activeSession && activeGuest);
 
   useEffect(() => {
-    if ((step === 1 || step === 2) && !normalizedInitialToken) {
-      setIsEditingStep(true);
+    if (normalizedInitialToken || typeof window === 'undefined') {
       return;
     }
-    setIsEditingStep(false);
-  }, [normalizedInitialToken, step]);
+
+    const storedCode = normalizeUnlockedInviteCode(
+      window.localStorage.getItem(UNLOCKED_INVITE_CODE_STORAGE_KEY) ?? ''
+    );
+    if (storedCode && storedCode !== lookupInviteCode) {
+      setLookupInviteCode(storedCode);
+    }
+  }, [lookupInviteCode, normalizedInitialToken]);
 
   useEffect(() => {
-    if (step === 2 && verificationState === 'verifying' && hasVerifiedSession) {
-      setVerificationState('verified');
-      setVerificationMessage('Invitation verified successfully.');
-      setStep(3);
+    if (normalizedInitialToken || !detectedGuestByInviteCode) {
+      return;
     }
-  }, [hasVerifiedSession, step, verificationState]);
+
+    if (!lookupFirstName.trim() && !lookupLastName.trim()) {
+      setLookupFirstName(detectedGuestByInviteCode.firstName);
+      setLookupLastName(detectedGuestByInviteCode.lastName);
+    }
+  }, [detectedGuestByInviteCode, lookupFirstName, lookupLastName, normalizedInitialToken]);
 
   const canSubmitCurrentStep = useMemo(() => {
     if (step === 1) {
-      return isNameSatisfied;
+      return isInviteCodeSatisfied && isNameSatisfied;
     }
 
     if (step === 2) {
-      return isInviteCodeSatisfied;
+      return !isEditingStep || attendance !== '';
     }
 
     if (step === 3) {
-      return hasVerifiedSession && (!isEditingStep || attendance !== '');
-    }
-
-    if (step === 4) {
       return !isEditingStep || dietaryNotes.trim().length > 0;
     }
 
-    if (step === 5) {
+    if (step === 4) {
       return !isEditingStep || contactEmail.trim().length > 0 || contactPhone.trim().length > 0;
     }
 
@@ -187,7 +207,6 @@ export default function RsvpFlow({ initialToken }: RsvpFlowProps) {
     contactEmail,
     contactPhone,
     dietaryNotes,
-    hasVerifiedSession,
     isEditingStep,
     isInviteCodeSatisfied,
     isNameSatisfied,
@@ -248,25 +267,34 @@ export default function RsvpFlow({ initialToken }: RsvpFlowProps) {
   };
 
   const applyDefaultForStep = (targetStep: number) => {
-    if (targetStep === 3) {
+    if (targetStep === 2) {
       setAttendance((currentAttendance) => currentAttendance || 'attending');
       return;
     }
 
-    if (targetStep === 4) {
+    if (targetStep === 3) {
       setDietaryMode('none');
       setDietaryNotes('');
       return;
     }
 
-    if (targetStep === 5) {
+    if (targetStep === 4) {
+      const defaultEmail = activeGuest?.contactEmail ?? '';
+      const defaultPhone = activeGuest?.contactPhone ?? '';
+      if (defaultEmail || defaultPhone) {
+        setContactMode('add');
+        setContactEmail(defaultEmail);
+        setContactPhone(defaultPhone);
+        return;
+      }
+
       setContactMode('skip');
       setContactEmail('');
       setContactPhone('');
       return;
     }
 
-    if (targetStep === 6) {
+    if (targetStep === 5) {
       setCompanionName('');
       setCompanionDietary('');
     }
@@ -276,10 +304,10 @@ export default function RsvpFlow({ initialToken }: RsvpFlowProps) {
     setLookupError('');
     setSubmitError('');
 
-    if (step === 4) {
+    if (step === 3) {
       setDietaryMode('add');
     }
-    if (step === 5) {
+    if (step === 4) {
       setContactMode('add');
     }
     setIsEditingStep(true);
@@ -290,11 +318,23 @@ export default function RsvpFlow({ initialToken }: RsvpFlowProps) {
     setIsEditingStep(false);
   };
 
+  const removeCompanion = (indexToRemove: number) => {
+    setCompanions((current) => current.filter((_companion, index) => index !== indexToRemove));
+  };
+
+  const chooseAttendanceAndContinue = (nextAttendance: Attendance) => {
+    setAttendance(nextAttendance);
+    setLookupError('');
+    setSubmitError('');
+    setIsEditingStep(false);
+    setStep(3);
+  };
+
   const onSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setLookupError('');
     setSubmitError('');
-    if (step !== 2) {
+    if (step !== 1) {
       setVerificationMessage('');
     }
 
@@ -302,12 +342,12 @@ export default function RsvpFlow({ initialToken }: RsvpFlowProps) {
       return;
     }
 
-    if ((step === 2 || step === totalSteps) && !connection) {
+    if ((step === 1 || step === totalSteps) && !connection) {
       setLookupError('Connection is still starting. Please try again in a moment.');
       return;
     }
 
-    if (step === 2) {
+    if (step === 1) {
       setVerificationState('verifying');
       setVerificationMessage('Verifying invitation details...');
       try {
@@ -327,9 +367,11 @@ export default function RsvpFlow({ initialToken }: RsvpFlowProps) {
         return;
       }
 
-      if (!hasVerifiedSession) {
-        return;
-      }
+      setVerificationState('verified');
+      setVerificationMessage('Invitation verified successfully.');
+      setStep(2);
+      setIsEditingStep(false);
+      return;
     }
 
     if (step < totalSteps) {
@@ -372,12 +414,85 @@ export default function RsvpFlow({ initialToken }: RsvpFlowProps) {
   };
 
   const current = STEP_META[step - 1];
-  const showNameEditor = step === 1 && (isEditingStep || !normalizedInitialToken);
-  const showInviteEditor = step === 2 && (isEditingStep || !normalizedInitialToken);
-  const hasDefaultPath = step > 2 || Boolean(normalizedInitialToken);
-  const editToggleDisabled = (step === 1 || step === 2) && !normalizedInitialToken;
-  const isVerifying = step === 2 && verificationState === 'verifying';
-  const attendancePreview = attendance === 'declining' ? 'Regretfully Decline' : 'Joyfully Accept';
+  const showNameEditor = step === 1 && (isEditingStep || (!normalizedInitialToken && !hasDetectedName));
+  const hasDefaultPath = step > 1 || Boolean(normalizedInitialToken) || hasDetectedName;
+  const editToggleDisabled = step === 1 && !normalizedInitialToken && !hasDetectedName;
+  const isVerifying = step === 1 && verificationState === 'verifying';
+  const attendancePreview = attendance === 'declining' ? 'Respectfully Decline' : 'Joyfully Accept';
+  const contactSummary =
+    contactEmail || contactPhone
+      ? `${contactEmail || 'No email'}, ${contactPhone || 'No phone'}`
+      : 'Not provided';
+
+  const editButtonLabel = useMemo(() => {
+    if (isEditingStep && hasDefaultPath) {
+      if (step === 1) {
+        return 'Use detected name';
+      }
+      if (step === 2) {
+        return 'Use suggested attendance';
+      }
+      if (step === 3) {
+        return 'Use no restrictions';
+      }
+      if (step === 4) {
+        return 'Use current contact details';
+      }
+      if (step === 5) {
+        return 'Use current companion list';
+      }
+      return 'Use default';
+    }
+
+    if (step === 1) {
+      return 'Edit name';
+    }
+    if (step === 3) {
+      return 'Add dietary notes';
+    }
+    if (step === 4) {
+      return 'Edit contact details';
+    }
+    if (step === 5) {
+      return 'Edit companions';
+    }
+    return 'Edit';
+  }, [hasDefaultPath, isEditingStep, step]);
+
+  const primaryButtonLabel = useMemo(() => {
+    if (isEditingStep) {
+      if (step === 1) {
+        return 'Save Name and Verify';
+      }
+      if (step === 2) {
+        return 'Save Attendance';
+      }
+      if (step === 3) {
+        return 'Save Dietary Details';
+      }
+      if (step === 4) {
+        return 'Save Contact Details';
+      }
+      if (step === 5) {
+        return 'Save Companion List';
+      }
+      return 'Save and Continue';
+    }
+
+    if (step === 1) {
+      return 'Name Is Correct';
+    }
+    if (step === 3) {
+      return 'No Dietary Restrictions';
+    }
+    if (step === 4) {
+      return 'Keep Contact Details';
+    }
+    if (step === 5) {
+      return 'Companion List Is Correct';
+    }
+    return 'Continue';
+  }, [isEditingStep, step]);
 
   if (submitted) {
     return (
@@ -424,11 +539,29 @@ export default function RsvpFlow({ initialToken }: RsvpFlowProps) {
       <form onSubmit={onSubmit} className="form-stack">
         {step === 1 ? (
           <fieldset>
-            <legend>Name Details</legend>
+            <legend>Invitation Verification</legend>
+            {normalizedInitialToken ? (
+              <p className="small-note">Invite code is embedded in your invitation link.</p>
+            ) : (
+              <>
+                <p className="small-note">Using invite code from your unlock session.</p>
+                {normalizedInviteCode ? (
+                  <p className="small-note">
+                    Invite code detected:
+                    {' '}
+                    <span className="detail-pill">{normalizedInviteCode}</span>
+                  </p>
+                ) : (
+                  <p className="small-note">
+                    No unlocked invite code found. Return to <Link href="/unlock">Unlock Invitation</Link> first.
+                  </p>
+                )}
+              </>
+            )}
             {showNameEditor ? (
               <>
                 <p className="small-note">
-                  Enter your invitation name details to continue.
+                  Edit the detected name if it needs correction before verification.
                 </p>
                 <label>
                   First name
@@ -451,33 +584,13 @@ export default function RsvpFlow({ initialToken }: RsvpFlowProps) {
               </>
             ) : (
               <p className="small-note">
-                We detected an invitation link. Continue with the default invitation details.
+                Name detected from invitation list:
+                {' '}
+                <strong className="detail-strong">
+                  {detectedGuestByInviteCode?.firstName || lookupFirstName}{' '}
+                  {detectedGuestByInviteCode?.lastName || lookupLastName}
+                </strong>
               </p>
-            )}
-          </fieldset>
-        ) : null}
-
-        {step === 2 ? (
-          <fieldset>
-            <legend>Invite Code</legend>
-            {showInviteEditor ? (
-              <>
-                <p className="small-note">Enter the invite code from your invitation card.</p>
-                <label>
-                  Invite code
-                  <input
-                    value={lookupInviteCode}
-                    onChange={(event) => setLookupInviteCode(event.target.value)}
-                    placeholder="e.g. SW26-148"
-                    required
-                  />
-                </label>
-                <p className="small-note">
-                  Please contact us if you cannot locate your invite code.
-                </p>
-              </>
-            ) : (
-              <p className="small-note">Invite code is already embedded in your invitation link.</p>
             )}
             {verificationState === 'verified' ? (
               <p className="small-note">Status: Verified</p>
@@ -491,38 +604,19 @@ export default function RsvpFlow({ initialToken }: RsvpFlowProps) {
           </fieldset>
         ) : null}
 
-        {step === 3 ? (
+        {step === 2 ? (
           <fieldset>
             <legend>Attendance</legend>
-            {isEditingStep ? (
-              <>
-                <p className="small-note">Choose your attendance response.</p>
-                <label className="radio-row">
-                  <input
-                    type="radio"
-                    name="attendance"
-                    checked={attendance === 'attending'}
-                    onChange={() => setAttendance('attending')}
-                  />
-                  Joyfully Accept
-                </label>
-                <label className="radio-row">
-                  <input
-                    type="radio"
-                    name="attendance"
-                    checked={attendance === 'declining'}
-                    onChange={() => setAttendance('declining')}
-                  />
-                  Regretfully Decline
-                </label>
-              </>
-            ) : (
-              <p className="small-note">Default response: {attendancePreview}</p>
-            )}
+            <p className="small-note">Choose one option to continue.</p>
+            <p className="small-note">
+              Current selection:
+              {' '}
+              <span className="detail-pill">{attendancePreview}</span>
+            </p>
           </fieldset>
         ) : null}
 
-        {step === 4 ? (
+        {step === 3 ? (
           <fieldset>
             <legend>Dietary Requirements</legend>
             {isEditingStep ? (
@@ -551,7 +645,7 @@ export default function RsvpFlow({ initialToken }: RsvpFlowProps) {
           </fieldset>
         ) : null}
 
-        {step === 5 ? (
+        {step === 4 ? (
           <fieldset>
             <legend>Contact Details</legend>
             {isEditingStep ? (
@@ -582,18 +676,18 @@ export default function RsvpFlow({ initialToken }: RsvpFlowProps) {
               </>
             ) : (
               <>
-                <p className="small-note">Default response: Skip contact details.</p>
-                {(contactEmail || contactPhone) ? (
-                  <p className="small-note">
-                    Saved contact details exist and will be removed if you continue with default.
-                  </p>
-                ) : null}
+                <p className="small-note">
+                  Current contact details:
+                  {' '}
+                  <span className="detail-strong">{contactSummary}</span>
+                </p>
+                <p className="small-note">Continue to keep these details, or edit them.</p>
               </>
             )}
           </fieldset>
         ) : null}
 
-        {step === 6 ? (
+        {step === 5 ? (
           <fieldset>
             <legend>Add loved ones</legend>
             {companionAllowed ? (
@@ -630,14 +724,25 @@ export default function RsvpFlow({ initialToken }: RsvpFlowProps) {
                 )}
 
                 {companions.length > 0 ? (
-                  <ul className="companion-list">
-                    {companions.map((companion) => (
-                      <li key={`${companion.name}-${companion.dietaryNotes}`}>
-                        <strong>{companion.name}</strong>
-                        <span>{companion.dietaryNotes || 'No dietary notes'}</span>
-                      </li>
+                  <div className="companion-stack">
+                    {companions.map((companion, index) => (
+                      <article key={`${companion.name}-${companion.dietaryNotes}-${index}`} className="companion-card">
+                        <div className="companion-card-head">
+                          <strong>{companion.name}</strong>
+                          {isEditingStep ? (
+                            <button
+                              type="button"
+                              className="button-back-small companion-remove"
+                              onClick={() => removeCompanion(index)}
+                            >
+                              Remove
+                            </button>
+                          ) : null}
+                        </div>
+                        <p className="small-note">{companion.dietaryNotes || 'No dietary notes'}</p>
+                      </article>
                     ))}
-                  </ul>
+                  </div>
                 ) : (
                   <p className="small-note">No loved ones added yet.</p>
                 )}
@@ -650,32 +755,41 @@ export default function RsvpFlow({ initialToken }: RsvpFlowProps) {
           </fieldset>
         ) : null}
 
-        {step === 7 ? (
+        {step === 6 ? (
           <fieldset>
             <legend>Review</legend>
             <ul className="review-list">
               <li>
                 <strong>Name:</strong>{' '}
-                {activeGuest ? `${activeGuest.firstName} ${activeGuest.lastName}` : `${lookupFirstName} ${lookupLastName}`}
+                <span className="detail-inline">
+                  {activeGuest ? `${activeGuest.firstName} ${activeGuest.lastName}` : `${lookupFirstName} ${lookupLastName}`}
+                </span>
               </li>
               <li>
-                <strong>Invite code:</strong> {activeGuest ? activeGuest.inviteCode : lookupInviteCode}
+                <strong>Invite code:</strong>{' '}
+                <span className="detail-inline">{activeGuest ? activeGuest.inviteCode : lookupInviteCode}</span>
               </li>
               <li>
                 <strong>Attendance:</strong>{' '}
-                {attendance === 'attending' ? 'Joyfully accepting' : 'Regretfully declining'}
+                <span className="detail-inline">
+                  {attendance === 'attending' ? 'Joyfully accepting' : 'Respectfully declining'}
+                </span>
               </li>
               <li>
-                <strong>Dietary:</strong> {dietaryMode === 'none' ? 'No restrictions' : dietaryNotes}
+                <strong>Dietary:</strong>{' '}
+                <span className="detail-inline">{dietaryMode === 'none' ? 'No restrictions' : dietaryNotes}</span>
               </li>
               <li>
                 <strong>Contact:</strong>{' '}
-                {contactMode === 'skip'
-                  ? 'Not provided'
-                  : `${contactEmail || 'No email'}, ${contactPhone || 'No phone'}`}
+                <span className="detail-inline">
+                  {contactMode === 'skip'
+                    ? 'Not provided'
+                    : `${contactEmail || 'No email'}, ${contactPhone || 'No phone'}`}
+                </span>
               </li>
               <li>
-                <strong>Loved ones added:</strong> {companions.length}
+                <strong>Loved ones added:</strong>{' '}
+                <span className="detail-inline">{companions.length}</span>
               </li>
             </ul>
           </fieldset>
@@ -692,36 +806,52 @@ export default function RsvpFlow({ initialToken }: RsvpFlowProps) {
               <Icon name="arrow_back" className="button-icon" /> Back
             </button>
 
-            <button
-              type="button"
-              className="button-secondary"
-              disabled={editToggleDisabled || isVerifying}
-              onClick={() => {
-                if (isEditingStep && hasDefaultPath) {
-                  useDefaultForCurrentStep();
-                  return;
-                }
-                openEditForCurrentStep();
-              }}
-            >
-              {isEditingStep && hasDefaultPath ? 'Use default' : 'Edit'}
-            </button>
+            {step === 2 ? (
+              <>
+                <button
+                  type="button"
+                  className="button-secondary"
+                  onClick={() => chooseAttendanceAndContinue('declining')}
+                >
+                  Respectfully Decline <Icon name="arrow_forward" className="button-icon" />
+                </button>
+                <button
+                  type="button"
+                  className="button-primary"
+                  onClick={() => chooseAttendanceAndContinue('attending')}
+                >
+                  Joyfully Accept <Icon name="arrow_forward" className="button-icon" />
+                </button>
+              </>
+            ) : (
+              <>
+                <button
+                  type="button"
+                  className="button-secondary"
+                  disabled={editToggleDisabled || isVerifying}
+                  onClick={() => {
+                    if (isEditingStep && hasDefaultPath) {
+                      useDefaultForCurrentStep();
+                      return;
+                    }
+                    openEditForCurrentStep();
+                  }}
+                >
+                  {editButtonLabel}
+                </button>
 
-            <button
-              type="submit"
-              className="button-primary"
-              disabled={!canSubmitCurrentStep || isVerifying}
-            >
-              {isEditingStep ? (
-                <>
-                  Save and Continue <Icon name="arrow_forward" className="button-icon" />
-                </>
-              ) : (
-                <>
-                  Continue with Default <Icon name="arrow_forward" className="button-icon" />
-                </>
-              )}
-            </button>
+                <button
+                  type="submit"
+                  className="button-primary"
+                  disabled={!canSubmitCurrentStep || isVerifying}
+                >
+                  <>
+                    {isVerifying ? 'Verifying...' : primaryButtonLabel}
+                    <Icon name="arrow_forward" className="button-icon" />
+                  </>
+                </button>
+              </>
+            )}
           </div>
         ) : (
           <div className="cta-row">
@@ -737,7 +867,7 @@ export default function RsvpFlow({ initialToken }: RsvpFlowProps) {
               type="button"
               className="button-secondary"
               onClick={() => {
-                setStep(3);
+                setStep(2);
                 setIsEditingStep(true);
               }}
             >
