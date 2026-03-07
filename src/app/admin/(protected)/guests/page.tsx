@@ -72,15 +72,14 @@ const DASHBOARD_TAB_SUMMARIES: Record<DashboardTab, string> = {
   messages: 'Review incoming guest questions and update message statuses.',
 };
 
-const INVITATION_WIZARD_STEPS = ['Guest Details', 'Access Rules', 'Review and Create'] as const;
 const IDENTIFIER_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 const INITIAL_INVITATION_DRAFT: InvitationWizardDraft = {
   firstName: '',
   lastName: '',
   contactEmail: '',
   contactPhone: '',
-  canAddCompanions: false,
-  maxCompanions: '0',
+  canAddCompanions: true,
+  maxCompanions: '5',
 };
 
 const STATUS_ORDER: Record<RsvpStatus, number> = {
@@ -460,7 +459,6 @@ export default function AdminGuestsPage() {
   const [actionError, setActionError] = useState('');
   const [activeTab, setActiveTab] = useState<DashboardTab>('guests');
   const [inviteDraft, setInviteDraft] = useState<InvitationWizardDraft>(INITIAL_INVITATION_DRAFT);
-  const [inviteStep, setInviteStep] = useState(0);
   const [createdInvitation, setCreatedInvitation] = useState<CreatedInvitation | null>(null);
   const [shareAction, setShareAction] = useState<'text' | 'qr' | 'bundle' | null>(null);
 
@@ -658,38 +656,18 @@ export default function AdminGuestsPage() {
 
   const resetInvitationWizard = () => {
     setInviteDraft(INITIAL_INVITATION_DRAFT);
-    setInviteStep(0);
   };
 
-  const validateInvitationStep = (step: number): string | null => {
-    if (step >= 0) {
-      if (!inviteDraft.firstName.trim() || !inviteDraft.lastName.trim()) {
-        return 'First name and last name are required.';
-      }
+  const validateInvitationDraft = (): string | null => {
+    if (!inviteDraft.firstName.trim() || !inviteDraft.lastName.trim()) {
+      return 'First name and last name are required.';
     }
 
-    if (step >= 1 && inviteDraft.canAddCompanions) {
-      if (!/^\d+$/.test(inviteDraft.maxCompanions)) {
-        return 'Max companions must be a whole number 0 or above.';
-      }
+    if (!/^\d+$/.test(inviteDraft.maxCompanions)) {
+      return 'Max companions must be a whole number 0 or above.';
     }
 
     return null;
-  };
-
-  const goToNextInviteStep = () => {
-    clearMessages();
-    const validationError = validateInvitationStep(inviteStep);
-    if (validationError) {
-      setActionError(validationError);
-      return;
-    }
-    setInviteStep((current) => Math.min(current + 1, INVITATION_WIZARD_STEPS.length - 1));
-  };
-
-  const goToPreviousInviteStep = () => {
-    clearMessages();
-    setInviteStep((current) => Math.max(current - 1, 0));
   };
 
   const saveInlineEdit = async () => {
@@ -803,7 +781,7 @@ export default function AdminGuestsPage() {
       return;
     }
 
-    const validationError = validateInvitationStep(INVITATION_WIZARD_STEPS.length - 1);
+    const validationError = validateInvitationDraft();
     if (validationError) {
       setActionError(validationError);
       return;
@@ -1089,32 +1067,12 @@ export default function AdminGuestsPage() {
       <section className="card">
         <h2 className="heading-with-icon" style={{ marginBottom: '0.2rem' }}>
           <Icon name="person_add" className="heading-icon" />
-          <span>Invitation Creation Wizard</span>
+          <span>Add Guest</span>
         </h2>
         <p className="small-note" style={{ marginTop: 0 }}>
-          Create a guest invitation directly from the admin dashboard. Invite code, QR token, and RSVP link are generated automatically.
+          Create a guest invitation directly from the admin dashboard. Invite code, QR token, and RSVP link are generated automatically. New guests default to a maximum of 5 companions.
         </p>
 
-        <ol className="step-ribbon">
-          {INVITATION_WIZARD_STEPS.map((label, index) => {
-            const className = index === inviteStep ? 'active' : index < inviteStep ? 'complete' : '';
-            return (
-              <li key={label} className={className}>
-                <button
-                  type="button"
-                  className="step-ribbon-button"
-                  disabled={index > inviteStep}
-                  onClick={() => setInviteStep(index)}
-                >
-                  <span className="step-ribbon-number">Step {index + 1}</span>
-                  <span className="step-ribbon-label">{label}</span>
-                </button>
-              </li>
-            );
-          })}
-        </ol>
-
-        {inviteStep === 0 ? (
         <div style={{ display: 'grid', gap: '0.75rem', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))' }}>
           <label>
             First name
@@ -1149,85 +1107,26 @@ export default function AdminGuestsPage() {
             />
           </label>
         </div>
-        ) : null}
 
-        {inviteStep === 1 ? (
-        <div style={{ display: 'grid', gap: '0.75rem' }}>
-          <label style={{ display: 'inline-flex', alignItems: 'center', gap: '0.45rem' }}>
-            <input
-              type="checkbox"
-              checked={inviteDraft.canAddCompanions}
-              onChange={(event) => {
-                updateInviteDraft('canAddCompanions', event.target.checked);
-                if (!event.target.checked) {
-                  updateInviteDraft('maxCompanions', '0');
-                } else if (inviteDraft.maxCompanions === '0') {
-                  updateInviteDraft('maxCompanions', '1');
-                }
-              }}
-            />
-            <span>Allow this guest to add companions</span>
-          </label>
-
-          <label style={{ maxWidth: '240px' }}>
-            Max companions
-            <input
-              value={inviteDraft.maxCompanions}
-              disabled={!inviteDraft.canAddCompanions}
-              onChange={(event) => updateInviteDraft('maxCompanions', event.target.value)}
-            />
-          </label>
-
-          <div
-            style={{
-              border: '1px solid var(--line)',
-              borderRadius: '0.65rem',
-              padding: '0.95rem 1rem',
-              background: 'rgba(255, 255, 255, 0.52)',
-            }}
-          >
-            <p className="detail-inline">System generated access</p>
-            <p className="small-note" style={{ marginTop: '0.25rem' }}>
-              The dashboard will create a unique invite code and QR token when you confirm this invitation. The QR image and RSVP link will be available immediately after creation.
-            </p>
-          </div>
+        <div
+          style={{
+            marginTop: '0.9rem',
+            border: '1px solid var(--line)',
+            borderRadius: '0.65rem',
+            padding: '0.95rem 1rem',
+            background: 'rgba(255, 255, 255, 0.52)',
+          }}
+        >
+          <p className="detail-inline">System generated access</p>
+          <p className="small-note" style={{ marginTop: '0.25rem' }}>
+            The dashboard will create a unique invite code and QR token on submit. Companion access is enabled by default with a limit of {inviteDraft.maxCompanions}.
+          </p>
         </div>
-        ) : null}
 
-        {inviteStep === 2 ? (
-        <ul className="review-list">
-          <li>
-            Guest: {inviteDraft.firstName.trim() || 'First name required'} {inviteDraft.lastName.trim() || 'Last name required'}
-          </li>
-          <li>Contact email: {inviteDraft.contactEmail.trim() || 'None provided'}</li>
-          <li>Contact phone: {inviteDraft.contactPhone.trim() || 'None provided'}</li>
-          <li>
-            Companion access: {inviteDraft.canAddCompanions ? `Allowed, up to ${inviteDraft.maxCompanions}` : 'No companions allowed'}
-          </li>
-          <li>Invite code, QR token, and QR image: generated automatically on create</li>
-        </ul>
-        ) : null}
-
-        <div className="cta-row" style={{ justifyContent: 'space-between' }}>
-          <div className="cta-row" style={{ marginTop: 0 }}>
-            <button type="button" className="button-secondary" onClick={resetInvitationWizard}>
-              <Icon name="restart_alt" className="button-icon" /> Reset wizard
-            </button>
-            {inviteStep > 0 ? (
-              <button type="button" className="button-secondary" onClick={goToPreviousInviteStep}>
-                <Icon name="arrow_back" className="button-icon" /> Back
-              </button>
-            ) : null}
-          </div>
-          {inviteStep < INVITATION_WIZARD_STEPS.length - 1 ? (
-            <button type="button" className="button-primary" onClick={goToNextInviteStep}>
-              Next <Icon name="arrow_forward" className="button-icon" />
-            </button>
-          ) : (
-            <button type="button" className="button-primary" onClick={createInvitation}>
-              <Icon name="qr_code_2" className="button-icon" /> Create invitation
-            </button>
-          )}
+        <div className="cta-row" style={{ justifyContent: 'flex-end' }}>
+          <button type="button" className="button-primary" onClick={createInvitation}>
+            <Icon name="qr_code_2" className="button-icon" /> Submit
+          </button>
         </div>
 
         {createdInvitation ? (
