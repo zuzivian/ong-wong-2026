@@ -21,7 +21,7 @@ type UnlockSessionResponse = {
 const DEFAULT_QUERY_TIMEOUT_MS = 8000;
 
 function normalizeInviteCode(value: string): string {
-  return value.trim().toUpperCase();
+  return value.trim().toUpperCase().replace(/[\s-]+/g, '');
 }
 
 function normalizeToWsUri(input: string): string {

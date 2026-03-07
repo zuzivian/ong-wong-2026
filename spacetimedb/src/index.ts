@@ -5,6 +5,8 @@ export { default } from './schema';
 
 const SESSION_CONFIG_ID = 1n;
 const RSVP_MESSAGE_NEW = 'new';
+const RSVP_MESSAGE_IN_PROGRESS = 'in_progress';
+const RSVP_MESSAGE_RESOLVED = 'resolved';
 const RSVP_STATUS_ATTENDING = 'attending';
 const RSVP_STATUS_DECLINING = 'declining';
 const RSVP_STATUS_PENDING = 'pending';
@@ -20,7 +22,7 @@ function normalize(text: string): string {
 }
 
 function normalizeInviteCode(code: string): string {
-  return code.trim().toUpperCase();
+  return code.trim().toUpperCase().replace(/[\s-]+/g, '');
 }
 
 function normalizeOptional(text: string | undefined): string | undefined {
@@ -29,6 +31,30 @@ function normalizeOptional(text: string | undefined): string | undefined {
   }
   const trimmed = text.trim();
   return trimmed.length > 0 ? trimmed : undefined;
+}
+
+function normalizeRsvpStatus(status: string): string {
+  const normalized = status.trim().toLowerCase();
+  if (
+    normalized !== RSVP_STATUS_ATTENDING &&
+    normalized !== RSVP_STATUS_DECLINING &&
+    normalized !== RSVP_STATUS_PENDING
+  ) {
+    throw new SenderError('Invalid RSVP status.');
+  }
+  return normalized;
+}
+
+function normalizeMessageStatus(status: string): string {
+  const normalized = status.trim().toLowerCase();
+  if (
+    normalized !== RSVP_MESSAGE_NEW &&
+    normalized !== RSVP_MESSAGE_IN_PROGRESS &&
+    normalized !== RSVP_MESSAGE_RESOLVED
+  ) {
+    throw new SenderError('Invalid message status.');
+  }
+  return normalized;
 }
 
 function requireGuestForSender(ctx: Parameters<typeof identify_guest_by_token>[0]) {
@@ -69,6 +95,52 @@ function isRsvpCutoffReached(ctx: Parameters<typeof identify_guest_by_token>[0])
   return ctx.timestamp.microsSinceUnixEpoch > config.globalRsvpCutoffAt.microsSinceUnixEpoch;
 }
 
+function setGuestRsvpStatus(
+  ctx: Parameters<typeof identify_guest_by_token>[0],
+  guestId: bigint,
+  status: string
+): void {
+  const guest = ctx.db.guest.id.find(guestId);
+  if (!guest) {
+    throw new SenderError('Guest not found.');
+  }
+  const normalizedStatus = normalizeRsvpStatus(status);
+
+  const existingResponse = ctx.db.rsvp_response.guestId.find(guestId);
+  if (normalizedStatus === RSVP_STATUS_PENDING) {
+    if (existingResponse) {
+      ctx.db.rsvp_response.id.delete(existingResponse.id);
+    }
+    for (const companion of ctx.db.companion.companion_guest_id.filter(guestId)) {
+      ctx.db.companion.id.delete(companion.id);
+    }
+  } else {
+    const attendance = normalizedStatus === RSVP_STATUS_ATTENDING;
+    if (existingResponse) {
+      ctx.db.rsvp_response.id.update({
+        ...existingResponse,
+        attendance,
+        updatedAt: ctx.timestamp,
+      });
+    } else {
+      ctx.db.rsvp_response.insert({
+        id: 0n,
+        guestId,
+        attendance,
+        dietaryNotes: undefined,
+        notes: undefined,
+        updatedAt: ctx.timestamp,
+      });
+    }
+  }
+
+  ctx.db.guest.id.update({
+    ...guest,
+    rsvpStatus: normalizedStatus,
+    updatedAt: ctx.timestamp,
+  });
+}
+
 function upsertGuestSession(
   ctx: Parameters<typeof identify_guest_by_token>[0],
   guestId: bigint
@@ -99,37 +171,40 @@ export const init = spacetimedb.init(ctx => {
     });
   }
 
-  if (ctx.db.guest.iter().next().done !== true) {
-    return;
-  }
+  const seedGuest = (
+    firstName: string,
+    lastName: string,
+    inviteCode: string,
+    qrToken: string,
+    canAddCompanions: boolean,
+    maxCompanions: bigint
+  ) => {
+    const normalizedCode = normalizeInviteCode(inviteCode);
+    if (ctx.db.guest.inviteCode.find(normalizedCode)) {
+      return;
+    }
 
-  ctx.db.guest.insert({
-    id: 0n,
-    firstName: 'Natasha',
-    lastName: 'Wong',
-    inviteCode: 'NW26-101',
-    qrToken: 'nw26-token-101',
-    canAddCompanions: true,
-    maxCompanions: 2n,
-    contactEmail: undefined,
-    contactPhone: undefined,
-    rsvpStatus: RSVP_STATUS_PENDING,
-    updatedAt: ctx.timestamp,
-  });
+    ctx.db.guest.insert({
+      id: 0n,
+      firstName,
+      lastName,
+      inviteCode: normalizedCode,
+      qrToken,
+      canAddCompanions,
+      maxCompanions,
+      contactEmail: undefined,
+      contactPhone: undefined,
+      rsvpStatus: RSVP_STATUS_PENDING,
+      updatedAt: ctx.timestamp,
+    });
+  };
 
-  ctx.db.guest.insert({
-    id: 0n,
-    firstName: 'Samuel',
-    lastName: 'Ong',
-    inviteCode: 'SO26-102',
-    qrToken: 'so26-token-102',
-    canAddCompanions: false,
-    maxCompanions: 0n,
-    contactEmail: undefined,
-    contactPhone: undefined,
-    rsvpStatus: RSVP_STATUS_PENDING,
-    updatedAt: ctx.timestamp,
-  });
+  seedGuest('Natasha', 'Wong', 'NW26101', 'nw26-token-101', true, 2n);
+  seedGuest('Samuel', 'Ong', 'SO26102', 'so26-token-102', false, 0n);
+  seedGuest('Mark', 'Wong', 'MW26103', 'mw26-token-103', false, 0n);
+  seedGuest('Regina', 'Wong', 'RW26104', 'rw26-token-104', false, 0n);
+  seedGuest('Nadine', 'Wong', 'NDW26105', 'ndw26-token-105', false, 0n);
+  seedGuest('Nathaniel', 'Wong', 'NAW26106', 'naw26-token-106', false, 0n);
 });
 
 export const on_connect = spacetimedb.clientConnected(() => {});
@@ -366,5 +441,239 @@ export const delete_guest_message = spacetimedb.reducer(
   (ctx, { messageId }) => {
     const existingMessage = requireGuestMessageForSender(ctx, messageId);
     ctx.db.guest_message.id.delete(existingMessage.id);
+  }
+);
+
+export const admin_update_guest_rsvp = spacetimedb.reducer(
+  {
+    guestId: t.u64(),
+    rsvpStatus: t.string(),
+    dietaryNotes: t.string().optional(),
+    notes: t.string().optional(),
+    contactEmail: t.string().optional(),
+    contactPhone: t.string().optional(),
+    canAddCompanions: t.bool(),
+    maxCompanions: t.u64(),
+  },
+  (
+    ctx,
+    {
+      guestId,
+      rsvpStatus,
+      dietaryNotes,
+      notes,
+      contactEmail,
+      contactPhone,
+      canAddCompanions,
+      maxCompanions,
+    }
+  ) => {
+    const guest = ctx.db.guest.id.find(guestId);
+    if (!guest) {
+      throw new SenderError('Guest not found.');
+    }
+
+    const normalizedStatus = normalizeRsvpStatus(rsvpStatus);
+    const normalizedDietary = normalizeOptional(dietaryNotes);
+    const normalizedNotes = normalizeOptional(notes);
+    const normalizedEmail = normalizeOptional(contactEmail);
+    const normalizedPhone = normalizeOptional(contactPhone);
+
+    const existingResponse = ctx.db.rsvp_response.guestId.find(guestId);
+    if (normalizedStatus === RSVP_STATUS_PENDING) {
+      if (existingResponse) {
+        ctx.db.rsvp_response.id.delete(existingResponse.id);
+      }
+      for (const companion of ctx.db.companion.companion_guest_id.filter(guestId)) {
+        ctx.db.companion.id.delete(companion.id);
+      }
+    } else {
+      const attendance = normalizedStatus === RSVP_STATUS_ATTENDING;
+      if (existingResponse) {
+        ctx.db.rsvp_response.id.update({
+          ...existingResponse,
+          attendance,
+          dietaryNotes: normalizedDietary,
+          notes: normalizedNotes,
+          updatedAt: ctx.timestamp,
+        });
+      } else {
+        ctx.db.rsvp_response.insert({
+          id: 0n,
+          guestId,
+          attendance,
+          dietaryNotes: normalizedDietary,
+          notes: normalizedNotes,
+          updatedAt: ctx.timestamp,
+        });
+      }
+    }
+
+    ctx.db.guest.id.update({
+      ...guest,
+      rsvpStatus: normalizedStatus,
+      canAddCompanions,
+      maxCompanions,
+      contactEmail: normalizedEmail,
+      contactPhone: normalizedPhone,
+      updatedAt: ctx.timestamp,
+    });
+  }
+);
+
+export const admin_replace_guest_companions = spacetimedb.reducer(
+  {
+    guestId: t.u64(),
+    companions: t.array(CompanionInput),
+  },
+  (ctx, { guestId, companions }) => {
+    const guest = ctx.db.guest.id.find(guestId);
+    if (!guest) {
+      throw new SenderError('Guest not found.');
+    }
+
+    for (const existingCompanion of ctx.db.companion.companion_guest_id.filter(guestId)) {
+      ctx.db.companion.id.delete(existingCompanion.id);
+    }
+
+    if (!guest.canAddCompanions || guest.maxCompanions <= 0n) {
+      return;
+    }
+
+    const maxCompanions = Number(guest.maxCompanions);
+    for (const companion of companions.slice(0, maxCompanions)) {
+      const name = companion.name.trim();
+      if (!name) {
+        continue;
+      }
+      ctx.db.companion.insert({
+        id: 0n,
+        guestId,
+        name,
+        dietaryNotes: normalizeOptional(companion.dietaryNotes),
+        relationship: normalizeOptional(companion.relationship),
+        updatedAt: ctx.timestamp,
+      });
+    }
+  }
+);
+
+export const admin_bulk_set_rsvp_status = spacetimedb.reducer(
+  {
+    guestIds: t.array(t.u64()),
+    rsvpStatus: t.string(),
+  },
+  (ctx, { guestIds, rsvpStatus }) => {
+    const normalizedStatus = normalizeRsvpStatus(rsvpStatus);
+    for (const guestId of guestIds) {
+      setGuestRsvpStatus(ctx, guestId, normalizedStatus);
+    }
+  }
+);
+
+export const admin_upsert_guest = spacetimedb.reducer(
+  {
+    firstName: t.string(),
+    lastName: t.string(),
+    inviteCode: t.string(),
+    qrToken: t.string().optional(),
+    canAddCompanions: t.bool(),
+    maxCompanions: t.u64(),
+    contactEmail: t.string().optional(),
+    contactPhone: t.string().optional(),
+  },
+  (ctx, payload) => {
+    const firstName = payload.firstName.trim();
+    const lastName = payload.lastName.trim();
+    const inviteCode = normalizeInviteCode(payload.inviteCode);
+    if (!firstName || !lastName || !inviteCode) {
+      throw new SenderError('First name, last name, and invite code are required.');
+    }
+
+    const qrToken = normalizeOptional(payload.qrToken) ?? `${inviteCode.toLowerCase()}-token`;
+    const contactEmail = normalizeOptional(payload.contactEmail);
+    const contactPhone = normalizeOptional(payload.contactPhone);
+    const existingByInviteCode = ctx.db.guest.inviteCode.find(inviteCode);
+    const existingByQr = ctx.db.guest.qrToken.find(qrToken);
+    if (existingByQr && (!existingByInviteCode || existingByInviteCode.id !== existingByQr.id)) {
+      throw new SenderError('QR token already exists for another guest.');
+    }
+
+    if (existingByInviteCode) {
+      ctx.db.guest.id.update({
+        ...existingByInviteCode,
+        firstName,
+        lastName,
+        qrToken,
+        canAddCompanions: payload.canAddCompanions,
+        maxCompanions: payload.maxCompanions,
+        contactEmail,
+        contactPhone,
+        updatedAt: ctx.timestamp,
+      });
+      return;
+    }
+
+    ctx.db.guest.insert({
+      id: 0n,
+      firstName,
+      lastName,
+      inviteCode,
+      qrToken,
+      canAddCompanions: payload.canAddCompanions,
+      maxCompanions: payload.maxCompanions,
+      contactEmail,
+      contactPhone,
+      rsvpStatus: RSVP_STATUS_PENDING,
+      updatedAt: ctx.timestamp,
+    });
+  }
+);
+
+export const admin_regenerate_guest_qr_token = spacetimedb.reducer(
+  {
+    guestId: t.u64(),
+  },
+  (ctx, { guestId }) => {
+    const guest = ctx.db.guest.id.find(guestId);
+    if (!guest) {
+      throw new SenderError('Guest not found.');
+    }
+
+    const baseInviteCode = normalizeInviteCode(guest.inviteCode).toLowerCase();
+    let suffix = 0n;
+    let nextToken = '';
+    while (true) {
+      const micros = (ctx.timestamp.microsSinceUnixEpoch + suffix).toString(36);
+      nextToken = `${baseInviteCode}-${micros}`;
+      const existing = ctx.db.guest.qrToken.find(nextToken);
+      if (!existing || existing.id === guest.id) {
+        break;
+      }
+      suffix += 1n;
+    }
+
+    ctx.db.guest.id.update({
+      ...guest,
+      qrToken: nextToken,
+      updatedAt: ctx.timestamp,
+    });
+  }
+);
+
+export const admin_set_guest_message_status = spacetimedb.reducer(
+  {
+    messageId: t.u64(),
+    status: t.string(),
+  },
+  (ctx, { messageId, status }) => {
+    const message = ctx.db.guest_message.id.find(messageId);
+    if (!message) {
+      throw new SenderError('Message not found.');
+    }
+    ctx.db.guest_message.id.update({
+      ...message,
+      status: normalizeMessageStatus(status),
+    });
   }
 );

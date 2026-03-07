@@ -43,7 +43,7 @@ function normalizeInviteCode(value: string | undefined): string | undefined {
     return undefined;
   }
 
-  const normalized = value.trim().toUpperCase();
+  const normalized = value.trim().toUpperCase().replace(/[\s-]+/g, '');
   return normalized.length > 0 ? normalized : undefined;
 }
 

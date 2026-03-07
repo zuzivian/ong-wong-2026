@@ -46,10 +46,6 @@ export default async function RootLayout({
                     <Icon name="dashboard" className="nav-icon" />
                     <span>Guest Information</span>
                   </Link>
-                  <Link href="/event-details">
-                    <Icon name="event" className="nav-icon" />
-                    <span>Event Details</span>
-                  </Link>
                   <Link href="/faq">
                     <Icon name="help" className="nav-icon" />
                     <span>FAQ</span>
@@ -68,6 +64,11 @@ export default async function RootLayout({
               <SiteMotion>{children}</SiteMotion>
             </Suspense>
           </main>
+          <footer className="site-footer">
+            <Link href="/admin" className="site-footer-admin-link">
+              admin
+            </Link>
+          </footer>
         </SpacetimeAppProvider>
       </body>
     </html>

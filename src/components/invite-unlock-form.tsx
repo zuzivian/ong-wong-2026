@@ -26,8 +26,8 @@ type InviteUnlockFormProps = {
 export default function InviteUnlockForm({
   destination,
   className,
-  inputLabel = 'Invite code from your invitation',
-  placeholder = 'e.g. SW26-148',
+  inputLabel = 'Invite code from your invitation (letters and numbers only)',
+  placeholder = 'e.g. SW26148',
   submitLabel = 'Unlock Invitation',
   submittingLabel = 'Opening...',
   onSuccess,
@@ -95,6 +95,7 @@ export default function InviteUnlockForm({
           required
         />
       </label>
+      <p className="small-note">Please enter your code without dashes.</p>
       {error ? (
         <p className="small-note" role="alert">
           {error}

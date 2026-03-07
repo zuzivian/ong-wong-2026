@@ -1367,7 +1367,7 @@ export default function DashboardPage() {
               <Link href="/rsvp" className="button-secondary">
                 <Icon name="edit_square" className="button-icon" /> Full RSVP Flow
               </Link>
-              <Link href="/event-details" className="button-secondary">
+              <Link href="/#schedule" className="button-secondary">
                 <Icon name="event_note" className="button-icon" /> Event Details
               </Link>
               <Link href="/faq" className="button-secondary">

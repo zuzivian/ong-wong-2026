@@ -34,6 +34,12 @@ import {
 } from "spacetimedb";
 
 // Import all reducer arg schemas
+import AdminBulkSetRsvpStatusReducer from "./admin_bulk_set_rsvp_status_reducer";
+import AdminReplaceGuestCompanionsReducer from "./admin_replace_guest_companions_reducer";
+import AdminRegenerateGuestQrTokenReducer from "./admin_regenerate_guest_qr_token_reducer";
+import AdminSetGuestMessageStatusReducer from "./admin_set_guest_message_status_reducer";
+import AdminUpdateGuestRsvpReducer from "./admin_update_guest_rsvp_reducer";
+import AdminUpsertGuestReducer from "./admin_upsert_guest_reducer";
 import ClearGuestSessionReducer from "./clear_guest_session_reducer";
 import DeleteGuestMessageReducer from "./delete_guest_message_reducer";
 import IdentifyGuestByFallbackReducer from "./identify_guest_by_fallback_reducer";
@@ -149,6 +155,12 @@ const tablesSchema = __schema({
 
 /** The schema information for all reducers in this module. This is defined the same way as the reducers would have been defined in the server, except the body of the reducer is omitted in code generation. */
 const reducersSchema = __reducers(
+  __reducerSchema("admin_bulk_set_rsvp_status", AdminBulkSetRsvpStatusReducer),
+  __reducerSchema("admin_replace_guest_companions", AdminReplaceGuestCompanionsReducer),
+  __reducerSchema("admin_regenerate_guest_qr_token", AdminRegenerateGuestQrTokenReducer),
+  __reducerSchema("admin_set_guest_message_status", AdminSetGuestMessageStatusReducer),
+  __reducerSchema("admin_update_guest_rsvp", AdminUpdateGuestRsvpReducer),
+  __reducerSchema("admin_upsert_guest", AdminUpsertGuestReducer),
   __reducerSchema("clear_guest_session", ClearGuestSessionReducer),
   __reducerSchema("delete_guest_message", DeleteGuestMessageReducer),
   __reducerSchema("identify_guest_by_fallback", IdentifyGuestByFallbackReducer),
@@ -213,4 +225,3 @@ export class DbConnection extends __DbConnectionImpl<typeof REMOTE_MODULE> {
     return new SubscriptionBuilder(this);
   };
 }
-

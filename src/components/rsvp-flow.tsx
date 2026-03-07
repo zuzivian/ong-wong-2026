@@ -739,7 +739,7 @@ export default function RsvpFlow({ initialToken }: RsvpFlowProps) {
           <Link href="/dashboard" className="button-primary">
             <Icon name="dashboard" className="button-icon" /> Go to Dashboard
           </Link>
-          <Link href="/event-details" className="button-secondary">
+          <Link href="/#schedule" className="button-secondary">
             <Icon name="arrow_outward" className="button-icon" /> View Event Details
           </Link>
         </div>
