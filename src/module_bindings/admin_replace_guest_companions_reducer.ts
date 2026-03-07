@@ -9,9 +9,14 @@ import {
   type AlgebraicTypeType as __AlgebraicTypeType,
   type Infer as __Infer,
 } from "spacetimedb";
-import * as _ from "./types";
+
+import {
+  CompanionInput,
+} from "./types";
 
 export default {
   guestId: __t.u64(),
-  companions: __t.array(_.CompanionInput),
+  get companions() {
+    return __t.array(CompanionInput);
+  },
 };

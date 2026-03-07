@@ -7,6 +7,7 @@ import Icon from '@/components/icon';
 import { DbConnection, tables } from '@/module_bindings';
 import { useDebugTable } from '@/lib/use-debug-table';
 import { normalizeInviteCode } from '@/lib/unlock-client';
+import { RSVP_CUTOFF_AT_MICROS } from '../../../shared/globals';
 
 type EditableField = 'attendance' | 'dietaryNotes' | 'notes' | 'contactEmail' | 'contactPhone';
 
@@ -178,12 +179,6 @@ export default function DashboardPage() {
   }, [activeGuestId]);
   const [messageRows] = useDebugTable<any>('dashboard.guest_message', messageQuery);
 
-  const configQuery = useMemo(
-    () => tables.config.where((row) => row.id.eq(1n)),
-    []
-  );
-  const [configRows] = useDebugTable<any>('dashboard.config', configQuery);
-
   const activeRsvp = useMemo(
     () => (activeGuest ? rsvpRows.find((row) => row.guestId === activeGuest.id) : undefined),
     [activeGuest, rsvpRows]
@@ -237,15 +232,9 @@ export default function DashboardPage() {
     [guestCompanions]
   );
 
-  const config = useMemo(() => configRows[0], [configRows]);
-
   const isRsvpClosed = useMemo(() => {
-    const cutoff = config?.globalRsvpCutoffAt;
-    if (!cutoff) {
-      return false;
-    }
-    return BigInt(Date.now()) * 1000n > cutoff.microsSinceUnixEpoch;
-  }, [config?.globalRsvpCutoffAt]);
+    return BigInt(Date.now()) * 1000n > RSVP_CUTOFF_AT_MICROS;
+  }, []);
 
   const attendanceLabel = toAttendanceLabel(activeRsvp?.attendance);
   const canEditRsvpDetails = activeRsvp?.attendance !== undefined;
@@ -857,9 +846,7 @@ export default function DashboardPage() {
               Last updated {formatTimestamp(activeGuest.updatedAt.microsSinceUnixEpoch)}
             </p>
             <p className="small-note">
-              {config?.globalRsvpCutoffAt
-                ? `RSVP updates close on ${formatTimestamp(config.globalRsvpCutoffAt.microsSinceUnixEpoch)}.`
-                : 'RSVP timing is still flexible, and updates remain open.'}
+              {`RSVP updates close on ${formatTimestamp(RSVP_CUTOFF_AT_MICROS)}.`}
             </p>
           </section>
 

@@ -25,7 +25,7 @@ export default function AdminLoginPage() {
         setError(payload?.error ?? 'Incorrect PIN.');
         return;
       }
-      router.replace('/admin/cutoff');
+      router.replace('/admin/guests');
       router.refresh();
     } catch {
       setError('Unable to authenticate. Please try again.');

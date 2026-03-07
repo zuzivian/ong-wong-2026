@@ -34,7 +34,6 @@ export default async function RootLayout({
                   <Icon name="auto_awesome" className="brand-icon" />
                   <span className="brand-text">
                     <span className="brand-title">Samuel & Natasha</span>
-                    <span className="brand-subtext">15 Aug 2026</span>
                   </span>
                 </Link>
                 <nav className="top-nav" aria-label="Primary navigation">

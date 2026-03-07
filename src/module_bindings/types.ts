@@ -27,13 +27,6 @@ export const CompanionInput = __t.object("CompanionInput", {
 });
 export type CompanionInput = __Infer<typeof CompanionInput>;
 
-export const Config = __t.object("Config", {
-  id: __t.u64(),
-  globalRsvpCutoffAt: __t.option(__t.timestamp()),
-  updatedAt: __t.timestamp(),
-});
-export type Config = __Infer<typeof Config>;
-
 export const Guest = __t.object("Guest", {
   id: __t.u64(),
   firstName: __t.string(),

@@ -35,8 +35,8 @@ import {
 
 // Import all reducer arg schemas
 import AdminBulkSetRsvpStatusReducer from "./admin_bulk_set_rsvp_status_reducer";
-import AdminReplaceGuestCompanionsReducer from "./admin_replace_guest_companions_reducer";
 import AdminRegenerateGuestQrTokenReducer from "./admin_regenerate_guest_qr_token_reducer";
+import AdminReplaceGuestCompanionsReducer from "./admin_replace_guest_companions_reducer";
 import AdminSetGuestMessageStatusReducer from "./admin_set_guest_message_status_reducer";
 import AdminUpdateGuestRsvpReducer from "./admin_update_guest_rsvp_reducer";
 import AdminUpsertGuestReducer from "./admin_upsert_guest_reducer";
@@ -45,7 +45,6 @@ import DeleteGuestMessageReducer from "./delete_guest_message_reducer";
 import IdentifyGuestByFallbackReducer from "./identify_guest_by_fallback_reducer";
 import IdentifyGuestByTokenReducer from "./identify_guest_by_token_reducer";
 import SendGuestMessageReducer from "./send_guest_message_reducer";
-import SetGlobalRsvpCutoffReducer from "./set_global_rsvp_cutoff_reducer";
 import SubmitRsvpReducer from "./submit_rsvp_reducer";
 import UpdateGuestMessageReducer from "./update_guest_message_reducer";
 import UpdateGuestPhoneReducer from "./update_guest_phone_reducer";
@@ -54,7 +53,6 @@ import UpdateGuestPhoneReducer from "./update_guest_phone_reducer";
 
 // Import all table schema definitions
 import CompanionRow from "./companion_table";
-import ConfigRow from "./config_table";
 import GuestRow from "./guest_table";
 import GuestMessageRow from "./guest_message_table";
 import GuestSessionRow from "./guest_session_table";
@@ -78,17 +76,6 @@ const tablesSchema = __schema({
       { name: 'companion_id_key', constraint: 'unique', columns: ['id'] },
     ],
   }, CompanionRow),
-  config: __table({
-    name: 'config',
-    indexes: [
-      { name: 'id', algorithm: 'btree', columns: [
-        'id',
-      ] },
-    ],
-    constraints: [
-      { name: 'config_id_key', constraint: 'unique', columns: ['id'] },
-    ],
-  }, ConfigRow),
   guest: __table({
     name: 'guest',
     indexes: [
@@ -156,8 +143,8 @@ const tablesSchema = __schema({
 /** The schema information for all reducers in this module. This is defined the same way as the reducers would have been defined in the server, except the body of the reducer is omitted in code generation. */
 const reducersSchema = __reducers(
   __reducerSchema("admin_bulk_set_rsvp_status", AdminBulkSetRsvpStatusReducer),
-  __reducerSchema("admin_replace_guest_companions", AdminReplaceGuestCompanionsReducer),
   __reducerSchema("admin_regenerate_guest_qr_token", AdminRegenerateGuestQrTokenReducer),
+  __reducerSchema("admin_replace_guest_companions", AdminReplaceGuestCompanionsReducer),
   __reducerSchema("admin_set_guest_message_status", AdminSetGuestMessageStatusReducer),
   __reducerSchema("admin_update_guest_rsvp", AdminUpdateGuestRsvpReducer),
   __reducerSchema("admin_upsert_guest", AdminUpsertGuestReducer),
@@ -166,7 +153,6 @@ const reducersSchema = __reducers(
   __reducerSchema("identify_guest_by_fallback", IdentifyGuestByFallbackReducer),
   __reducerSchema("identify_guest_by_token", IdentifyGuestByTokenReducer),
   __reducerSchema("send_guest_message", SendGuestMessageReducer),
-  __reducerSchema("set_global_rsvp_cutoff", SetGlobalRsvpCutoffReducer),
   __reducerSchema("submit_rsvp", SubmitRsvpReducer),
   __reducerSchema("update_guest_message", UpdateGuestMessageReducer),
   __reducerSchema("update_guest_phone", UpdateGuestPhoneReducer),
@@ -225,3 +211,4 @@ export class DbConnection extends __DbConnectionImpl<typeof REMOTE_MODULE> {
     return new SubscriptionBuilder(this);
   };
 }
+

@@ -1,9 +1,9 @@
 import { SenderError, t } from 'spacetimedb/server';
 import spacetimedb from './schema';
+import { RSVP_CUTOFF_AT_MICROS } from '../../shared/globals';
 
 export { default } from './schema';
 
-const SESSION_CONFIG_ID = 1n;
 const RSVP_MESSAGE_NEW = 'new';
 const RSVP_MESSAGE_IN_PROGRESS = 'in_progress';
 const RSVP_MESSAGE_RESOLVED = 'resolved';
@@ -88,11 +88,7 @@ function requireGuestMessageForSender(
 }
 
 function isRsvpCutoffReached(ctx: Parameters<typeof identify_guest_by_token>[0]): boolean {
-  const config = ctx.db.config.id.find(SESSION_CONFIG_ID);
-  if (!config || !config.globalRsvpCutoffAt) {
-    return false;
-  }
-  return ctx.timestamp.microsSinceUnixEpoch > config.globalRsvpCutoffAt.microsSinceUnixEpoch;
+  return ctx.timestamp.microsSinceUnixEpoch > RSVP_CUTOFF_AT_MICROS;
 }
 
 function setGuestRsvpStatus(
@@ -163,14 +159,6 @@ function upsertGuestSession(
 }
 
 export const init = spacetimedb.init(ctx => {
-  if (!ctx.db.config.id.find(SESSION_CONFIG_ID)) {
-    ctx.db.config.insert({
-      id: SESSION_CONFIG_ID,
-      globalRsvpCutoffAt: undefined,
-      updatedAt: ctx.timestamp,
-    });
-  }
-
   const seedGuest = (
     firstName: string,
     lastName: string,
@@ -264,36 +252,6 @@ export const clear_guest_session = spacetimedb.reducer(ctx => {
     ctx.db.guest_session.sender.delete(ctx.sender);
   }
 });
-
-export const set_global_rsvp_cutoff = spacetimedb.reducer(
-  {
-    cutoffAt: t.timestamp().optional(),
-  },
-  (ctx, { cutoffAt }) => {
-    const existing = ctx.db.config.id.find(SESSION_CONFIG_ID);
-    if (!existing) {
-      ctx.db.config.insert({
-        id: SESSION_CONFIG_ID,
-        globalRsvpCutoffAt: cutoffAt,
-        updatedAt: ctx.timestamp,
-      });
-      return;
-    }
-
-    if (cutoffAt) {
-      const oneMinuteInMicros = 60_000_000n;
-      if (cutoffAt.microsSinceUnixEpoch < ctx.timestamp.microsSinceUnixEpoch - oneMinuteInMicros) {
-        throw new SenderError('Cutoff cannot be set in the past.');
-      }
-    }
-
-    ctx.db.config.id.update({
-      ...existing,
-      globalRsvpCutoffAt: cutoffAt,
-      updatedAt: ctx.timestamp,
-    });
-  }
-);
 
 export const update_guest_phone = spacetimedb.reducer(
   {

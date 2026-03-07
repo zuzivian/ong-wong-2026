@@ -422,6 +422,79 @@ a {
   margin-top: 0.08rem;
 }
 
+.home-photo-band {
+  background:
+    radial-gradient(circle at 18% 22%, color-mix(in srgb, var(--accent-soft) 42%, transparent), transparent 48%),
+    radial-gradient(circle at 84% 18%, color-mix(in srgb, var(--swatch-4) 12%, transparent), transparent 34%),
+    linear-gradient(180deg, color-mix(in srgb, var(--surface) 92%, white), color-mix(in srgb, var(--surface-alt) 76%, white));
+}
+
+.home-photo-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 0.92fr) minmax(0, 1.08fr);
+  gap: 1.5rem;
+  align-items: center;
+}
+
+.home-photo-copy {
+  max-width: 34rem;
+  display: grid;
+  gap: 0.85rem;
+}
+
+.home-photo-copy p:not(.eyebrow) {
+  color: var(--ink-muted);
+}
+
+.home-photo-stack {
+  display: grid;
+  grid-template-columns: minmax(0, 0.64fr) minmax(0, 1fr);
+  gap: 1rem;
+  align-items: end;
+}
+
+.home-photo-frame {
+  position: relative;
+  overflow: hidden;
+  margin: 0;
+  border-radius: 1.05rem;
+  border: 1px solid color-mix(in srgb, var(--accent) 20%, var(--line));
+  background: color-mix(in srgb, var(--surface) 90%, white);
+  box-shadow:
+    0 22px 40px color-mix(in srgb, var(--swatch-4) 10%, transparent),
+    0 0 0 10px rgba(255, 255, 255, 0.58);
+}
+
+.home-photo-frame::after {
+  content: '';
+  position: absolute;
+  inset: 0.75rem;
+  border: 1px solid rgba(255, 255, 255, 0.38);
+  border-radius: 0.72rem;
+  pointer-events: none;
+}
+
+.home-photo-frame-detail {
+  aspect-ratio: 4 / 5;
+  margin-bottom: 2rem;
+}
+
+.home-photo-frame-portrait {
+  aspect-ratio: 5 / 6;
+}
+
+.home-photo-image {
+  object-fit: cover;
+}
+
+.home-photo-frame-detail .home-photo-image {
+  object-position: center;
+}
+
+.home-photo-frame-portrait .home-photo-image {
+  object-position: center 24%;
+}
+
 .invite-card-band {
   scroll-margin-top: 7.5rem;
   background:
@@ -952,6 +1025,48 @@ button.button-secondary:hover {
   border: 1px solid color-mix(in srgb, var(--accent) 40%, var(--line));
 }
 
+.admin-guest-table {
+  width: 100%;
+  min-width: 1120px;
+  border-collapse: collapse;
+  font-size: 0.92rem;
+}
+
+.admin-guest-table th,
+.admin-guest-table td {
+  padding: 0.4rem 0.38rem;
+  text-align: left;
+  vertical-align: top;
+}
+
+.admin-guest-table tbody td {
+  border-bottom: 1px solid var(--line);
+}
+
+.admin-guest-actions-cell {
+  width: 220px;
+  white-space: nowrap;
+}
+
+.admin-guest-action-group {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 0.28rem;
+  align-items: center;
+}
+
+.admin-guest-action-button {
+  min-height: 32px;
+  min-width: 32px;
+  padding: 0.34rem;
+  border-radius: 0.72rem;
+  gap: 0;
+}
+
+.admin-guest-action-button .button-icon {
+  font-size: 0.96rem;
+}
+
 .timeline {
   --timeline-node-size: 2.35rem;
   margin: 0.15rem 0 0;
@@ -1180,7 +1295,7 @@ button.button-secondary:hover {
 }
 
 .dashboard-page {
-  width: min(1000px, calc(100% - 2.5rem));
+  width: min(1280px, calc(100% - 2.5rem));
   margin: 2.2rem auto 0;
   display: grid;
   gap: 1.5rem;
@@ -1190,6 +1305,57 @@ button.button-secondary:hover {
 .dashboard-page > .card {
   width: 100%;
   margin: 0;
+}
+
+.admin-dashboard-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+}
+
+.admin-dashboard-tab {
+  appearance: none;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.62);
+  color: var(--ink);
+  border-radius: 999px;
+  padding: 0.5rem 0.8rem;
+  font: inherit;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  cursor: pointer;
+  transition: transform 160ms ease, border-color 160ms ease, box-shadow 160ms ease;
+}
+
+.admin-dashboard-tab:hover {
+  transform: translateY(-1px);
+  border-color: var(--accent);
+}
+
+.admin-dashboard-tab:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--accent) 70%, white);
+  outline-offset: 2px;
+}
+
+.admin-dashboard-tab.active {
+  border-color: var(--accent);
+  background: linear-gradient(120deg, var(--accent-soft), #fff3dc);
+  box-shadow: 0 8px 16px color-mix(in srgb, var(--accent) 17%, transparent);
+}
+
+.admin-dashboard-tab-count {
+  min-width: 1.5rem;
+  height: 1.5rem;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid color-mix(in srgb, var(--line) 65%, var(--accent));
+  background: rgba(255, 255, 255, 0.8);
+  font-size: 0.78rem;
+  font-weight: 800;
 }
 
 .stepper {
@@ -1402,6 +1568,18 @@ textarea {
     padding-block: 4.6rem 3.7rem;
   }
 
+  .home-photo-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .home-photo-copy {
+    max-width: none;
+  }
+
+  .home-photo-stack {
+    max-width: 720px;
+  }
+
   .invitation-card-grid {
     grid-template-columns: 1fr;
   }
@@ -1448,18 +1626,61 @@ textarea {
     padding: 1.3rem;
   }
 
+  .home-photo-stack {
+    grid-template-columns: 1fr;
+  }
+
+  .home-photo-frame-detail {
+    margin-bottom: 0;
+    aspect-ratio: 5 / 4;
+  }
+
+  .home-photo-frame-portrait {
+    aspect-ratio: 4 / 5;
+  }
+
   .nav-wrap {
     min-height: 66px;
     flex-direction: column;
     align-items: flex-start;
     justify-content: center;
+    gap: 0.7rem;
     padding: 0.65rem 0;
   }
 
   .top-nav {
     width: 100%;
-    justify-content: space-between;
-    flex-wrap: wrap;
+    justify-content: flex-start;
+    flex-wrap: nowrap;
+    gap: 0.55rem;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    padding: 0.1rem 0 0.25rem;
+    scrollbar-width: none;
+  }
+
+  .top-nav::-webkit-scrollbar {
+    display: none;
+  }
+
+  .top-nav a,
+  .top-nav .nav-logout-button {
+    flex: 0 0 auto;
+    white-space: nowrap;
+  }
+
+  .top-nav a {
+    min-height: 40px;
+    padding: 0.55rem 0.8rem;
+    border-radius: 9999px;
+    background: rgba(255, 255, 255, 0.46);
+    border: 1px solid color-mix(in srgb, var(--line) 92%, white);
+  }
+
+  .top-nav .rsvp-button,
+  .top-nav .nav-logout-button {
+    width: auto;
+    max-width: none;
   }
 
   .media-grid,
@@ -1480,7 +1701,7 @@ textarea {
   }
 
   .dashboard-page {
-    width: min(1000px, calc(100% - 1.3rem));
+    width: min(1280px, calc(100% - 1.3rem));
   }
 
   .rsvp-button {
@@ -1575,4 +1796,3 @@ textarea {
     opacity: 1 !important;
   }
 }
-

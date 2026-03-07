@@ -7,6 +7,7 @@ import { getVariantMeta } from '@/lib/design-variant';
 import Icon from '@/components/icon';
 import { DbConnection, tables } from '@/module_bindings';
 import { useDebugTable } from '@/lib/use-debug-table';
+import { RSVP_CUTOFF_AT_MICROS } from '../../shared/globals';
 import {
   normalizeInviteCode as normalizeUnlockedInviteCode,
   UNLOCKED_INVITE_CODE_STORAGE_KEY,
@@ -141,7 +142,6 @@ export default function RsvpFlow({ initialToken }: RsvpFlowProps) {
   const [sessionRows] = useDebugTable<any>('rsvp.guest_session', tables.guest_session);
   const [rsvpRows] = useDebugTable<any>('rsvp.rsvp_response', tables.rsvp_response);
   const [companionRows] = useDebugTable<any>('rsvp.companion', tables.companion);
-  const [configRows] = useDebugTable<any>('rsvp.config', tables.config);
 
   const [step, setStep] = useState(1);
   const [isEditingStep, setIsEditingStep] = useState(false);
@@ -179,6 +179,7 @@ export default function RsvpFlow({ initialToken }: RsvpFlowProps) {
   const [submitted, setSubmitted] = useState(false);
 
   const hydratedGuestId = useRef<bigint | null>(null);
+  const tokenSyncAttemptRef = useRef<string | null>(null);
   const unlockRefreshedForInviteCode = useRef<string | null>(null);
   const totalSteps = STEP_META.length;
   const normalizedInitialToken = initialToken?.trim() ?? '';
@@ -197,10 +198,14 @@ export default function RsvpFlow({ initialToken }: RsvpFlowProps) {
     return sessionRows.find((row) => row.sender.toHexString() === senderHex);
   }, [senderIdentity, sessionRows]);
 
-  const activeGuest = useMemo(
-    () => guestRows.find((row) => row.id === activeSession?.guestId),
-    [activeSession?.guestId, guestRows]
-  );
+  const activeGuest = useMemo(() => {
+    const guestFromSession = guestRows.find((row) => row.id === activeSession?.guestId);
+    if (!normalizedInitialToken) {
+      return guestFromSession;
+    }
+
+    return guestRows.find((row) => row.qrToken === normalizedInitialToken) ?? guestFromSession;
+  }, [activeSession?.guestId, guestRows, normalizedInitialToken]);
 
   const activeRsvp = useMemo(
     () => (activeGuest ? rsvpRows.find((row) => row.guestId === activeGuest.id) : undefined),
@@ -212,15 +217,9 @@ export default function RsvpFlow({ initialToken }: RsvpFlowProps) {
     [activeGuest, companionRows]
   );
 
-  const config = useMemo(() => configRows.find((row) => row.id === 1n), [configRows]);
-
   const isRsvpClosed = useMemo(() => {
-    const cutoff = config?.globalRsvpCutoffAt;
-    if (!cutoff) {
-      return false;
-    }
-    return BigInt(Date.now()) * 1000n > cutoff.microsSinceUnixEpoch;
-  }, [config?.globalRsvpCutoffAt]);
+    return BigInt(Date.now()) * 1000n > RSVP_CUTOFF_AT_MICROS;
+  }, []);
 
   const isNameSatisfied = Boolean(normalizedInitialToken) || Boolean(
     lookupFirstName.trim() && lookupLastName.trim()
@@ -253,6 +252,37 @@ export default function RsvpFlow({ initialToken }: RsvpFlowProps) {
       setLookupInviteCode(storedCode);
     }
   }, [lookupInviteCode, normalizedInitialToken]);
+
+  useEffect(() => {
+    if (!normalizedInitialToken || !connection) {
+      return;
+    }
+
+    if (tokenSyncAttemptRef.current === normalizedInitialToken) {
+      return;
+    }
+
+    tokenSyncAttemptRef.current = normalizedInitialToken;
+    setLookupError('');
+    setSubmitError('');
+    setVerificationState('verifying');
+    setVerificationMessage('Opening your invitation...');
+
+    connection.reducers
+      .identifyGuestByToken({ token: normalizedInitialToken })
+      .then(() => {
+        setVerificationState('verified');
+        setVerificationMessage('Invitation verified successfully.');
+      })
+      .catch((error) => {
+        tokenSyncAttemptRef.current = null;
+        setVerificationState('failed');
+        setVerificationMessage('');
+        setLookupError(
+          error instanceof Error ? error.message : 'Unable to verify invitation details.'
+        );
+      });
+  }, [connection, normalizedInitialToken]);
 
   useEffect(() => {
     if (normalizedInitialToken || !detectedGuestByInviteCode) {
@@ -531,6 +561,13 @@ export default function RsvpFlow({ initialToken }: RsvpFlowProps) {
     }
 
     if (step === 1) {
+      if (normalizedInitialToken && verificationState === 'verified') {
+        setVerificationMessage('Invitation verified successfully.');
+        setStep(2);
+        setIsEditingStep(false);
+        return;
+      }
+
       setVerificationState('verifying');
       setVerificationMessage('Verifying invitation details...');
       try {

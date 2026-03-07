@@ -22,7 +22,7 @@ Implemented routes:
 - `/dashboard`
 - `/faq`
 - `/design-lab` (internal design review)
-- `/admin/cutoff` (internal utility)
+- `/admin/guests` (admin)
 
 Core implemented capabilities:
 
@@ -30,7 +30,7 @@ Core implemented capabilities:
 - QR-first RSVP with fallback lookup (`firstName + lastName + inviteCode`)
 - Multi-step RSVP submission (attendance, dietary, optional contact, companions)
 - Guest dashboard with RSVP summary, companion list, and guest messaging
-- Global RSVP cutoff support
+- Fixed RSVP cutoff in `shared/globals.ts`
 - 30-day remembered SpacetimeDB session token
 - Theme variants for design comparison (`heirloom`, `botanical`, `chapel`)
 

@@ -43,7 +43,7 @@ export function useDebugTable<RowType = unknown>(
     console.info(`${PREFIX} ${label} mount`, { querySql });
   }, [label, query]);
 
-  const [rows, isLoading] = useTable(query, {
+  const [rows, isReady] = useTable(query, {
     onInsert: (row) => {
       if (isDebugEnabled()) {
         console.debug(`${PREFIX} ${label} onInsert`, safeSerialize(row));
@@ -70,12 +70,12 @@ export function useDebugTable<RowType = unknown>(
       return;
     }
 
-    const next = { count: rows.length, loading: isLoading };
+    const next = { count: rows.length, loading: !isReady };
     if (!previous.current || previous.current.count !== next.count || previous.current.loading !== next.loading) {
       console.info(`${PREFIX} ${label} snapshot`, next);
       previous.current = next;
     }
-  }, [isLoading, label, rows.length]);
+  }, [isReady, label, rows.length]);
 
-  return [rows as readonly RowType[], isLoading];
+  return [rows as readonly RowType[], !isReady];
 }

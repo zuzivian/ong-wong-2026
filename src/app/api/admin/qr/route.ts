@@ -22,6 +22,7 @@ export async function GET(request: NextRequest) {
   }
 
   const token = request.nextUrl.searchParams.get('token')?.trim() ?? '';
+  const shouldDownload = request.nextUrl.searchParams.get('download') !== '0';
   if (!token) {
     return NextResponse.json({ error: 'token is required.' }, { status: 400 });
   }
@@ -41,7 +42,7 @@ export async function GET(request: NextRequest) {
       status: 200,
       headers: {
         'Content-Type': 'image/png',
-        'Content-Disposition': `attachment; filename="qr-${safeFilename}.png"`,
+        'Content-Disposition': `${shouldDownload ? 'attachment' : 'inline'}; filename="qr-${safeFilename}.png"`,
         'Cache-Control': 'private, max-age=3600',
       },
     });

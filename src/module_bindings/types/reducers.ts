@@ -7,8 +7,8 @@ import { type Infer as __Infer } from "spacetimedb";
 
 // Import all reducer arg schemas
 import AdminBulkSetRsvpStatusReducer from "../admin_bulk_set_rsvp_status_reducer";
-import AdminReplaceGuestCompanionsReducer from "../admin_replace_guest_companions_reducer";
 import AdminRegenerateGuestQrTokenReducer from "../admin_regenerate_guest_qr_token_reducer";
+import AdminReplaceGuestCompanionsReducer from "../admin_replace_guest_companions_reducer";
 import AdminSetGuestMessageStatusReducer from "../admin_set_guest_message_status_reducer";
 import AdminUpdateGuestRsvpReducer from "../admin_update_guest_rsvp_reducer";
 import AdminUpsertGuestReducer from "../admin_upsert_guest_reducer";
@@ -17,14 +17,13 @@ import DeleteGuestMessageReducer from "../delete_guest_message_reducer";
 import IdentifyGuestByFallbackReducer from "../identify_guest_by_fallback_reducer";
 import IdentifyGuestByTokenReducer from "../identify_guest_by_token_reducer";
 import SendGuestMessageReducer from "../send_guest_message_reducer";
-import SetGlobalRsvpCutoffReducer from "../set_global_rsvp_cutoff_reducer";
 import SubmitRsvpReducer from "../submit_rsvp_reducer";
 import UpdateGuestMessageReducer from "../update_guest_message_reducer";
 import UpdateGuestPhoneReducer from "../update_guest_phone_reducer";
 
 export type AdminBulkSetRsvpStatusParams = __Infer<typeof AdminBulkSetRsvpStatusReducer>;
-export type AdminReplaceGuestCompanionsParams = __Infer<typeof AdminReplaceGuestCompanionsReducer>;
 export type AdminRegenerateGuestQrTokenParams = __Infer<typeof AdminRegenerateGuestQrTokenReducer>;
+export type AdminReplaceGuestCompanionsParams = __Infer<typeof AdminReplaceGuestCompanionsReducer>;
 export type AdminSetGuestMessageStatusParams = __Infer<typeof AdminSetGuestMessageStatusReducer>;
 export type AdminUpdateGuestRsvpParams = __Infer<typeof AdminUpdateGuestRsvpReducer>;
 export type AdminUpsertGuestParams = __Infer<typeof AdminUpsertGuestReducer>;
@@ -33,7 +32,7 @@ export type DeleteGuestMessageParams = __Infer<typeof DeleteGuestMessageReducer>
 export type IdentifyGuestByFallbackParams = __Infer<typeof IdentifyGuestByFallbackReducer>;
 export type IdentifyGuestByTokenParams = __Infer<typeof IdentifyGuestByTokenReducer>;
 export type SendGuestMessageParams = __Infer<typeof SendGuestMessageReducer>;
-export type SetGlobalRsvpCutoffParams = __Infer<typeof SetGlobalRsvpCutoffReducer>;
 export type SubmitRsvpParams = __Infer<typeof SubmitRsvpReducer>;
 export type UpdateGuestMessageParams = __Infer<typeof UpdateGuestMessageReducer>;
 export type UpdateGuestPhoneParams = __Infer<typeof UpdateGuestPhoneReducer>;
+

@@ -97,18 +97,6 @@ export const GuestSession = table(
   }
 );
 
-export const Config = table(
-  {
-    name: 'config',
-    public: true,
-  },
-  {
-    id: t.u64().primaryKey(),
-    globalRsvpCutoffAt: t.timestamp().optional(),
-    updatedAt: t.timestamp(),
-  }
-);
-
 const spacetimedb = schema(
   {
     guest: Guest,
@@ -116,7 +104,6 @@ const spacetimedb = schema(
     companion: Companion,
     guest_message: GuestMessage,
     guest_session: GuestSession,
-    config: Config,
   },
   {
     CASE_CONVERSION_POLICY: CaseConversionPolicy.None,
