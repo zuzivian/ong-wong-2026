@@ -23,7 +23,9 @@ export default function AdminCutoffPage() {
   const [configRows, isLoading] = useDebugTable<any>('admin.config', tables.config);
   const config = useMemo(() => configRows.find((row) => row.id === 1n), [configRows]);
 
-  const [value, setValue] = useState('');
+  // TODO: Migrate RSVP cutoff management to the admin dashboard (post-MVP).
+  // Default pre-fills 31 May 2026 23:59 SGT (UTC+8) as the suggested deadline.
+  const [value, setValue] = useState('2026-05-31T23:59');
   const [status, setStatus] = useState('');
   const [error, setError] = useState('');
 

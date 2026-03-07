@@ -5,6 +5,7 @@ import {
   UNLOCK_COOKIE_NAME,
   UNLOCK_SESSION_TTL_SECONDS,
 } from './src/lib/invite-unlock';
+import { readAdminSession, ADMIN_COOKIE_NAME } from './src/lib/admin-auth';
 
 const PUBLIC_PATHS = new Set([
   '/',
@@ -26,6 +27,14 @@ function isPublicPath(pathname: string): boolean {
     return true;
   }
 
+  if (pathname === '/api/admin/auth' || pathname.startsWith('/api/admin/auth/')) {
+    return true;
+  }
+
+  if (pathname === '/admin/login') {
+    return true;
+  }
+
   // Public assets under /public are requested as /<file.ext>.
   if (/\.[a-zA-Z0-9]+$/.test(pathname)) {
     return true;
@@ -43,6 +52,18 @@ export async function middleware(request: NextRequest) {
     redirectUrl.pathname = '/';
     redirectUrl.search = '';
     return NextResponse.redirect(redirectUrl);
+  }
+
+  // Admin routes require a separate admin PIN session, independent of guest unlock.
+  if (pathname.startsWith('/admin/')) {
+    const isAdmin = await readAdminSession(request.cookies.get(ADMIN_COOKIE_NAME)?.value);
+    if (!isAdmin) {
+      const redirectUrl = request.nextUrl.clone();
+      redirectUrl.pathname = '/admin/login';
+      redirectUrl.search = '';
+      return NextResponse.redirect(redirectUrl);
+    }
+    return NextResponse.next();
   }
 
   if (isPublicPath(pathname)) {

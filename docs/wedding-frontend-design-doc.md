@@ -1,4 +1,4 @@
-# Wedding Frontend Design Doc (v1.3)
+# Wedding Frontend Design Doc (v1.4)
 
 ## 1. Product Summary
 
@@ -51,9 +51,9 @@ Wedding date: **15 August 2026**
 - Home tone: formal with light personal warmth
 - Session persistence: "Remember me" token persisted for 30 days
 
-## 6. Visual Design Status (Decision Open)
+## 6. Visual Design
 
-Visual system is **not finalized yet**.
+**Heirloom** theme selected and locked. Warm ivory and marigold with formal editorial contrast. Other variants (`botanical`, `chapel`) and the `/design-lab` route have been removed.
 
 ## 7. Venue Information
 
@@ -158,21 +158,16 @@ Implemented entities:
 
 ## 15. Immediate Next Steps
 
-2. Finalize route-level acceptance criteria and sign off MVP behavior.
-3. Decide final home-page content density (summary vs deep details).
-4. Set RSVP cutoff operational process (owner + update procedure).
-5. After design decision, remove internal design-review artifacts from public navigation surface.
+1. ~~**Finalize visual design**~~ — Heirloom selected, others removed. ✓
+2. ~~**Remove design-review artifacts from public nav**~~ — `/design-lab` removed. ✓
+3. ~~**Secure `/admin/cutoff`**~~ — PIN-gated via `ADMIN_PIN` env variable; 8-hour signed session cookie; `/admin/login` entry point. ✓
+4. **Finalize and freeze production content** — final copy for schedule wording, dress code, FAQ answers, venue details.
+5. **Decide home-page content density** — summary that defers to `/event-details`, or standalone with map/schedule embedded.
+6. **Set the RSVP cutoff date** — default pre-filled to 31 May 2026 23:59 in the admin UI. Confirm and save before launch. TODO: migrate cutoff management to admin dashboard (post-MVP).
 
 ## 16. Known Bugs and UX Issues
 
-1. After RSVPing, the website becomes locked again.
-2. The "Add Loved Ones" step is confusing.
-3. The dietary restrictions step is still getting skipped during RSVP.
-4. Add default multiple-choice dietary options (for example: vegetarian), while keeping open-ended input for other needs.
-5. Home page has two RSVP buttons that effectively do the same thing.
-6. Unlocked menu ribbon does not include all useful routes, including Home and Guest Dashboard.
-7. RSVP ribbon should clearly highlight what each step is.
-8. RSVP flow should save each step to the database as users progress.
+All bugs resolved as of v1.4. None outstanding.
 
 ## 17. Possible Future Features
 

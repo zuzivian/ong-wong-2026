@@ -83,6 +83,7 @@ Create `.env.local` with:
 NEXT_PUBLIC_SPACETIMEDB_HOST=http://127.0.0.1:3000
 NEXT_PUBLIC_SPACETIMEDB_DB_NAME=<your_db_name>
 WEDDING_UNLOCK_SECRET=<set-a-long-random-secret-for-production>
+ADMIN_PIN=<pin-for-accessing-admin-routes>
 ```
 
 If `NEXT_PUBLIC_SPACETIMEDB_HOST` is omitted, frontend defaults to `http://127.0.0.1:3000`.
