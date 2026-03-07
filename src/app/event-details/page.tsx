@@ -252,10 +252,11 @@ export default async function EventDetailsPage() {
               arrive a little early, and settle in before the service begins.
             </p>
             <p>
-              Our ceremony is a Christian wedding service in church, shaped by Samuel&apos;s home
-              community at Bethesda Bedok Tampines Church. You can expect worship songs, a short Bible
-              message, prayers, and the exchange of vows. After the service, we&apos;ll continue the
-              celebration with refreshments, photos, and fellowship in the church hall.
+              Our ceremony is a Christian wedding service held at Thomson Road Baptist Church, shaped
+              by the faith community Samuel calls home at Bethesda Bedok Tampines Church. You can
+              expect worship songs, a short Bible message, prayers, and the exchange of vows. After
+              the service, we&apos;ll continue the celebration with refreshments, photos, and
+              fellowship in the church hall.
             </p>
           </div>
         </div>
