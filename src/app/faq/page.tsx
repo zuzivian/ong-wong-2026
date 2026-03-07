@@ -20,7 +20,7 @@ export default function FaqPage() {
     {
       question: 'What is the dress code for the wedding?',
       answer:
-        'The dress code is smart and respectful, suitable for a church service and lunch reception. Light, comfortable formalwear is a safe choice for the daytime setting. Most importantly, please come in something that helps you feel present and joyful with us.',
+        'The dress code is formal, in keeping with a church service and lunch reception. Light, comfortable formalwear is a safe choice for the daytime setting. Most importantly, please come in something that helps you feel present and joyful with us.',
     },
     {
       question: 'How should dietary requirements be submitted?',
