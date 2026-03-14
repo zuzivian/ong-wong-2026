@@ -6,7 +6,7 @@ import {
   readUnlockSession,
   UNLOCK_SESSION_TTL_SECONDS,
   verifyUnlockSession,
-} from './invite-unlock';
+} from './invite-unlock.ts';
 
 const originalDateNow = Date.now;
 const originalNodeEnv = process.env.NODE_ENV;

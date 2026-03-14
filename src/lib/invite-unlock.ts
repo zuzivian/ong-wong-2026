@@ -1,4 +1,4 @@
-import { getSessionSigningSecret } from './session-secret';
+import { getSessionSigningSecret } from './session-secret.ts';
 
 export const UNLOCK_COOKIE_NAME = 'wedding_unlock';
 export const UNLOCK_SESSION_TTL_SECONDS = 60 * 60 * 24 * 180; // 180 days

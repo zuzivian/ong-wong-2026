@@ -12,8 +12,10 @@
     "build": "next build --webpack",
     "start": "next start",
     "test": "npm run test:unit",
-    "test:unit": "node --experimental-strip-types --test src/lib/invite-unlock.test.ts src/lib/session-secret.test.ts src/lib/admin-auth.test.ts src/lib/request-rate-limit.test.ts src/lib/unlock-client.test.ts src/lib/google-calendar.test.ts",
-    "test:e2e": "node --experimental-strip-types scripts/e2e-smoke.ts",
+    "test:unit": "node --experimental-strip-types --test src/lib/invite-unlock.test.ts src/lib/session-secret.test.ts src/lib/admin-auth.test.ts src/lib/request-rate-limit.test.ts src/lib/unlock-client.test.ts src/lib/google-calendar.test.ts src/lib/spacetime-json.test.ts",
+    "test:e2e": "node --env-file-if-exists=.env.local --experimental-strip-types scripts/e2e-smoke.ts",
+    "test:acceptance": "npx playwright test",
+    "test:acceptance:headed": "npx playwright test --headed",
     "generate": "cargo run -p gen-bindings -- --out-dir src/module_bindings --module-path spacetimedb && prettier --write src/module_bindings",
     "spacetime:generate": "spacetime generate --lang typescript --out-dir src/module_bindings --module-path spacetimedb",
     "spacetime:publish:local": "spacetime publish --server local --module-path spacetimedb",
@@ -26,6 +28,7 @@
     "spacetimedb": "^2.0.1"
   },
   "devDependencies": {
+    "@playwright/test": "^1.58.2",
     "@types/node": "25.3.1",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",

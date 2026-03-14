@@ -4,7 +4,7 @@ import test from 'node:test';
 import {
   normalizeInviteCode,
   UNLOCKED_INVITE_CODE_STORAGE_KEY,
-} from './unlock-client';
+} from './unlock-client.ts';
 
 test('normalizeInviteCode trims whitespace, removes separators, and uppercases', () => {
   assert.equal(normalizeInviteCode(' ab-12 cd '), 'AB12CD');

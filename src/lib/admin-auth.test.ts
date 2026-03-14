@@ -6,7 +6,7 @@ import {
   createAdminSession,
   readAdminSession,
   validateAdminPin,
-} from './admin-auth';
+} from './admin-auth.ts';
 
 const originalDateNow = Date.now;
 const originalNodeEnv = process.env.NODE_ENV;

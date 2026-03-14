@@ -3,7 +3,10 @@
     "allow": [
       "Bash(ls /c/Users/natwk/GitHub/ong-wong-2026/src/app/admin/\\\\\\(protected\\\\\\)/)",
       "Bash(ls /c/Users/natwk/GitHub/ong-wong-2026/src/app/admin/\\\\\\(protected\\\\\\)/guests/)",
-      "Bash(cat /c/Users/natwk/GitHub/ong-wong-2026/src/app/admin/\\\\\\(protected\\\\\\)/guests/page.tsx)"
+      "Bash(cat /c/Users/natwk/GitHub/ong-wong-2026/src/app/admin/\\\\\\(protected\\\\\\)/guests/page.tsx)",
+      "Bash(npm install --save-dev @playwright/test)",
+      "Bash(node --experimental-strip-types --test src/lib/admin-auth.test.ts src/lib/invite-unlock.test.ts)",
+      "Bash(npm test)"
     ]
   }
 }

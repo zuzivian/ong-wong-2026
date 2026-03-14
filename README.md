@@ -16,9 +16,11 @@ Implemented routes:
 
 - `/` Home
 - `/rsvp`
-- `/rsvp/[token]`
+- `/rsvp/[inviteCode]`
 - `/dashboard`
 - `/faq`
+- `/event-details` (legacy redirect to `/`)
+- `/admin` (redirects to `/admin/login` or `/admin/guests`)
 - `/admin/login`
 - `/admin/guests` (admin)
 
@@ -103,9 +105,18 @@ Notes:
 - `npm run start` Run production server
 - `npm test` Run the unit test suite
 - `npm run test:e2e` Run the smoke end-to-end checks against a running app
+- `npm run test:acceptance` Run Playwright acceptance checks against a local or reused app server
 - `npm run spacetime:generate` Generate TS bindings from module
 - `npm run spacetime:publish:local` Publish module to local server
 - `npm run spacetime:publish` Publish module to maincloud
+
+## Test Coverage Notes
+
+- `npm test` currently covers invite unlock signing, session secret resolution, admin auth, request rate limiting, invite-code normalization, Google Calendar URL generation, and Spacetime JSON serialization helpers.
+- `npm run test:e2e` is a smoke suite intended for a running built app and covers the public home flow, unlock-cookie recovery, RSVP entry, dashboard access, and admin login/dashboard reachability.
+- `npm run test:acceptance` adds browser-based route acceptance coverage for locked/unlocked guest flows, admin auth redirects, key keyboard submission paths, single-`h1` checks, and small-screen overflow checks.
+- Run `npx playwright install --with-deps chromium` once before the first local acceptance run if Chromium is not installed yet.
+- UI-heavy client hooks and App Router pages are now primarily validated through the smoke flow plus the Playwright acceptance suite mapped to [`docs/route-acceptance-criteria.md`](docs/route-acceptance-criteria.md).
 
 ## QA and Release Gates
 

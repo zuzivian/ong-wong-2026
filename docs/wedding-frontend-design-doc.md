@@ -53,13 +53,12 @@ Wedding date: **15 August 2026**
 
 ## 6. Visual Design
 
-**Heirloom** theme selected and locked. Warm ivory and marigold with formal editorial contrast. Other variants (`botanical`, `chapel`) and the `/design-lab` route have been removed.
+**Heirloom** theme selected and locked. Warm ivory and marigold with formal editorial contrast. 
 
 ## 7. Venue Information
 
 - Venue name: **The Singapore Thomson Road Baptist Church**
 - Address: **45 Thomson Road, Singapore 307584**
-- Note: official spelling is "Thomson".
 
 ## 8. Information Architecture and Routes
 
@@ -71,10 +70,6 @@ Wedding date: **15 August 2026**
 - `/rsvp/[inviteCode]` invite-code RSVP path
 - `/dashboard` Guest Dashboard
 - `/faq` FAQ page
-
-Legacy behavior:
-
-- `/unlock` is now legacy and redirects to `/` via middleware.
 
 Access behavior:
 
@@ -224,6 +219,6 @@ Known implementation shifts that prompted this documentation refresh:
 
 ## 18. Possible Future Features
 
-1. Add to Google Calendar.
+1. Add to Google Calendar. ✓
 2. Send a copy of the RSVP response by email.
 3. Keep legal/invited guest names fixed during RSVP, but allow preferred names to be submitted.

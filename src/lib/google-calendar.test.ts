@@ -8,7 +8,7 @@ import {
   WEDDING_EVENT_LOCATION,
   WEDDING_EVENT_TIMEZONE,
   WEDDING_EVENT_TITLE,
-} from './google-calendar';
+} from './google-calendar.ts';
 
 test('builds the default wedding Google Calendar URL', () => {
   const url = new URL(buildWeddingGoogleCalendarUrl());

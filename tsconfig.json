@@ -30,7 +30,8 @@
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true,
-    "noUncheckedSideEffectImports": true
+    "noUncheckedSideEffectImports": true,
+    "allowImportingTsExtensions": true
   },
   "include": [
     "next-env.d.ts",
@@ -43,6 +44,8 @@
   ],
   "exclude": [
     "node_modules",
-    "spacetimedb"
+    "spacetimedb",
+    "playwright.config.ts",
+    "tests"
   ]
 }

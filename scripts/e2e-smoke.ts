@@ -1,8 +1,7 @@
 import assert from 'node:assert/strict';
 
-import { createUnlockSession, UNLOCK_COOKIE_NAME } from '../src/lib/invite-unlock';
-
 const BASE_URL = (process.env.E2E_BASE_URL ?? 'http://127.0.0.1:3000').replace(/\/$/, '');
+const E2E_INVITE_CODE = 'E2ESMOKE';
 
 async function request(
   pathname: string,
@@ -42,6 +41,10 @@ function getFirstSetCookie(response: Response): string {
   return cookie;
 }
 
+function toCookieHeader(cookie: string): string {
+  return cookie.split(';', 1)[0] ?? cookie;
+}
+
 async function readText(pathname: string, init?: RequestInit & { expectedStatus?: number }) {
   const response = await request(pathname, init);
   return response.text();
@@ -49,36 +52,13 @@ async function readText(pathname: string, init?: RequestInit & { expectedStatus?
 
 async function main() {
   const home = await readText('/', { expectedStatus: 200 });
-  assert.match(home, /Samuel & Natasha/i);
+  assert.match(home, /Samuel (?:&|&amp;) Natasha/i);
 
   const dashboardRedirect = await request('/dashboard');
   assertRedirectToHome(dashboardRedirect, '/dashboard');
 
   const rsvpRedirect = await request('/rsvp');
   assertRedirectToHome(rsvpRedirect, '/rsvp');
-
-  const unlockSession = await createUnlockSession('TESTCODE');
-  const unlockCookie = `${UNLOCK_COOKIE_NAME}=${unlockSession}`;
-
-  const unlockResponse = await request('/api/unlock', {
-    headers: { Cookie: unlockCookie },
-    expectedStatus: 200,
-  });
-  const unlockPayload = (await unlockResponse.json()) as { ok?: boolean; inviteCode?: string | null };
-  assert.equal(unlockPayload.ok, true);
-  assert.equal(unlockPayload.inviteCode, 'TESTCODE');
-
-  const dashboard = await readText('/dashboard', {
-    headers: { Cookie: unlockCookie },
-    expectedStatus: 200,
-  });
-  assert.match(dashboard, /Your RSVP/i);
-
-  const rsvp = await readText('/rsvp', {
-    headers: { Cookie: unlockCookie },
-    expectedStatus: 200,
-  });
-  assert.match(rsvp, /Step 1: Welcome and Confirm Invitation/i);
 
   const wrongAdminLogin = await request('/api/admin/auth', {
     method: 'POST',
@@ -98,9 +78,58 @@ async function main() {
   });
   const adminCookie = getFirstSetCookie(adminLogin);
   assert.ok(adminCookie?.includes('wedding_admin='));
+  const adminCookieHeader = toCookieHeader(adminCookie);
+
+  const createGuest = await request('/api/admin/spacetimedb', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Cookie: adminCookieHeader,
+    },
+    body: JSON.stringify({
+      action: 'upsertGuest',
+      firstName: 'Smoke',
+      lastName: 'Test',
+      inviteCode: E2E_INVITE_CODE,
+    }),
+    expectedStatus: 200,
+  });
+  const createGuestPayload = (await createGuest.json()) as { ok?: boolean };
+  assert.equal(createGuestPayload.ok, true);
+
+  const unlockPost = await request('/api/unlock', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ inviteCode: E2E_INVITE_CODE }),
+    expectedStatus: 200,
+  });
+  const unlockPostPayload = (await unlockPost.json()) as { ok?: boolean };
+  assert.equal(unlockPostPayload.ok, true);
+  const unlockCookie = getFirstSetCookie(unlockPost);
+  const unlockCookieHeader = toCookieHeader(unlockCookie);
+
+  const unlockResponse = await request('/api/unlock', {
+    headers: { Cookie: unlockCookieHeader },
+    expectedStatus: 200,
+  });
+  const unlockPayload = (await unlockResponse.json()) as { ok?: boolean; inviteCode?: string | null };
+  assert.equal(unlockPayload.ok, true);
+  assert.equal(unlockPayload.inviteCode, E2E_INVITE_CODE);
+
+  const dashboard = await readText('/dashboard', {
+    headers: { Cookie: unlockCookieHeader },
+    expectedStatus: 200,
+  });
+  assert.match(dashboard, /Your RSVP/i);
+
+  const rsvp = await readText('/rsvp', {
+    headers: { Cookie: unlockCookieHeader },
+    expectedStatus: 200,
+  });
+  assert.match(rsvp, /Step 1: Welcome and Confirm Invitation/i);
 
   const adminDashboard = await readText('/admin/guests', {
-    headers: { Cookie: adminCookie },
+    headers: { Cookie: adminCookieHeader },
     expectedStatus: 200,
   });
   assert.match(adminDashboard, /Guest Operations Dashboard/i);

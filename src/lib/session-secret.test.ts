@@ -4,7 +4,7 @@ import { afterEach, test } from 'node:test';
 import {
   getConfiguredSessionSigningSecret,
   getSessionSigningSecret,
-} from './session-secret';
+} from './session-secret.ts';
 
 const originalNodeEnv = process.env.NODE_ENV;
 const originalSessionSecret = process.env.SESSION_SIGNING_SECRET;

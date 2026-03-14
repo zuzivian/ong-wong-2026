@@ -92,7 +92,6 @@ export default function InviteUnlockForm({
           onChange={(event) => setInviteCode(event.target.value)}
           placeholder={placeholder}
           autoComplete="one-time-code"
-          required
         />
       </label>
       <p className="small-note">Please enter your code without dashes.</p>

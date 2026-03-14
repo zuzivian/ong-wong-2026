@@ -15,8 +15,8 @@ export type CompanionDraft = {
 
 type SubmitPatch = {
   attendance?: boolean;
-  dietaryNotes?: string | undefined;
-  notes?: string | undefined;
+  dietaryNotes?: string | null;
+  notes?: string | null;
 };
 
 type UnlockCookieResponse = {
@@ -24,12 +24,12 @@ type UnlockCookieResponse = {
   inviteCode?: string | null;
 };
 
-function normalizeOptionalInput(text: string | undefined): string | undefined {
-  if (text === undefined) {
-    return undefined;
+function normalizeOptionalInput(text: string | undefined | null): string | null {
+  if (text == null) {
+    return null;
   }
   const trimmed = text.trim();
-  return trimmed.length > 0 ? trimmed : undefined;
+  return trimmed.length > 0 ? trimmed : null;
 }
 
 function toErrorMessage(error: unknown, fallback: string): string {
@@ -325,10 +325,10 @@ export function useDashboardWorkflow(
     }
 
     const nextDietaryNotes = hasDietaryNotes
-      ? patch.dietaryNotes
+      ? (patch.dietaryNotes ?? null)
       : normalizeOptionalInput(activeRsvp?.dietaryNotes);
 
-    const nextNotes = hasNotes ? patch.notes : normalizeOptionalInput(activeRsvp?.notes);
+    const nextNotes = hasNotes ? (patch.notes ?? null) : normalizeOptionalInput(activeRsvp?.notes);
 
     await connection.reducers.submitRsvp({
       attendance: nextAttendance,

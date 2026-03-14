@@ -385,15 +385,15 @@ export function useRsvpWorkflow(
     await connection.reducers.submitRsvp({
       attendance: nextAttendance === 'attending',
       dietaryNotes: composeDietaryNotes(nextDietaryMode, nextDietaryOptions, nextDietaryNotes),
-      notes: undefined,
-      contactEmail: undefined,
-      contactPhone: undefined,
+      notes: null,
+      contactEmail: null,
+      contactPhone: null,
       companions:
         nextAttendance === 'attending'
           ? nextCompanions.map((companion) => ({
               name: companion.name.trim(),
-              dietaryNotes: companion.dietaryNotes.trim() || undefined,
-              relationship: undefined,
+              dietaryNotes: companion.dietaryNotes.trim() || null,
+              relationship: null,
             }))
           : [],
       submitted: false,
@@ -501,15 +501,15 @@ export function useRsvpWorkflow(
       await connection!.reducers.submitRsvp({
         attendance: attendance === 'attending',
         dietaryNotes: composeDietaryNotes(dietaryMode, dietaryOptionsSelected, dietaryNotes),
-        notes: undefined,
-        contactEmail: undefined,
-        contactPhone: undefined,
+        notes: null,
+        contactEmail: null,
+        contactPhone: null,
         companions:
           attendance === 'attending'
             ? companions.map((companion) => ({
                 name: companion.name.trim(),
-                dietaryNotes: companion.dietaryNotes.trim() || undefined,
-                relationship: undefined,
+                dietaryNotes: companion.dietaryNotes.trim() || null,
+                relationship: null,
               }))
             : [],
         submitted: true,

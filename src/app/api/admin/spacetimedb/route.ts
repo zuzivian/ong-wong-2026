@@ -210,10 +210,10 @@ export async function POST(request: NextRequest) {
             adminSecret,
             guestId: BigInt(body.guestId),
             rsvpStatus: body.rsvpStatus,
-            dietaryNotes: body.dietaryNotes,
-            notes: body.notes,
-            contactEmail: body.contactEmail,
-            contactPhone: body.contactPhone,
+            dietaryNotes: body.dietaryNotes ?? undefined,
+            notes: body.notes ?? undefined,
+            contactEmail: body.contactEmail ?? undefined,
+            contactPhone: body.contactPhone ?? undefined,
           });
           return;
         case 'replaceGuestCompanions':
@@ -240,8 +240,8 @@ export async function POST(request: NextRequest) {
             firstName: body.firstName,
             lastName: body.lastName,
             inviteCode: body.inviteCode,
-            contactEmail: body.contactEmail,
-            contactPhone: body.contactPhone,
+            contactEmail: body.contactEmail ?? undefined,
+            contactPhone: body.contactPhone ?? undefined,
           });
           return;
         case 'deleteGuest':

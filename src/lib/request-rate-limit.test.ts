@@ -7,7 +7,7 @@ import {
   consumeRateLimit,
   getRequestClientKey,
   resetRateLimit,
-} from './request-rate-limit';
+} from './request-rate-limit.ts';
 
 const originalDateNow = Date.now;
 

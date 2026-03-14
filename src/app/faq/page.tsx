@@ -1,6 +1,15 @@
-import Icon from '@/components/icon';
+import { cookies } from 'next/headers';
+import { redirect } from 'next/navigation';
 
-export default function FaqPage() {
+import Icon from '@/components/icon';
+import { UNLOCK_COOKIE_NAME, verifyUnlockSession } from '@/lib/invite-unlock';
+
+export default async function FaqPage() {
+  const cookieStore = await cookies();
+  const unlockCookie = cookieStore.get(UNLOCK_COOKIE_NAME)?.value;
+  if (!(await verifyUnlockSession(unlockCookie))) {
+    redirect('/');
+  }
   const items = [
     {
       question: 'What time should guests arrive for the service?',

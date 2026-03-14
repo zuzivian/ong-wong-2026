@@ -674,7 +674,7 @@ export const get_admin_message_page = spacetimedb.procedure(
         },
         guests: guestIds
           .map((guestId) => tx.db.guest.id.find(guestId))
-          .filter((guest) => guest !== undefined),
+          .filter((guest): guest is NonNullable<typeof guest> => guest != null),
         messages: pageMessages,
       };
     });
