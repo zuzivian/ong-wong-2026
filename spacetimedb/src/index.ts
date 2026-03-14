@@ -460,7 +460,7 @@ export const submit_rsvp = spacetimedb.reducer(
       });
     }
 
-    const maxCompanions = Number(guest.maxCompanions);
+    const maxCompanions = 5;
     const normalizedCompanions = payload.companions
       .map(companion => ({
         name: companion.name.trim(),
@@ -473,7 +473,7 @@ export const submit_rsvp = spacetimedb.reducer(
       ctx.db.companion.id.delete(existingCompanion.id);
     }
 
-    if (payload.attendance && guest.canAddCompanions && maxCompanions > 0) {
+    if (payload.attendance && maxCompanions > 0) {
       for (const companion of normalizedCompanions.slice(0, maxCompanions)) {
         ctx.db.companion.insert({
           id: 0n,
@@ -562,8 +562,6 @@ export const admin_update_guest_rsvp = spacetimedb.reducer(
     notes: t.string().optional(),
     contactEmail: t.string().optional(),
     contactPhone: t.string().optional(),
-    canAddCompanions: t.bool(),
-    maxCompanions: t.u64(),
   },
   (
     ctx,
@@ -575,8 +573,6 @@ export const admin_update_guest_rsvp = spacetimedb.reducer(
       notes,
       contactEmail,
       contactPhone,
-      canAddCompanions,
-      maxCompanions,
     }
   ) => {
     requireAdminAccess(ctx, adminSecret);
@@ -624,8 +620,6 @@ export const admin_update_guest_rsvp = spacetimedb.reducer(
     ctx.db.guest.id.update({
       ...guest,
       rsvpStatus: normalizedStatus,
-      canAddCompanions,
-      maxCompanions,
       contactEmail: normalizedEmail,
       contactPhone: normalizedPhone,
       updatedAt: ctx.timestamp,
@@ -650,11 +644,7 @@ export const admin_replace_guest_companions = spacetimedb.reducer(
       ctx.db.companion.id.delete(existingCompanion.id);
     }
 
-    if (!guest.canAddCompanions || guest.maxCompanions <= 0n) {
-      return;
-    }
-
-    const maxCompanions = Number(guest.maxCompanions);
+    const maxCompanions = 5;
     for (const companion of companions.slice(0, maxCompanions)) {
       const name = companion.name.trim();
       if (!name) {
@@ -694,8 +684,6 @@ export const admin_upsert_guest = spacetimedb.reducer(
     lastName: t.string(),
     inviteCode: t.string(),
     qrToken: t.string().optional(),
-    canAddCompanions: t.bool(),
-    maxCompanions: t.u64(),
     contactEmail: t.string().optional(),
     contactPhone: t.string().optional(),
   },
@@ -723,8 +711,6 @@ export const admin_upsert_guest = spacetimedb.reducer(
         firstName,
         lastName,
         qrToken,
-        canAddCompanions: payload.canAddCompanions,
-        maxCompanions: payload.maxCompanions,
         contactEmail,
         contactPhone,
         updatedAt: ctx.timestamp,
@@ -738,8 +724,6 @@ export const admin_upsert_guest = spacetimedb.reducer(
       lastName,
       inviteCode,
       qrToken,
-      canAddCompanions: payload.canAddCompanions,
-      maxCompanions: payload.maxCompanions,
       contactEmail,
       contactPhone,
       rsvpStatus: RSVP_STATUS_PENDING,

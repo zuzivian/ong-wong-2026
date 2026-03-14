@@ -16,8 +16,6 @@ export default {
   lastName: __t.string(),
   inviteCode: __t.string(),
   qrToken: __t.option(__t.string()),
-  canAddCompanions: __t.bool(),
-  maxCompanions: __t.u64(),
   contactEmail: __t.option(__t.string()),
   contactPhone: __t.option(__t.string()),
 };

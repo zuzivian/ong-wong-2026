@@ -1177,7 +1177,7 @@ button.button-secondary:hover {
   padding: 0;
   list-style: none;
   display: grid;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 0.45rem;
 }
 
@@ -2379,11 +2379,11 @@ button.button-secondary:hover,
 }
 
 .step-ribbon {
-  gap: 0.65rem;
+  gap: 0.35rem;
 }
 
 .step-ribbon li {
-  min-height: 66px;
+  min-height: 50px;
   border-radius: 1rem;
   border-color: rgba(33, 29, 26, 0.08);
   background: rgba(255, 255, 255, 0.34);

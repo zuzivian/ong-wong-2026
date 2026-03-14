@@ -9,7 +9,7 @@ import { loadGuestPortalState, type GuestPortalState } from '@/lib/guest-portal-
 import { normalizeInviteCode } from '@/lib/unlock-client';
 import { RSVP_CUTOFF_AT_MICROS } from '../../../shared/globals';
 
-type EditableField = 'attendance' | 'dietaryNotes' | 'notes' | 'contactEmail' | 'contactPhone';
+type EditableField = 'attendance' | 'dietaryNotes' | 'notes';
 
 type CompanionDraft = {
   name: string;
@@ -21,17 +21,12 @@ type SubmitPatch = {
   attendance?: boolean;
   dietaryNotes?: string | undefined;
   notes?: string | undefined;
-  contactEmail?: string | undefined;
-  contactPhone?: string | undefined;
 };
 
 type UnlockCookieResponse = {
   ok?: boolean;
   inviteCode?: string | null;
 };
-
-const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const PHONE_PATTERN = /^[+\d][\d\s().-]{5,24}$/;
 
 function formatTimestamp(microsSinceUnixEpoch: bigint): string {
   return new Date(Number(microsSinceUnixEpoch / 1000n)).toLocaleString();
@@ -75,18 +70,6 @@ function toMessageStatusLabel(status: string): string {
   return status;
 }
 
-function isValidEmail(email: string): boolean {
-  return EMAIL_PATTERN.test(email);
-}
-
-function isValidPhone(phone: string): boolean {
-  if (!PHONE_PATTERN.test(phone)) {
-    return false;
-  }
-  const digits = phone.replace(/\D/g, '');
-  return digits.length >= 7 && digits.length <= 15;
-}
-
 export default function DashboardPage() {
   const db = useSpacetimeDB();
   const connection = db.getConnection() as DbConnection | null;
@@ -120,8 +103,6 @@ export default function DashboardPage() {
   const [attendanceDraft, setAttendanceDraft] = useState<boolean | undefined>(undefined);
   const [dietaryDraft, setDietaryDraft] = useState('');
   const [notesDraft, setNotesDraft] = useState('');
-  const [contactEmailDraft, setContactEmailDraft] = useState('');
-  const [contactPhoneDraft, setContactPhoneDraft] = useState('');
   const [companionDrafts, setCompanionDrafts] = useState<CompanionDraft[]>([]);
   const [isEditingCompanions, setIsEditingCompanions] = useState(false);
   const [companionStatus, setCompanionStatus] = useState('');
@@ -165,15 +146,11 @@ export default function DashboardPage() {
   const attendanceLabel = toAttendanceLabel(activeRsvp?.attendance);
   const canEditRsvpDetails = activeRsvp?.attendance !== undefined;
   const isAttending = activeRsvp?.attendance === true;
-  const maxCompanions = Number(activeGuest?.maxCompanions ?? 0n);
+  const maxCompanions = 5;
   const canManageCompanions = Boolean(
-    activeGuest?.canAddCompanions &&
     activeRsvp?.attendance === true &&
     !isRsvpClosed
   );
-  const phoneChanged =
-    normalizeOptionalInput(contactPhoneDraft) !== normalizeOptionalInput(activeGuest?.contactPhone);
-
   useEffect(() => {
     setEditingField(null);
     setFeedbackField(null);
@@ -347,11 +324,6 @@ export default function DashboardPage() {
       setNotesDraft(activeRsvp?.notes ?? '');
       return;
     }
-    if (field === 'contactEmail') {
-      setContactEmailDraft(activeGuest?.contactEmail ?? '');
-      return;
-    }
-    setContactPhoneDraft(activeGuest?.contactPhone ?? '');
   };
 
   const cancelEditor = () => {
@@ -388,8 +360,6 @@ export default function DashboardPage() {
     const hasAttendance = Object.prototype.hasOwnProperty.call(patch, 'attendance');
     const hasDietaryNotes = Object.prototype.hasOwnProperty.call(patch, 'dietaryNotes');
     const hasNotes = Object.prototype.hasOwnProperty.call(patch, 'notes');
-    const hasContactEmail = Object.prototype.hasOwnProperty.call(patch, 'contactEmail');
-    const hasContactPhone = Object.prototype.hasOwnProperty.call(patch, 'contactPhone');
 
     const nextAttendance = hasAttendance ? patch.attendance : activeRsvp?.attendance;
     if (nextAttendance === undefined) {
@@ -402,20 +372,12 @@ export default function DashboardPage() {
 
     const nextNotes = hasNotes ? patch.notes : normalizeOptionalInput(activeRsvp?.notes);
 
-    const nextContactEmail = hasContactEmail
-      ? patch.contactEmail
-      : normalizeOptionalInput(activeGuest.contactEmail);
-
-    const nextContactPhone = hasContactPhone
-      ? patch.contactPhone
-      : normalizeOptionalInput(activeGuest.contactPhone);
-
     await connection.reducers.submitRsvp({
       attendance: nextAttendance,
       dietaryNotes: nextDietaryNotes,
       notes: nextNotes,
-      contactEmail: nextContactEmail,
-      contactPhone: nextContactPhone,
+      contactEmail: normalizeOptionalInput(activeGuest.contactEmail),
+      contactPhone: normalizeOptionalInput(activeGuest.contactPhone),
       companions: nextAttendance ? companionPayload : [],
     });
     await refreshPortalState();
@@ -466,62 +428,6 @@ export default function DashboardPage() {
       setFieldSuccess(field, 'Additional notes updated.');
     } catch (error) {
       setFieldFailure(field, toErrorMessage(error, 'Unable to update additional notes.'));
-    } finally {
-      setIsSavingField(false);
-    }
-  };
-
-  const onConfirmContactEmail = async () => {
-    const field: EditableField = 'contactEmail';
-    clearFieldFeedback();
-    const normalizedEmail = normalizeOptionalInput(contactEmailDraft);
-
-    if (normalizedEmail && !isValidEmail(normalizedEmail)) {
-      setFieldFailure(field, 'Please enter a valid email address.');
-      return;
-    }
-
-    setIsSavingField(true);
-
-    try {
-      await submitRsvpPatch({ contactEmail: normalizedEmail });
-      setFieldSuccess(field, 'Contact email updated.');
-    } catch (error) {
-      setFieldFailure(field, toErrorMessage(error, 'Unable to update contact email.'));
-    } finally {
-      setIsSavingField(false);
-    }
-  };
-
-  const onConfirmContactPhone = async () => {
-    const field: EditableField = 'contactPhone';
-    clearFieldFeedback();
-    const normalizedPhone = normalizeOptionalInput(contactPhoneDraft);
-
-    if (!connection) {
-      setFieldFailure(field, 'Connection is still starting. Please try again.');
-      return;
-    }
-
-    if (!phoneChanged) {
-      setFieldFailure(field, 'No changes to save.');
-      return;
-    }
-
-    if (normalizedPhone && !isValidPhone(normalizedPhone)) {
-      setFieldFailure(field, 'Please enter a valid phone number.');
-      return;
-    }
-
-    setIsSavingField(true);
-    try {
-      await connection.reducers.updateGuestPhone({
-        contactPhone: normalizedPhone,
-      });
-      await refreshPortalState();
-      setFieldSuccess(field, 'Contact phone updated.');
-    } catch (error) {
-      setFieldFailure(field, toErrorMessage(error, 'Unable to update phone number.'));
     } finally {
       setIsSavingField(false);
     }
@@ -700,10 +606,6 @@ export default function DashboardPage() {
       setCompanionError('RSVP updates are closed because the deadline has passed.');
       return;
     }
-    if (!activeGuest.canAddCompanions || maxCompanions < 1) {
-      setCompanionError('This invitation does not include loved ones.');
-      return;
-    }
     if (companionDrafts.length > maxCompanions) {
       setCompanionError(`You can include up to ${maxCompanions} loved one(s) on this invitation.`);
       return;
@@ -760,8 +662,8 @@ export default function DashboardPage() {
     <div className="dashboard-page">
       <section className="page-head">
         <h1 className="heading-with-icon">
-          <Icon name="dashboard" className="heading-icon" />
-          <span>Guest Information</span>
+          <Icon name="how_to_reg" className="heading-icon" />
+          <span>Your RSVP</span>
         </h1>
         <p>Welcome. You can update your RSVP details, loved ones, and notes to us here anytime.</p>
       </section>
@@ -975,99 +877,6 @@ export default function DashboardPage() {
                 {renderFieldFeedback('notes')}
               </fieldset>
 
-              <fieldset>
-                <legend>Contact Email</legend>
-                <p>
-                  <strong>Current value:</strong> {formatOptional(activeGuest.contactEmail)}
-                </p>
-                {editingField === 'contactEmail' ? (
-                  <div className="form-stack">
-                    <label>
-                      Contact email
-                      <input
-                        type="email"
-                        value={contactEmailDraft}
-                        onChange={(event) => setContactEmailDraft(event.target.value)}
-                        placeholder="name@email.com"
-                        autoComplete="email"
-                      />
-                    </label>
-                    <div className="cta-row">
-                      <button type="button" className="button-secondary" onClick={cancelEditor}>
-                        <Icon name="close" className="button-icon" /> Cancel
-                      </button>
-                      <button
-                        type="button"
-                        className="button-primary"
-                        onClick={onConfirmContactEmail}
-                        disabled={isSavingField}
-                      >
-                        <Icon name="check" className="button-icon" /> Confirm
-                      </button>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="cta-row">
-                    <button
-                      type="button"
-                      className="button-secondary edit-action-button"
-                      onClick={() => openEditor('contactEmail')}
-                      disabled={!canEditRsvpDetails}
-                    >
-                      <Icon name="edit" className="button-icon" /> Edit
-                    </button>
-                  </div>
-                )}
-                {!canEditRsvpDetails ? <p className="small-note">Set attendance first to edit this field.</p> : null}
-                {renderFieldFeedback('contactEmail')}
-              </fieldset>
-
-              <fieldset>
-                <legend>Contact Phone</legend>
-                <p>
-                  <strong>Current value:</strong> {formatOptional(activeGuest.contactPhone)}
-                </p>
-                {editingField === 'contactPhone' ? (
-                  <div className="form-stack">
-                    <label>
-                      Contact phone
-                      <input
-                        type="tel"
-                        value={contactPhoneDraft}
-                        onChange={(event) => setContactPhoneDraft(event.target.value)}
-                        placeholder="+65 ..."
-                        autoComplete="tel"
-                      />
-                    </label>
-                    <div className="cta-row">
-                      <button type="button" className="button-secondary" onClick={cancelEditor}>
-                        <Icon name="close" className="button-icon" /> Cancel
-                      </button>
-                      <button
-                        type="button"
-                        className="button-primary"
-                        onClick={onConfirmContactPhone}
-                        disabled={isSavingField}
-                      >
-                        <Icon name="check" className="button-icon" /> Confirm
-                      </button>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="cta-row">
-                    <button
-                      type="button"
-                      className="button-secondary edit-action-button"
-                      onClick={() => openEditor('contactPhone')}
-                      disabled={!canEditRsvpDetails}
-                    >
-                      <Icon name="edit" className="button-icon" /> Edit
-                    </button>
-                  </div>
-                )}
-                {!canEditRsvpDetails ? <p className="small-note">Set attendance first to edit this field.</p> : null}
-                {renderFieldFeedback('contactPhone')}
-              </fieldset>
             </div>
           </section>
 
@@ -1081,12 +890,7 @@ export default function DashboardPage() {
                 Once you choose &quot;Attending,&quot; you can add or update loved ones here.
               </p>
             ) : null}
-            {isAttending && (!activeGuest.canAddCompanions || maxCompanions < 1) ? (
-              <p className="small-note">
-                Your invitation is reserved for you, so no additional loved ones are needed here.
-              </p>
-            ) : null}
-            {isAttending && activeGuest.canAddCompanions && maxCompanions > 0 ? (
+            {isAttending ? (
               <>
                 <p className="small-note">
                   You can include up to {maxCompanions} loved one(s). Currently added: {guestCompanions.length}.
@@ -1323,9 +1127,6 @@ export default function DashboardPage() {
               <span>Helpful Links</span>
             </h2>
             <div className="cta-row">
-              <Link href="/rsvp" className="button-secondary">
-                <Icon name="edit_square" className="button-icon" /> Full RSVP Flow
-              </Link>
               <Link href="/#schedule" className="button-secondary">
                 <Icon name="event_note" className="button-icon" /> Event Details
               </Link>

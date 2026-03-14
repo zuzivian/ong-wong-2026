@@ -14,82 +14,34 @@ type GuestDraft = {
   rsvpStatus: RsvpStatus;
   dietaryNotes: string;
   notes: string;
-  contactEmail: string;
-  contactPhone: string;
-  canAddCompanions: boolean;
-  maxCompanions: string;
   companionsText: string;
 };
 
 type ImportDraft = {
   firstName: string;
   lastName: string;
-  contactEmail?: string;
-  contactPhone?: string;
 };
 
-type InvitationWizardDraft = {
-  firstName: string;
-  lastName: string;
-  contactEmail: string;
-  contactPhone: string;
-  canAddCompanions: boolean;
-  maxCompanions: string;
-};
-
-type CreatedInvitation = {
-  firstName: string;
-  lastName: string;
-  inviteCode: string;
-  qrToken: string;
-  contactEmail?: string;
-  contactPhone?: string;
-  canAddCompanions: boolean;
-  maxCompanions: string;
-  rsvpUrl: string;
-};
-
-type DashboardTab = 'guests' | 'invite' | 'bulk' | 'messages';
+type DashboardTab = 'guests' | 'bulk' | 'messages';
 
 const DASHBOARD_TABS: Array<{ id: DashboardTab; label: string; icon: string }> = [
   { id: 'guests', label: 'Guest list', icon: 'groups' },
-  { id: 'invite', label: 'New invitation', icon: 'person_add' },
-  { id: 'bulk', label: 'Bulk and import', icon: 'playlist_add_check' },
+  { id: 'bulk', label: 'Add Guests', icon: 'playlist_add_check' },
   { id: 'messages', label: 'Messages', icon: 'mail' },
 ];
 
 const DASHBOARD_TAB_SUMMARIES: Record<DashboardTab, string> = {
   guests: 'Search, filter, edit, and export live guest records.',
-  invite: 'Create a guest invitation from the dashboard with an auto-generated invite code, QR token, and RSVP link.',
   bulk: 'Run RSVP bulk actions and import batches of guests via CSV.',
   messages: 'Review incoming guest questions and update message statuses.',
 };
 
 const IDENTIFIER_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-const DEFAULT_MAX_COMPANIONS = '5';
-const INITIAL_INVITATION_DRAFT: InvitationWizardDraft = {
-  firstName: '',
-  lastName: '',
-  contactEmail: '',
-  contactPhone: '',
-  canAddCompanions: true,
-  maxCompanions: DEFAULT_MAX_COMPANIONS,
-};
 
 const STATUS_ORDER: Record<RsvpStatus, number> = {
   attending: 0,
   declining: 1,
   pending: 2,
-};
-
-const WEDDING_INVITATION_DETAILS = {
-  couple: 'Samuel & Natasha',
-  date: 'Saturday, 15 August 2026',
-  time: '10:00 AM',
-  venue: 'The Singapore Thomson Road Baptist Church',
-  address: '45 Thomson Road, Singapore 307584',
-  attire: 'Formal',
-  receptionNote: 'Lunch reception to follow in the church hall.',
 };
 
 function formatDate(ts: { toDate(): Date } | undefined): string {
@@ -138,90 +90,6 @@ async function copyTextToClipboard(text: string): Promise<void> {
   }
 }
 
-function buildInvitationRecord(input: Omit<CreatedInvitation, 'rsvpUrl'>): CreatedInvitation {
-  return {
-    ...input,
-    rsvpUrl: buildRsvpUrl(input.qrToken),
-  };
-}
-
-function buildInvitationRecordFromGuest(guest: Guest): CreatedInvitation {
-  return buildInvitationRecord({
-    firstName: guest.firstName,
-    lastName: guest.lastName,
-    inviteCode: guest.inviteCode,
-    qrToken: guest.qrToken,
-    contactEmail: guest.contactEmail ?? undefined,
-    contactPhone: guest.contactPhone ?? undefined,
-    canAddCompanions: guest.canAddCompanions,
-    maxCompanions: guest.maxCompanions.toString(),
-  });
-}
-
-function buildInvitationMessage(invitation: CreatedInvitation): string {
-  const guestName = `${invitation.firstName} ${invitation.lastName}`.trim();
-  const companionLine = invitation.canAddCompanions
-    ? `Your invitation allows up to ${invitation.maxCompanions} companion(s).`
-    : 'This invitation is for you only.';
-
-  return [
-    `Dear ${guestName},`,
-    '',
-    `With joy, we invite you to celebrate the wedding of ${WEDDING_INVITATION_DETAILS.couple}.`,
-    '',
-    `Date: ${WEDDING_INVITATION_DETAILS.date}`,
-    `Time: ${WEDDING_INVITATION_DETAILS.time}`,
-    `Venue: ${WEDDING_INVITATION_DETAILS.venue}`,
-    `Address: ${WEDDING_INVITATION_DETAILS.address}`,
-    `Attire: ${WEDDING_INVITATION_DETAILS.attire}`,
-    WEDDING_INVITATION_DETAILS.receptionNote,
-    '',
-    companionLine,
-    `Invite code: ${invitation.inviteCode}`,
-    `RSVP link: ${invitation.rsvpUrl}`,
-    `QR token: ${invitation.qrToken}`,
-    'You can also scan the QR code attached with this message to open your RSVP page directly.',
-    '',
-    'We look forward to celebrating with you.',
-    'Samuel & Natasha',
-  ].join('\n');
-}
-
-async function fetchInvitationQrBlob(qrToken: string): Promise<Blob> {
-  const response = await fetch(`/api/admin/qr?token=${encodeURIComponent(qrToken)}&download=0`, {
-    credentials: 'same-origin',
-  });
-
-  if (!response.ok) {
-    throw new Error('Unable to generate the QR code right now.');
-  }
-
-  return response.blob();
-}
-
-async function copyInvitationQrToClipboard(qrToken: string): Promise<void> {
-  if (typeof navigator === 'undefined' || !navigator.clipboard?.write || typeof ClipboardItem === 'undefined') {
-    throw new Error('Image clipboard copy is not supported in this browser.');
-  }
-
-  const qrBlob = await fetchInvitationQrBlob(qrToken);
-  await navigator.clipboard.write([new ClipboardItem({ [qrBlob.type || 'image/png']: qrBlob })]);
-}
-
-async function copyInvitationBundleToClipboard(invitation: CreatedInvitation, message: string): Promise<void> {
-  if (typeof navigator === 'undefined' || !navigator.clipboard?.write || typeof ClipboardItem === 'undefined') {
-    throw new Error('Combined text and image clipboard copy is not supported in this browser.');
-  }
-
-  const qrBlob = await fetchInvitationQrBlob(invitation.qrToken);
-  await navigator.clipboard.write([
-    new ClipboardItem({
-      'text/plain': new Blob([message], { type: 'text/plain' }),
-      [qrBlob.type || 'image/png']: qrBlob,
-    }),
-  ]);
-}
-
 async function runAdminAction(body: Record<string, unknown>): Promise<void> {
   const response = await fetch('/api/admin/spacetimedb', {
     method: 'POST',
@@ -241,9 +109,8 @@ type SerializedTimestamp = {
   __timestamp_micros_since_unix_epoch__?: string;
 };
 
-type SerializedGuest = Omit<Guest, 'id' | 'maxCompanions' | 'updatedAt'> & {
+type SerializedGuest = Omit<Guest, 'id' | 'updatedAt'> & {
   id: string;
-  maxCompanions: string;
   updatedAt: SerializedTimestamp;
 };
 
@@ -303,7 +170,6 @@ function parseGuest(row: SerializedGuest): Guest {
   return {
     ...row,
     id: BigInt(row.id),
-    maxCompanions: BigInt(row.maxCompanions),
     updatedAt: parseTimestamp(row.updatedAt),
   };
 }
@@ -393,28 +259,6 @@ function generateInviteCode(firstName: string, lastName: string, existingInviteC
   throw new Error('Unable to generate a unique invite code right now.');
 }
 
-function generateQrToken(inviteCode: string, existingQrTokens: Set<string>): string {
-  const normalizedInviteCode = inviteCode.trim().toLowerCase();
-
-  for (let attempt = 0; attempt < 12; attempt += 1) {
-    const candidate = `${normalizedInviteCode}-${createRandomIdentifier(10).toLowerCase()}`;
-    if (!existingQrTokens.has(candidate)) {
-      return candidate;
-    }
-  }
-
-  throw new Error('Unable to generate a unique QR token right now.');
-}
-
-function isIdentifierConflictError(error: unknown): boolean {
-  if (!(error instanceof Error)) {
-    return false;
-  }
-
-  const message = error.message.toLowerCase();
-  return message.includes('already exists') || message.includes('unique') || message.includes('constraint');
-}
-
 function parseCompanionsText(text: string): Array<{ name: string; relationship: string | undefined; dietaryNotes: string | undefined }> {
   return text
     .split('\n')
@@ -502,9 +346,9 @@ function parseImportCsv(csv: string): { rows: ImportDraft[]; errors: string[] } 
   const [firstRow, ...remainingRows] = lines;
   const normalizedFirstRow = firstRow.map(normalizeImportHeader);
   const looksLikeHeader = normalizedFirstRow.some((header) =>
-    ['firstname', 'lastname', 'contactemail', 'email', 'contactphone', 'phone'].includes(header)
+    ['firstname', 'lastname'].includes(header)
   );
-  const headers = looksLikeHeader ? normalizedFirstRow : ['firstname', 'lastname', 'contactemail', 'contactphone'];
+  const headers = looksLikeHeader ? normalizedFirstRow : ['firstname', 'lastname'];
   const dataRows = looksLikeHeader ? remainingRows : lines;
   const indexOf = (...names: string[]) => headers.findIndex((header) => names.includes(header));
 
@@ -526,8 +370,6 @@ function parseImportCsv(csv: string): { rows: ImportDraft[]; errors: string[] } 
 
     const firstName = read('firstname');
     const lastName = read('lastname');
-    const contactEmail = read('contactemail', 'email') || undefined;
-    const contactPhone = read('contactphone', 'phone') || undefined;
 
     if (!firstName || !lastName) {
       errors.push(`Row ${rowNo}: firstName and lastName are required.`);
@@ -537,8 +379,6 @@ function parseImportCsv(csv: string): { rows: ImportDraft[]; errors: string[] } 
     output.push({
       firstName,
       lastName,
-      contactEmail,
-      contactPhone,
     });
   });
 
@@ -579,9 +419,6 @@ export default function AdminGuestsPage() {
   const [messageNotice, setMessageNotice] = useState('');
   const [actionError, setActionError] = useState('');
   const [activeTab, setActiveTab] = useState<DashboardTab>('guests');
-  const [inviteDraft, setInviteDraft] = useState<InvitationWizardDraft>(INITIAL_INVITATION_DRAFT);
-  const [createdInvitation, setCreatedInvitation] = useState<CreatedInvitation | null>(null);
-  const [shareAction, setShareAction] = useState<'text' | 'qr' | 'bundle' | null>(null);
 
   const refreshAdminSnapshot = async () => {
     const snapshot = await fetchAdminSnapshot();
@@ -675,9 +512,6 @@ export default function AdminGuestsPage() {
       const searchable = [
         `${guest.firstName} ${guest.lastName}`,
         guest.inviteCode,
-        guest.qrToken,
-        guest.contactEmail ?? '',
-        guest.contactPhone ?? '',
       ]
         .join(' ')
         .toLowerCase();
@@ -740,7 +574,6 @@ export default function AdminGuestsPage() {
 
     return {
       invited: guests.length,
-      responded: attending + declining,
       attending,
       declining,
       pending,
@@ -770,11 +603,6 @@ export default function AdminGuestsPage() {
 
   const parsedImport = useMemo(() => parseImportCsv(csvInput), [csvInput]);
   const existingInviteCodes = useMemo(() => new Set(guests.map((guest) => guest.inviteCode)), [guests]);
-  const existingQrTokens = useMemo(() => new Set(guests.map((guest) => guest.qrToken)), [guests]);
-  const invitationMessage = useMemo(
-    () => (createdInvitation ? buildInvitationMessage(createdInvitation) : ''),
-    [createdInvitation]
-  );
 
   const selectedRows = useMemo(() => {
     const selected = new Set(selectedGuestIds);
@@ -804,10 +632,6 @@ export default function AdminGuestsPage() {
       rsvpStatus: (guest.rsvpStatus as RsvpStatus) ?? 'pending',
       dietaryNotes: response?.dietaryNotes ?? '',
       notes: response?.notes ?? '',
-      contactEmail: guest.contactEmail ?? '',
-      contactPhone: guest.contactPhone ?? '',
-      canAddCompanions: guest.canAddCompanions,
-      maxCompanions: guest.maxCompanions.toString(),
       companionsText: companionsToText(guestCompanions),
     });
   };
@@ -816,35 +640,10 @@ export default function AdminGuestsPage() {
     setDraft((prev) => (prev ? { ...prev, [key]: value } : prev));
   };
 
-  const updateInviteDraft = <K extends keyof InvitationWizardDraft>(key: K, value: InvitationWizardDraft[K]) => {
-    setInviteDraft((prev) => ({ ...prev, [key]: value }));
-  };
-
-  const resetInvitationWizard = () => {
-    setInviteDraft(INITIAL_INVITATION_DRAFT);
-  };
-
-  const validateInvitationDraft = (): string | null => {
-    if (!inviteDraft.firstName.trim() || !inviteDraft.lastName.trim()) {
-      return 'First name and last name are required.';
-    }
-
-    if (!/^\d+$/.test(inviteDraft.maxCompanions)) {
-      return 'Max companions must be a whole number 0 or above.';
-    }
-
-    return null;
-  };
-
   const saveInlineEdit = async () => {
     clearMessages();
     if (!draft || editingGuestId === null) {
       setActionError('Guest details are not ready yet.');
-      return;
-    }
-
-    if (!/^\d+$/.test(draft.maxCompanions)) {
-      setActionError('Max companions must be a whole number 0 or above.');
       return;
     }
 
@@ -855,10 +654,6 @@ export default function AdminGuestsPage() {
         rsvpStatus: draft.rsvpStatus,
         dietaryNotes: draft.dietaryNotes || undefined,
         notes: draft.notes || undefined,
-        contactEmail: draft.contactEmail || undefined,
-        contactPhone: draft.contactPhone || undefined,
-        canAddCompanions: draft.canAddCompanions,
-        maxCompanions: draft.maxCompanions,
       });
 
       await runAdminAction({
@@ -931,25 +726,16 @@ export default function AdminGuestsPage() {
 
     try {
       const inviteCodes = new Set(existingInviteCodes);
-      const qrTokens = new Set(existingQrTokens);
 
       for (const row of parsedImport.rows) {
         const inviteCode = generateInviteCode(row.firstName, row.lastName, inviteCodes);
         inviteCodes.add(inviteCode);
-
-        const qrToken = generateQrToken(inviteCode, qrTokens);
-        qrTokens.add(qrToken);
 
         await runAdminAction({
           action: 'upsertGuest',
           firstName: row.firstName,
           lastName: row.lastName,
           inviteCode,
-          qrToken,
-          canAddCompanions: true,
-          maxCompanions: DEFAULT_MAX_COMPANIONS,
-          contactEmail: row.contactEmail,
-          contactPhone: row.contactPhone,
         });
       }
       await refreshAdminSnapshot();
@@ -958,119 +744,6 @@ export default function AdminGuestsPage() {
     } catch (error) {
       setActionError(error instanceof Error ? error.message : 'Guest import failed.');
     }
-  };
-
-  const createInvitation = async () => {
-    clearMessages();
-    const validationError = validateInvitationDraft();
-    if (validationError) {
-      setActionError(validationError);
-      return;
-    }
-
-    const firstName = inviteDraft.firstName.trim();
-    const lastName = inviteDraft.lastName.trim();
-    const contactEmail = inviteDraft.contactEmail.trim() || undefined;
-    const contactPhone = inviteDraft.contactPhone.trim() || undefined;
-    const canAddCompanions = inviteDraft.canAddCompanions;
-    const maxCompanions = canAddCompanions ? BigInt(inviteDraft.maxCompanions || '0') : 0n;
-
-    const inviteCodes = new Set(existingInviteCodes);
-    const qrTokens = new Set(existingQrTokens);
-
-    for (let attempt = 0; attempt < 5; attempt += 1) {
-      const inviteCode = generateInviteCode(firstName, lastName, inviteCodes);
-      inviteCodes.add(inviteCode);
-
-      const qrToken = generateQrToken(inviteCode, qrTokens);
-      qrTokens.add(qrToken);
-
-      try {
-        await runAdminAction({
-          action: 'upsertGuest',
-          firstName,
-          lastName,
-          inviteCode,
-          qrToken,
-          canAddCompanions,
-          maxCompanions: maxCompanions.toString(),
-          contactEmail,
-          contactPhone,
-        });
-        await refreshAdminSnapshot();
-
-        setCreatedInvitation(buildInvitationRecord({
-          firstName,
-          lastName,
-          inviteCode,
-          qrToken,
-          contactEmail,
-          contactPhone,
-          canAddCompanions,
-          maxCompanions: maxCompanions.toString(),
-        }));
-        setMessageNotice(`Created invitation for ${firstName} ${lastName}.`);
-        resetInvitationWizard();
-        return;
-      } catch (error) {
-        if (attempt < 4 && isIdentifierConflictError(error)) {
-          continue;
-        }
-        setActionError(error instanceof Error ? error.message : 'Unable to create the invitation.');
-        return;
-      }
-    }
-
-    setActionError('Unable to generate a unique invite code and QR token. Please try again.');
-  };
-
-  const regenerateSelectedQr = async () => {
-    clearMessages();
-    if (selectedRows.length === 0) {
-      setActionError('Select at least one guest first.');
-      return;
-    }
-
-    try {
-      for (const guest of selectedRows) {
-        await runAdminAction({
-          action: 'regenerateGuestQrToken',
-          guestId: guest.id.toString(),
-        });
-      }
-      await refreshAdminSnapshot();
-      setMessageNotice(`Regenerated QR token(s) for ${selectedRows.length} guest(s).`);
-    } catch (error) {
-      setActionError(error instanceof Error ? error.message : 'Unable to regenerate QR token(s).');
-    }
-  };
-
-  const downloadSelectedQr = () => {
-    clearMessages();
-    if (selectedRows.length === 0) {
-      setActionError('Select at least one guest first.');
-      return;
-    }
-    for (const guest of selectedRows) {
-      window.open(`/api/admin/qr?token=${encodeURIComponent(guest.qrToken)}`, '_blank', 'noopener,noreferrer');
-    }
-  };
-
-  const copyInviteLink = async (guest: Pick<Guest, 'firstName' | 'lastName' | 'qrToken'>) => {
-    clearMessages();
-    try {
-      await copyTextToClipboard(buildRsvpUrl(guest.qrToken));
-      setMessageNotice(`Invite link copied for ${guest.firstName} ${guest.lastName}.`);
-    } catch (error) {
-      setActionError(error instanceof Error ? error.message : 'Unable to copy invite link.');
-    }
-  };
-
-  const openInvitationSharePanel = (guest: Guest) => {
-    clearMessages();
-    setCreatedInvitation(buildInvitationRecordFromGuest(guest));
-    setActiveTab('invite');
-    setMessageNotice(`Prepared invitation message for ${guest.firstName} ${guest.lastName}.`);
   };
 
   const deleteGuest = async (guest: Guest) => {
@@ -1106,57 +779,6 @@ export default function AdminGuestsPage() {
     }
   };
 
-  const copyInvitationText = async () => {
-    if (!createdInvitation) {
-      return;
-    }
-
-    clearMessages();
-    setShareAction('text');
-    try {
-      await copyTextToClipboard(invitationMessage);
-      setMessageNotice('Invitation text copied. Paste it into Telegram or WhatsApp.');
-    } catch (error) {
-      setActionError(error instanceof Error ? error.message : 'Unable to copy invitation text.');
-    } finally {
-      setShareAction(null);
-    }
-  };
-
-  const copyInvitationQr = async () => {
-    if (!createdInvitation) {
-      return;
-    }
-
-    clearMessages();
-    setShareAction('qr');
-    try {
-      await copyInvitationQrToClipboard(createdInvitation.qrToken);
-      setMessageNotice('QR image copied. You can paste it into Telegram or WhatsApp.');
-    } catch (error) {
-      setActionError(error instanceof Error ? error.message : 'Unable to copy the QR image.');
-    } finally {
-      setShareAction(null);
-    }
-  };
-
-  const copyInvitationBundle = async () => {
-    if (!createdInvitation) {
-      return;
-    }
-
-    clearMessages();
-    setShareAction('bundle');
-    try {
-      await copyInvitationBundleToClipboard(createdInvitation, invitationMessage);
-      setMessageNotice('Invitation text and QR copied together.');
-    } catch (error) {
-      setActionError(error instanceof Error ? error.message : 'Unable to copy the invitation package.');
-    } finally {
-      setShareAction(null);
-    }
-  };
-
   const updateMessageStatus = async (messageId: bigint, status: MessageStatus) => {
     clearMessages();
     try {
@@ -1179,20 +801,19 @@ export default function AdminGuestsPage() {
           <Icon name="groups" className="heading-icon" />
           <span>Guest Operations Dashboard</span>
         </h1>
-        <p>Manage RSVPs, guest records, QR access, and incoming guest messages.</p>
+        <p>Manage RSVPs, guest records, and incoming guest messages.</p>
       </section>
 
       <section className="card">
         <div
           style={{
             display: 'grid',
-            gridTemplateColumns: 'repeat(8, minmax(0, 1fr))',
+            gridTemplateColumns: 'repeat(7, minmax(0, 1fr))',
             gap: '0.9rem',
             textAlign: 'center',
           }}
         >
           <StatCell label="Invited" value={stats.invited} />
-          <StatCell label="Responded" value={stats.responded} />
           <StatCell label="Attending" value={stats.attending} />
           <StatCell label="Declining" value={stats.declining} />
           <StatCell label="Pending" value={stats.pending} />
@@ -1232,7 +853,7 @@ export default function AdminGuestsPage() {
             <input
               value={search}
               onChange={(event) => setSearch(event.target.value)}
-              placeholder="Name, invite code, QR, phone, email"
+              placeholder="Name, invite code"
             />
           </label>
           <label>
@@ -1280,189 +901,6 @@ export default function AdminGuestsPage() {
       </section>
       ) : null}
 
-      {activeTab === 'invite' ? (
-      <section className="card">
-        <h2 className="heading-with-icon" style={{ marginBottom: '0.2rem' }}>
-          <Icon name="person_add" className="heading-icon" />
-          <span>Add Guest</span>
-        </h2>
-        <p className="small-note" style={{ marginTop: 0 }}>
-          Create a guest invitation directly from the admin dashboard. Invite code, QR token, and RSVP link are generated automatically. New guests default to a maximum of 5 companions.
-        </p>
-
-        <div style={{ display: 'grid', gap: '0.75rem', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))' }}>
-          <label>
-            First name
-            <input
-              value={inviteDraft.firstName}
-              onChange={(event) => updateInviteDraft('firstName', event.target.value)}
-              placeholder="Natasha"
-            />
-          </label>
-          <label>
-            Last name
-            <input
-              value={inviteDraft.lastName}
-              onChange={(event) => updateInviteDraft('lastName', event.target.value)}
-              placeholder="Wong"
-            />
-          </label>
-          <label>
-            Contact email
-            <input
-              value={inviteDraft.contactEmail}
-              onChange={(event) => updateInviteDraft('contactEmail', event.target.value)}
-              placeholder="guest@example.com"
-            />
-          </label>
-          <label>
-            Contact phone
-            <input
-              value={inviteDraft.contactPhone}
-              onChange={(event) => updateInviteDraft('contactPhone', event.target.value)}
-              placeholder="+65 ..."
-            />
-          </label>
-        </div>
-
-        <div
-          style={{
-            marginTop: '0.9rem',
-            border: '1px solid var(--line)',
-            borderRadius: '0.65rem',
-            padding: '0.95rem 1rem',
-            background: 'rgba(255, 255, 255, 0.52)',
-          }}
-        >
-          <p className="detail-inline">System generated access</p>
-          <p className="small-note" style={{ marginTop: '0.25rem' }}>
-            The dashboard will create a unique invite code and QR token on submit. Companion access is enabled by default with a limit of {inviteDraft.maxCompanions}.
-          </p>
-        </div>
-
-        <div className="cta-row" style={{ justifyContent: 'flex-end' }}>
-          <button type="button" className="button-primary" onClick={createInvitation}>
-            <Icon name="qr_code_2" className="button-icon" /> Submit
-          </button>
-        </div>
-
-        {createdInvitation ? (
-        <div
-          style={{
-            marginTop: '0.6rem',
-            border: '1px solid color-mix(in srgb, var(--accent) 44%, var(--line))',
-            borderRadius: '0.75rem',
-            padding: '1rem',
-            background: 'linear-gradient(155deg, rgba(255,255,255,0.96), rgba(244,233,216,0.95))',
-            display: 'grid',
-            gap: '1rem',
-            gridTemplateColumns: 'minmax(0, 1.3fr) minmax(220px, 320px)',
-            alignItems: 'start',
-          }}
-        >
-          <div style={{ display: 'grid', gap: '0.55rem' }}>
-            <h3 style={{ margin: 0 }}>Invitation ready</h3>
-            <p className="small-note">
-              {createdInvitation.firstName} {createdInvitation.lastName} can now unlock the RSVP flow with the generated token or QR code below.
-            </p>
-            <div style={{ display: 'grid', gap: '0.55rem', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))' }}>
-              <div>
-                <p className="eyebrow">Invite Code</p>
-                <p className="detail-strong">{createdInvitation.inviteCode}</p>
-              </div>
-              <div>
-                <p className="eyebrow">QR Token</p>
-                <p className="detail-strong" style={{ wordBreak: 'break-word' }}>{createdInvitation.qrToken}</p>
-              </div>
-              <div>
-                <p className="eyebrow">Contact</p>
-                <p className="small-note">
-                  {createdInvitation.contactPhone || createdInvitation.contactEmail || 'No contact saved'}
-                </p>
-              </div>
-              <div>
-                <p className="eyebrow">Companions</p>
-                <p className="small-note">
-                  {createdInvitation.canAddCompanions ? `Allowed up to ${createdInvitation.maxCompanions}` : 'No companions allowed'}
-                </p>
-              </div>
-            </div>
-            <label>
-              RSVP link
-              <input value={createdInvitation.rsvpUrl} readOnly />
-            </label>
-            <div className="cta-row" style={{ justifyContent: 'flex-start' }}>
-              <button type="button" className="button-secondary" onClick={() => void copyInvitationText()}>
-                <Icon name="content_copy" className="button-icon" />
-                {shareAction === 'text' ? 'Copying text...' : 'Copy text'}
-              </button>
-              <button type="button" className="button-secondary" onClick={() => void copyInvitationQr()}>
-                <Icon name="image" className="button-icon" />
-                {shareAction === 'qr' ? 'Copying QR...' : 'Copy QR'}
-              </button>
-              <button type="button" className="button-secondary" onClick={() => void copyInvitationBundle()}>
-                <Icon name="forward_to_inbox" className="button-icon" />
-                {shareAction === 'bundle' ? 'Copying package...' : 'Copy text + QR'}
-              </button>
-              <button type="button" className="button-secondary" onClick={() => void copyInviteLink(createdInvitation)}>
-                <Icon name="link" className="button-icon" /> Copy invite link
-              </button>
-              <a href={`/api/admin/qr?token=${encodeURIComponent(createdInvitation.qrToken)}`} className="button-secondary">
-                <Icon name="download" className="button-icon" /> Download QR
-              </a>
-              <a href={createdInvitation.rsvpUrl} target="_blank" rel="noreferrer" className="button-secondary">
-                <Icon name="open_in_new" className="button-icon" /> Open RSVP page
-              </a>
-            </div>
-            <label>
-              Invitation message
-              <textarea
-                rows={14}
-                value={invitationMessage}
-                readOnly
-                style={{
-                  whiteSpace: 'pre-wrap',
-                  fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Consolas, monospace',
-                }}
-              />
-            </label>
-            <p className="small-note">
-              Copy the message text, the QR image, or both together before pasting into Telegram or WhatsApp. If the
-              browser blocks the combined copy, use the separate copy buttons instead.
-            </p>
-          </div>
-
-          <div
-            style={{
-              justifySelf: 'center',
-              width: '100%',
-              maxWidth: '280px',
-              display: 'grid',
-              gap: '0.55rem',
-              justifyItems: 'center',
-            }}
-          >
-            <img
-              src={`/api/admin/qr?token=${encodeURIComponent(createdInvitation.qrToken)}&download=0`}
-              alt={`QR code for ${createdInvitation.firstName} ${createdInvitation.lastName}`}
-              style={{
-                width: '100%',
-                height: 'auto',
-                borderRadius: '0.75rem',
-                border: '1px solid var(--line)',
-                background: '#fff',
-                padding: '0.65rem',
-              }}
-            />
-            <p className="small-note" style={{ textAlign: 'center' }}>
-              QR generated automatically from the invitation token. Scanning it opens the live <code>/rsvp/[token]</code> flow.
-            </p>
-          </div>
-        </div>
-        ) : null}
-      </section>
-      ) : null}
-
       {activeTab === 'bulk' ? (
       <section className="card">
         <h2 className="heading-with-icon" style={{ marginBottom: '0.6rem' }}>
@@ -1471,16 +909,16 @@ export default function AdminGuestsPage() {
         </h2>
         <div style={{ marginTop: '1rem', display: 'grid', gap: '0.5rem' }}>
           <label>
-            CSV import (firstName,lastName,contact email (optional),contact phone (optional))
+            CSV import (firstName,lastName)
             <textarea
               rows={6}
               value={csvInput}
               onChange={(event: ChangeEvent<HTMLTextAreaElement>) => setCsvInput(event.target.value)}
-              placeholder={'firstName,lastName,contact email (optional),contact phone (optional)\nJohn,Doe,john@example.com,+65 9123 4567'}
+              placeholder={'Jane,Doe\nJohn,Doe'}
             />
           </label>
           <p className="small-note" style={{ margin: 0 }}>
-            Each row creates one guest. You can include just `firstName,lastName`, or also add optional email and phone columns. Invite codes and QR tokens are generated automatically, and imported guests default to up to {DEFAULT_MAX_COMPANIONS} companions.
+            Each row creates one guest. Invite codes are generated automatically, and all guests can invite up to 5 companions.
           </p>
           {parsedImport.errors.length > 0 ? (
             <ul className="small-note" style={{ margin: 0 }}>
@@ -1523,12 +961,6 @@ export default function AdminGuestsPage() {
               </label>
               <button type="button" className="button-secondary" onClick={applyBulkStatus}>
                 <Icon name="done_all" className="button-icon" /> Apply to selected ({selectedRows.length})
-              </button>
-              <button type="button" className="button-secondary" onClick={regenerateSelectedQr}>
-                <Icon name="qr_code_2" className="button-icon" /> Regenerate QR for selected
-              </button>
-              <button type="button" className="button-secondary" onClick={downloadSelectedQr}>
-                <Icon name="download" className="button-icon" /> Download selected QR
               </button>
             </div>
 
@@ -1584,9 +1016,6 @@ export default function AdminGuestsPage() {
                             <p className="small-note" style={{ margin: 0 }}>
                               {guest.inviteCode}
                             </p>
-                            <p className="small-note" style={{ margin: 0 }}>
-                              {guest.contactPhone || guest.contactEmail || '—'}
-                            </p>
                           </td>
                           <td>
                             <span className="detail-pill">{guest.rsvpStatus}</span>
@@ -1604,10 +1033,7 @@ export default function AdminGuestsPage() {
                           </td>
                           <td>
                             <p className="small-note" style={{ margin: 0 }}>
-                              {guestCompanions.length} / {guest.maxCompanions.toString()}
-                            </p>
-                            <p className="small-note" style={{ margin: 0 }}>
-                              {guest.canAddCompanions ? 'Allowed' : 'Not allowed'}
+                              {guestCompanions.length} / 5
                             </p>
                           </td>
                           <td>
@@ -1616,32 +1042,6 @@ export default function AdminGuestsPage() {
                           </td>
                           <td className="admin-guest-actions-cell">
                             <div className="admin-guest-action-group">
-                              <a
-                                href={`/api/admin/qr?token=${encodeURIComponent(guest.qrToken)}`}
-                                className="button-secondary admin-guest-action-button"
-                                aria-label={`Download QR for ${guestName}`}
-                                title={`Download QR for ${guestName}`}
-                              >
-                                <Icon name="download" className="button-icon" />
-                              </a>
-                              <button
-                                type="button"
-                                className="button-secondary admin-guest-action-button"
-                                onClick={() => void copyInviteLink(guest)}
-                                aria-label={`Copy invite link for ${guestName}`}
-                                title={`Copy invite link for ${guestName}`}
-                              >
-                                <Icon name="content_copy" className="button-icon" />
-                              </button>
-                              <button
-                                type="button"
-                                className="button-secondary admin-guest-action-button"
-                                onClick={() => openInvitationSharePanel(guest)}
-                                aria-label={`Open invite message for ${guestName}`}
-                                title={`Open invite message for ${guestName}`}
-                              >
-                                <Icon name="mail" className="button-icon" />
-                              </button>
                               <button
                                 type="button"
                                 className="button-secondary admin-guest-action-button"
@@ -1657,22 +1057,16 @@ export default function AdminGuestsPage() {
                                 onClick={async () => {
                                   clearMessages();
                                   try {
-                                    await runAdminAction({
-                                      action: 'regenerateGuestQrToken',
-                                      guestId: guest.id.toString(),
-                                    });
-                                    await refreshAdminSnapshot();
-                                    setMessageNotice(`Regenerated QR token for ${guestName}.`);
+                                    await copyTextToClipboard(buildRsvpUrl(guest.inviteCode));
+                                    setMessageNotice(`Invite link copied for ${guestName}.`);
                                   } catch (error) {
-                                    setActionError(
-                                      error instanceof Error ? error.message : 'Unable to regenerate QR token.'
-                                    );
+                                    setActionError(error instanceof Error ? error.message : 'Unable to copy invite link.');
                                   }
                                 }}
-                                aria-label={`Regenerate QR token for ${guestName}`}
-                                title={`Regenerate QR token for ${guestName}`}
+                                aria-label={`Copy invite link for ${guestName}`}
+                                title={`Copy invite link for ${guestName}`}
                               >
-                                <Icon name="autorenew" className="button-icon" />
+                                <Icon name="content_copy" className="button-icon" />
                               </button>
                               <button
                                 type="button"
@@ -1689,7 +1083,7 @@ export default function AdminGuestsPage() {
                         {isEditing ? (
                           <tr>
                             <td colSpan={7} style={{ padding: '0.8rem', borderBottom: '1px solid var(--line)' }}>
-                              <div style={{ display: 'grid', gap: '0.65rem', gridTemplateColumns: 'repeat(4, 1fr)' }}>
+                              <div style={{ display: 'grid', gap: '0.65rem' }}>
                                 <label>
                                   RSVP Status
                                   <select
@@ -1701,43 +1095,7 @@ export default function AdminGuestsPage() {
                                     <option value="pending">Pending</option>
                                   </select>
                                 </label>
-                                <label>
-                                  Email
-                                  <input
-                                    value={draft.contactEmail}
-                                    onChange={(event) => updateDraft('contactEmail', event.target.value)}
-                                  />
-                                </label>
-                                <label>
-                                  Phone
-                                  <input
-                                    value={draft.contactPhone}
-                                    onChange={(event) => updateDraft('contactPhone', event.target.value)}
-                                  />
-                                </label>
-                                <label>
-                                  Max companions
-                                  <input
-                                    value={draft.maxCompanions}
-                                    onChange={(event) => updateDraft('maxCompanions', event.target.value)}
-                                  />
-                                </label>
                               </div>
-                              <label
-                                style={{
-                                  display: 'inline-flex',
-                                  alignItems: 'center',
-                                  gap: '0.45rem',
-                                  marginTop: '0.65rem',
-                                }}
-                              >
-                                <input
-                                  type="checkbox"
-                                  checked={draft.canAddCompanions}
-                                  onChange={(event) => updateDraft('canAddCompanions', event.target.checked)}
-                                />
-                                <span>Can add companions</span>
-                              </label>
                               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.65rem', marginTop: '0.65rem' }}>
                                 <label>
                                   Dietary notes

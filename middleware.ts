@@ -55,7 +55,7 @@ export async function middleware(request: NextRequest) {
   }
 
   // Admin routes require a separate admin PIN session, independent of guest unlock.
-  if (pathname.startsWith('/admin/')) {
+  if (pathname.startsWith('/admin/') && pathname !== '/admin/login') {
     const isAdmin = await readAdminSession(request.cookies.get(ADMIN_COOKIE_NAME)?.value);
     if (!isAdmin) {
       const redirectUrl = request.nextUrl.clone();

@@ -26,6 +26,13 @@ export const AdminDashboardSnapshot = __t.object("AdminDashboardSnapshot", {
 });
 export type AdminDashboardSnapshot = __Infer<typeof AdminDashboardSnapshot>;
 
+export const AdminIdentity = __t.object("AdminIdentity", {
+  id: __t.u64(),
+  identity: __t.identity(),
+  claimedAt: __t.timestamp(),
+});
+export type AdminIdentity = __Infer<typeof AdminIdentity>;
+
 export const Companion = __t.object("Companion", {
   id: __t.u64(),
   guestId: __t.u64(),
@@ -49,8 +56,6 @@ export const Guest = __t.object("Guest", {
   lastName: __t.string(),
   inviteCode: __t.string(),
   qrToken: __t.string(),
-  canAddCompanions: __t.bool(),
-  maxCompanions: __t.u64(),
   contactEmail: __t.option(__t.string()),
   contactPhone: __t.option(__t.string()),
   rsvpStatus: __t.string(),

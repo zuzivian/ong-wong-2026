@@ -1,8 +1,8 @@
 import Image from "next/image";
-import Link from "next/link";
 import { cookies } from "next/headers";
 import Icon from "@/components/icon";
 import HomeInvitationFocus from "@/components/home-invitation-focus";
+import HomeRsvpCta from "@/components/home-rsvp-cta";
 import HomeUnlockCta from "@/components/home-unlock-cta";
 import { getVariantMeta } from "@/lib/design-variant";
 import { UNLOCK_COOKIE_NAME, readUnlockSession } from "@/lib/invite-unlock";
@@ -178,10 +178,7 @@ export default async function HomePage() {
             <div className="cta-row">
               {isUnlocked ? (
                 <>
-                  <Link href="/rsvp" className="button-primary">
-                    <Icon name="how_to_reg" className="button-icon" /> Submit
-                    RSVP
-                  </Link>
+                  <HomeRsvpCta inviteCode={unlockSession?.inviteCode ?? ''} />
                   <a href="#schedule" className="button-secondary">
                     <Icon name="event_note" className="button-icon" /> Event
                     Details
@@ -268,14 +265,6 @@ export default async function HomePage() {
                     <dd>Refreshments will be served after the ceremony.</dd>
                   </div>
                 </dl>
-                <div className="invitation-card-footer">
-                  <Link
-                    href="/rsvp"
-                    className="button-primary invitation-card-rsvp"
-                  >
-                    <Icon name="how_to_reg" className="button-icon" /> RSVP Now
-                  </Link>
-                </div>
               </article>
             </div>
           </section>

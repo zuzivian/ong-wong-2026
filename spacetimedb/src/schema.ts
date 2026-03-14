@@ -10,8 +10,6 @@ export const Guest = table(
     lastName: t.string(),
     inviteCode: t.string().unique(),
     qrToken: t.string().unique(),
-    canAddCompanions: t.bool(),
-    maxCompanions: t.u64(),
     contactEmail: t.string().optional(),
     contactPhone: t.string().optional(),
     rsvpStatus: t.string(),

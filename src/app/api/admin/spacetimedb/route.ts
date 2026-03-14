@@ -22,8 +22,6 @@ type AdminActionBody =
       notes?: string;
       contactEmail?: string;
       contactPhone?: string;
-      canAddCompanions: boolean;
-      maxCompanions: string;
     }
   | {
       action: 'replaceGuestCompanions';
@@ -45,8 +43,6 @@ type AdminActionBody =
       lastName: string;
       inviteCode: string;
       qrToken?: string;
-      canAddCompanions: boolean;
-      maxCompanions: string;
       contactEmail?: string;
       contactPhone?: string;
     }
@@ -167,8 +163,6 @@ export async function POST(request: NextRequest) {
             notes: body.notes,
             contactEmail: body.contactEmail,
             contactPhone: body.contactPhone,
-            canAddCompanions: body.canAddCompanions,
-            maxCompanions: BigInt(body.maxCompanions),
           });
           return;
         case 'replaceGuestCompanions':
@@ -196,8 +190,6 @@ export async function POST(request: NextRequest) {
             lastName: body.lastName,
             inviteCode: body.inviteCode,
             qrToken: body.qrToken,
-            canAddCompanions: body.canAddCompanions,
-            maxCompanions: BigInt(body.maxCompanions),
             contactEmail: body.contactEmail,
             contactPhone: body.contactPhone,
           });

@@ -18,6 +18,4 @@ export default {
   notes: __t.option(__t.string()),
   contactEmail: __t.option(__t.string()),
   contactPhone: __t.option(__t.string()),
-  canAddCompanions: __t.bool(),
-  maxCompanions: __t.u64(),
 };

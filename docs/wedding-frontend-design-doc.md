@@ -44,7 +44,7 @@ Wedding date: **15 August 2026**
 - RSVP access: **QR-first**
 - Fallback access: **first name + last name + invite code**
 - RSVP depth: attendance + dietary + optional contact details + companion details
-- Companion policy: configurable per guest (`canAddCompanions`, `maxCompanions`)
+- Companion policy: all guests can invite up to 5 companions
 - Dashboard: view/edit RSVP + free-text message form
 - Guest messaging copy: "We'll respond as soon as possible"
 - FAQ tone: formal
@@ -114,7 +114,7 @@ Implemented entities:
 
 - `Guest`
   - `id`, `firstName`, `lastName`, `inviteCode`, `qrToken`
-  - `canAddCompanions`, `maxCompanions`
+  - All guests can invite up to 5 companions
   - `contactEmail?`, `contactPhone?`
   - `rsvpStatus`, `updatedAt`
 - `RsvpResponse`

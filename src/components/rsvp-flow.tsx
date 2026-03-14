@@ -15,7 +15,6 @@ import {
 
 type Attendance = 'attending' | 'declining' | '';
 type DietaryMode = 'none' | 'add' | '';
-type ContactMode = 'skip' | 'add' | '';
 type VerificationState = 'idle' | 'verifying' | 'verified' | 'failed';
 
 type Companion = {
@@ -55,15 +54,11 @@ const STEP_META = [
     guidance: 'Share any dietary needs so we can care for you well.',
   },
   {
-    title: 'Step 4: Contact Details',
-    guidance: 'Add contact details if you would like wedding updates from us.',
-  },
-  {
-    title: 'Step 5: Add Loved Ones',
+    title: 'Step 4: Add Loved Ones',
     guidance: 'Add loved ones if your invitation includes them.',
   },
   {
-    title: 'Step 6: Review and Submit',
+    title: 'Step 5: Review and Submit',
     guidance: 'Take one final look, then send your RSVP.',
   },
 ] as const;
@@ -156,10 +151,6 @@ export default function RsvpFlow({ initialToken }: RsvpFlowProps) {
   const [dietaryNotes, setDietaryNotes] = useState('');
   const [dietaryOptionsSelected, setDietaryOptionsSelected] = useState<string[]>([]);
 
-  const [contactMode, setContactMode] = useState<ContactMode>('');
-  const [contactEmail, setContactEmail] = useState('');
-  const [contactPhone, setContactPhone] = useState('');
-
   const [companions, setCompanions] = useState<Companion[]>([]);
   const [companionName, setCompanionName] = useState('');
   const [companionDietary, setCompanionDietary] = useState('');
@@ -203,8 +194,7 @@ export default function RsvpFlow({ initialToken }: RsvpFlowProps) {
   const detectedGuestByInviteCode = portalState.previewGuest;
   const hasDetectedName = Boolean(detectedGuestByInviteCode);
 
-  const companionAllowed = activeGuest?.canAddCompanions ?? false;
-  const maxCompanions = Number(activeGuest?.maxCompanions ?? 0n);
+  const maxCompanions = 5;
 
   useEffect(() => {
     if (normalizedInitialToken || typeof window === 'undefined') {
@@ -312,15 +302,9 @@ export default function RsvpFlow({ initialToken }: RsvpFlowProps) {
       );
     }
 
-    if (step === 4) {
-      return !isEditingStep || contactEmail.trim().length > 0 || contactPhone.trim().length > 0;
-    }
-
     return true;
   }, [
     attendance,
-    contactEmail,
-    contactPhone,
     dietaryMode,
     dietaryNotes,
     dietaryOptionsSelected.length,
@@ -350,15 +334,6 @@ export default function RsvpFlow({ initialToken }: RsvpFlowProps) {
       setDietaryMode('');
       setDietaryNotes('');
       setDietaryOptionsSelected([]);
-    }
-    if (activeGuest.contactEmail || activeGuest.contactPhone) {
-      setContactMode('add');
-      setContactEmail(activeGuest.contactEmail ?? '');
-      setContactPhone(activeGuest.contactPhone ?? '');
-    } else {
-      setContactMode('skip');
-      setContactEmail('');
-      setContactPhone('');
     }
     setCompanions(
       activeCompanions.map((row) => ({
@@ -400,22 +375,6 @@ export default function RsvpFlow({ initialToken }: RsvpFlowProps) {
     }
 
     if (targetStep === 4) {
-      const defaultEmail = activeGuest?.contactEmail ?? '';
-      const defaultPhone = activeGuest?.contactPhone ?? '';
-      if (defaultEmail || defaultPhone) {
-        setContactMode('add');
-        setContactEmail(defaultEmail);
-        setContactPhone(defaultPhone);
-        return;
-      }
-
-      setContactMode('skip');
-      setContactEmail('');
-      setContactPhone('');
-      return;
-    }
-
-    if (targetStep === 5) {
       setCompanionName('');
       setCompanionDietary('');
     }
@@ -427,9 +386,6 @@ export default function RsvpFlow({ initialToken }: RsvpFlowProps) {
 
     if (step === 3) {
       setDietaryMode('add');
-    }
-    if (step === 4) {
-      setContactMode('add');
     }
     setIsEditingStep(true);
   };
@@ -486,9 +442,6 @@ export default function RsvpFlow({ initialToken }: RsvpFlowProps) {
     dietaryMode?: DietaryMode;
     dietaryNotes?: string;
     dietaryOptionsSelected?: string[];
-    contactMode?: ContactMode;
-    contactEmail?: string;
-    contactPhone?: string;
     companions?: Companion[];
   }) => {
     if (!connection) {
@@ -503,17 +456,14 @@ export default function RsvpFlow({ initialToken }: RsvpFlowProps) {
     const nextDietaryMode = overrides?.dietaryMode ?? dietaryMode;
     const nextDietaryNotes = overrides?.dietaryNotes ?? dietaryNotes;
     const nextDietaryOptions = overrides?.dietaryOptionsSelected ?? dietaryOptionsSelected;
-    const nextContactMode = overrides?.contactMode ?? contactMode;
-    const nextContactEmail = overrides?.contactEmail ?? contactEmail;
-    const nextContactPhone = overrides?.contactPhone ?? contactPhone;
     const nextCompanions = overrides?.companions ?? companions;
 
     await connection.reducers.submitRsvp({
       attendance: nextAttendance === 'attending',
       dietaryNotes: composeDietaryNotes(nextDietaryMode, nextDietaryOptions, nextDietaryNotes),
       notes: undefined,
-      contactEmail: nextContactMode === 'add' ? nextContactEmail.trim() : undefined,
-      contactPhone: nextContactMode === 'add' ? nextContactPhone.trim() : undefined,
+      contactEmail: undefined,
+      contactPhone: undefined,
       companions:
         nextAttendance === 'attending'
           ? nextCompanions.map((companion) => ({
@@ -597,28 +547,22 @@ export default function RsvpFlow({ initialToken }: RsvpFlowProps) {
     }
 
     if (step < totalSteps) {
-      const shouldApplyDefault = !isEditingStep && step !== 5;
+      const shouldApplyDefault = !isEditingStep && step !== 4;
       const nextDietaryMode = shouldApplyDefault && step === 3 ? 'none' : dietaryMode;
       const nextDietaryNotes = shouldApplyDefault && step === 3 ? '' : dietaryNotes;
       const nextDietaryOptions = shouldApplyDefault && step === 3 ? [] : dietaryOptionsSelected;
-      const nextContactMode = shouldApplyDefault && step === 4 ? (activeGuest?.contactEmail || activeGuest?.contactPhone ? 'add' : 'skip') : contactMode;
-      const nextContactEmail = shouldApplyDefault && step === 4 ? (activeGuest?.contactEmail ?? '') : contactEmail;
-      const nextContactPhone = shouldApplyDefault && step === 4 ? (activeGuest?.contactPhone ?? '') : contactPhone;
 
       if (shouldApplyDefault) {
         applyDefaultForStep(step);
       }
 
-      if (step >= 3 && step <= 5) {
+      if (step >= 3 && step <= 4) {
         setIsSavingProgress(true);
         try {
           await persistRsvpDraft({
             dietaryMode: nextDietaryMode,
             dietaryNotes: nextDietaryNotes,
             dietaryOptionsSelected: nextDietaryOptions,
-            contactMode: nextContactMode,
-            contactEmail: nextContactEmail,
-            contactPhone: nextContactPhone,
           });
         } catch (error) {
           setSubmitError(error instanceof Error ? error.message : 'Unable to save your progress.');
@@ -629,7 +573,7 @@ export default function RsvpFlow({ initialToken }: RsvpFlowProps) {
       }
 
       setStep((current) => current + 1);
-      setIsEditingStep(step === 4);
+      setIsEditingStep(false);
       return;
     }
 
@@ -644,8 +588,8 @@ export default function RsvpFlow({ initialToken }: RsvpFlowProps) {
         attendance: attendance === 'attending',
         dietaryNotes: composeDietaryNotes(dietaryMode, dietaryOptionsSelected, dietaryNotes),
         notes: undefined,
-        contactEmail: contactMode === 'add' ? contactEmail.trim() : undefined,
-        contactPhone: contactMode === 'add' ? contactPhone.trim() : undefined,
+        contactEmail: undefined,
+        contactPhone: undefined,
         companions:
           attendance === 'attending'
             ? companions.map((companion) => ({
@@ -675,10 +619,9 @@ export default function RsvpFlow({ initialToken }: RsvpFlowProps) {
   const current = STEP_META[step - 1];
   const showNameEditor = step === 1 && (isEditingStep || (!normalizedInitialToken && !hasDetectedName));
   const hasDefaultPath = step > 1 || Boolean(normalizedInitialToken) || hasDetectedName;
-  const editToggleDisabled = (step === 1 && !normalizedInitialToken && !hasDetectedName) || step === 5;
+  const editToggleDisabled = (step === 1 && !normalizedInitialToken && !hasDetectedName) || step === 4;
   const isVerifying = step === 1 && verificationState === 'verifying';
   const isRibbonNavigationDisabled = isVerifying || isSavingProgress;
-  const attendancePreview = attendance === 'declining' ? 'Respectfully Decline' : 'Joyfully Accept';
   const dietarySummary = useMemo(() => {
     if (dietaryMode === 'none') {
       return 'No dietary restrictions';
@@ -687,11 +630,6 @@ export default function RsvpFlow({ initialToken }: RsvpFlowProps) {
     const composed = composeDietaryNotes(dietaryMode, dietaryOptionsSelected, dietaryNotes);
     return composed ?? 'No dietary restrictions';
   }, [dietaryMode, dietaryNotes, dietaryOptionsSelected]);
-  const contactSummary =
-    contactEmail || contactPhone
-      ? `${contactEmail || 'No email'}, ${contactPhone || 'No phone'}`
-      : 'Not provided';
-
   const editButtonLabel = useMemo(() => {
     if (isEditingStep && hasDefaultPath) {
       if (step === 1) {
@@ -699,12 +637,6 @@ export default function RsvpFlow({ initialToken }: RsvpFlowProps) {
       }
       if (step === 2) {
         return 'Use suggested attendance';
-      }
-      if (step === 3) {
-        return 'Use no restrictions';
-      }
-      if (step === 4) {
-        return 'Use current contact details';
       }
       return 'Use default';
     }
@@ -715,14 +647,11 @@ export default function RsvpFlow({ initialToken }: RsvpFlowProps) {
     if (step === 3) {
       return 'Add dietary notes';
     }
-    if (step === 4) {
-      return 'Edit contact details';
-    }
     return 'Edit';
   }, [hasDefaultPath, isEditingStep, step]);
 
   const primaryButtonLabel = useMemo(() => {
-    if (step === 5) {
+    if (step === 4) {
       return companions.length > 0
         ? `Submit ${companions.length} Loved Ones`
         : 'I am coming alone';
@@ -738,9 +667,6 @@ export default function RsvpFlow({ initialToken }: RsvpFlowProps) {
       if (step === 3) {
         return 'Save Dietary Details';
       }
-      if (step === 4) {
-        return 'Save Contact Details';
-      }
       return 'Save and Continue';
     }
 
@@ -749,9 +675,6 @@ export default function RsvpFlow({ initialToken }: RsvpFlowProps) {
     }
     if (step === 3) {
       return 'No Dietary Restrictions';
-    }
-    if (step === 4) {
-      return 'Keep Contact Details';
     }
     return 'Continue';
   }, [companions.length, isEditingStep, step]);
@@ -777,7 +700,7 @@ export default function RsvpFlow({ initialToken }: RsvpFlowProps) {
         </p>
         <div className="cta-row">
           <Link href="/dashboard" className="button-primary">
-            <Icon name="dashboard" className="button-icon" /> Go to Dashboard
+            <Icon name="how_to_reg" className="button-icon" /> See Your RSVP
           </Link>
           <Link href="/#schedule" className="button-secondary">
             <Icon name="arrow_outward" className="button-icon" /> View Event Details
@@ -901,11 +824,6 @@ export default function RsvpFlow({ initialToken }: RsvpFlowProps) {
           <fieldset>
             <legend>Attendance</legend>
             <p className="small-note">Choose one option to continue.</p>
-            <p className="small-note">
-              Current selection:
-              {' '}
-              <span className="detail-pill">{attendancePreview}</span>
-            </p>
           </fieldset>
         ) : null}
 
@@ -973,108 +891,55 @@ export default function RsvpFlow({ initialToken }: RsvpFlowProps) {
 
         {step === 4 ? (
           <fieldset>
-            <legend>Contact Details</legend>
-            {isEditingStep ? (
-              <>
-                <label>
-                  Email (optional)
-                  <input
-                    type="email"
-                    value={contactEmail}
-                    onChange={(event) => {
-                      setContactMode('add');
-                      setContactEmail(event.target.value);
-                    }}
-                    placeholder="name@email.com"
-                  />
-                </label>
-                <label>
-                  Phone (optional)
-                  <input
-                    value={contactPhone}
-                    onChange={(event) => {
-                      setContactMode('add');
-                      setContactPhone(event.target.value);
-                    }}
-                    placeholder="+65 ..."
-                  />
-                </label>
-              </>
+            <legend>Add loved ones</legend>
+            <label>
+              Loved one full name
+              <input
+                value={companionName}
+                onChange={(event) => setCompanionName(event.target.value)}
+                placeholder="Companion full name"
+              />
+            </label>
+            <label>
+              Dietary requirements (optional)
+              <input
+                value={companionDietary}
+                onChange={(event) => setCompanionDietary(event.target.value)}
+                placeholder="Optional dietary notes"
+              />
+            </label>
+            <button type="button" className="button-secondary" onClick={addCompanion}>
+              <Icon name="person_add" className="button-icon" /> Add loved one
+            </button>
+            <p className="small-note">
+              If no loved ones are added here, we will submit RSVP for you only.
+            </p>
+
+            {companions.length > 0 ? (
+              <div className="companion-stack">
+                {companions.map((companion, index) => (
+                  <article key={`${companion.name}-${companion.dietaryNotes}-${index}`} className="companion-card">
+                    <div className="companion-card-head">
+                      <strong>{companion.name}</strong>
+                      <button
+                        type="button"
+                        className="button-back-small companion-remove"
+                        onClick={() => removeCompanion(index)}
+                      >
+                        Remove
+                      </button>
+                    </div>
+                    <p className="small-note">{companion.dietaryNotes || 'No dietary notes'}</p>
+                  </article>
+                ))}
+              </div>
             ) : (
-              <>
-                <p className="small-note">
-                  Current contact details:
-                  {' '}
-                  <span className="detail-strong">{contactSummary}</span>
-                </p>
-                <p className="small-note">You can keep these details as-is, or update them.</p>
-              </>
+              <p className="small-note">No loved ones added yet.</p>
             )}
           </fieldset>
         ) : null}
 
         {step === 5 ? (
-          <fieldset>
-            <legend>Add loved ones</legend>
-            {companionAllowed ? (
-              <>
-                <p className="small-note">
-                  Your invitation allows up to {maxCompanions} loved one(s). Added so far: {companions.length}.
-                </p>
-                <label>
-                  Loved one full name
-                  <input
-                    value={companionName}
-                    onChange={(event) => setCompanionName(event.target.value)}
-                    placeholder="Companion full name"
-                  />
-                </label>
-                <label>
-                  Dietary requirements (optional)
-                  <input
-                    value={companionDietary}
-                    onChange={(event) => setCompanionDietary(event.target.value)}
-                    placeholder="Optional dietary notes"
-                  />
-                </label>
-                <button type="button" className="button-secondary" onClick={addCompanion}>
-                  <Icon name="person_add" className="button-icon" /> Add loved one
-                </button>
-                <p className="small-note">
-                  If no loved ones are added here, we will submit RSVP for you only.
-                </p>
-
-                {companions.length > 0 ? (
-                  <div className="companion-stack">
-                    {companions.map((companion, index) => (
-                      <article key={`${companion.name}-${companion.dietaryNotes}-${index}`} className="companion-card">
-                        <div className="companion-card-head">
-                          <strong>{companion.name}</strong>
-                          <button
-                            type="button"
-                            className="button-back-small companion-remove"
-                            onClick={() => removeCompanion(index)}
-                          >
-                            Remove
-                          </button>
-                        </div>
-                        <p className="small-note">{companion.dietaryNotes || 'No dietary notes'}</p>
-                      </article>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="small-note">No loved ones added yet.</p>
-                )}
-              </>
-            ) : (
-              <p className="small-note">
-                Companion options are not included with this invitation.
-              </p>
-            )}
-          </fieldset>
-        ) : null}
-
-        {step === 6 ? (
           <fieldset>
             <legend>Review</legend>
             <ul className="review-list">
@@ -1097,14 +962,6 @@ export default function RsvpFlow({ initialToken }: RsvpFlowProps) {
               <li>
                 <strong>Dietary:</strong>{' '}
                 <span className="detail-inline">{dietarySummary}</span>
-              </li>
-              <li>
-                <strong>Contact:</strong>{' '}
-                <span className="detail-inline">
-                  {contactMode === 'skip'
-                    ? 'Not provided'
-                    : `${contactEmail || 'No email'}, ${contactPhone || 'No phone'}`}
-                </span>
               </li>
               <li>
                 <strong>Loved ones added:</strong>{' '}
@@ -1154,7 +1011,7 @@ export default function RsvpFlow({ initialToken }: RsvpFlowProps) {
               </>
             ) : (
               <>
-                {step !== 5 ? (
+                {step !== 4 && !(step === 3 && isEditingStep && hasDefaultPath) ? (
                   <button
                     type="button"
                     className="button-secondary"
@@ -1196,17 +1053,6 @@ export default function RsvpFlow({ initialToken }: RsvpFlowProps) {
               onClick={() => setStep((currentStep) => currentStep - 1)}
             >
               <Icon name="arrow_back" className="button-icon" /> Back
-            </button>
-
-            <button
-              type="button"
-              className="button-secondary"
-              onClick={() => {
-                setStep(2);
-                setIsEditingStep(true);
-              }}
-            >
-              Edit
             </button>
 
             <button

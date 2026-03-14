@@ -37,9 +37,8 @@ export default async function RootLayout({
                 </Link>
                 <nav className="top-nav" aria-label="Primary navigation">
                   <Link href="/">Home</Link>
-                  <Link href="/dashboard">Guest Information</Link>
                   <Link href="/faq">FAQ</Link>
-                  <Link href="/rsvp" className="rsvp-button">RSVP</Link>
+                  <Link href="/dashboard" className="rsvp-button">Your RSVP</Link>
                   <LogoutButton />
                 </nav>
               </div>
