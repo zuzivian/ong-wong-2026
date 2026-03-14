@@ -202,6 +202,16 @@ Current baseline in code: `/admin/guests` is now the live admin operations surfa
 8. **Seed real guest data** — load all invited guests into SpacetimeDB before launch.
 9. **Generate and validate QR codes** — produce per-guest QR tokens and confirm `/rsvp/[token]` unlock flow works end-to-end.
 10. **Deliver remaining admin P0 follow-ups** — bulk QR export and stronger planning/reporting views.
+11. **Add Google Calendar invite link on the invitation card** — add an "Add to Google Calendar" action with the wedding date/time/location prefilled on the unlocked invitation card.
+
+### Production Readiness TODO
+
+12. **Replace in-memory rate limiting** — move unlock/admin auth rate limits off `globalThis` and into a shared backing store suitable for multi-instance/serverless deployments.
+13. **Consolidate guest session data loading** — remove duplicate SpacetimeDB reads across layout, home, nav, and dashboard entry paths by introducing a single shared guest-session summary/data loader.
+14. **Harden admin auth and credential handling** — replace the current bootstrap-marker/shared-secret approach and avoid persisting reusable SpacetimeDB admin credentials on the app filesystem in production.
+15. **Scale the admin data surface** — stop loading the full guest snapshot into the browser on first paint; add pagination, scoped fetches, and server-side filtering/search where possible.
+16. **Refactor large client workflows** — split `/dashboard` and the RSVP flow into smaller hooks/components so state orchestration, reducer calls, and rendering are easier to test and maintain.
+17. **Add CI production gates** — require typecheck, production build, and at least one end-to-end happy-path test for unlock, RSVP, dashboard, and admin login flows before release.
 
 ## 16. Known Bugs and UX Issues
 

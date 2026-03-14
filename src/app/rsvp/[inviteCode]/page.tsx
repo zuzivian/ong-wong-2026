@@ -22,7 +22,7 @@ export default async function RsvpByInviteCodePage({ params }: RsvpByInviteCodeP
   }
 
   if (unlockSession?.inviteCode !== inviteCode) {
-    redirect(`/api/rsvp-unlock?inviteCode=${encodeURIComponent(inviteCode)}`);
+    redirect(`/api/unlock?inviteCode=${encodeURIComponent(inviteCode)}`);
   }
 
   const meta = getVariantMeta();

@@ -6,6 +6,7 @@ import { useSpacetimeDB } from 'spacetimedb/react';
 import Icon from '@/components/icon';
 import { DbConnection } from '@/module_bindings';
 import { loadGuestPortalState, type GuestPortalState } from '@/lib/guest-portal-state';
+import { useIsRsvpClosed } from '@/lib/use-is-rsvp-closed';
 import { normalizeInviteCode } from '@/lib/unlock-client';
 import { RSVP_CUTOFF_AT_MICROS } from '../../../shared/globals';
 
@@ -139,9 +140,7 @@ export default function DashboardPage() {
     [guestCompanions]
   );
 
-  const isRsvpClosed = useMemo(() => {
-    return BigInt(Date.now()) * 1000n > RSVP_CUTOFF_AT_MICROS;
-  }, []);
+  const isRsvpClosed = useIsRsvpClosed();
 
   const attendanceLabel = toAttendanceLabel(activeRsvp?.attendance);
   const canEditRsvpDetails = activeRsvp?.attendance !== undefined;
@@ -259,7 +258,7 @@ export default function DashboardPage() {
   }, [connection, unlockCodeReady, unlockInviteCode]);
 
   useEffect(() => {
-    if (!connection || !unlockCodeReady || !unlockInviteCode || portalLoading || activeGuest || isLookingUp) {
+    if (!connection || !unlockCodeReady || !unlockInviteCode || portalLoading || isLookingUp) {
       return;
     }
 
@@ -293,7 +292,6 @@ export default function DashboardPage() {
         setIsLookingUp(false);
       });
   }, [
-    activeGuest,
     connection,
     detectedGuestByUnlockCode,
     isLookingUp,
@@ -895,7 +893,7 @@ export default function DashboardPage() {
             {isAttending ? (
               <>
                 <p className="small-note">
-                  You can include up to {maxCompanions} loved one(s). Currently added: {guestCompanions.length}.
+                  Currently added: {guestCompanions.length}.
                 </p>
                 {isEditingCompanions ? (
                   <div className="form-stack">

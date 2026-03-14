@@ -12,6 +12,7 @@ import {
   getRequestClientKey,
   resetRateLimit,
 } from '@/lib/request-rate-limit';
+import { normalizeInviteCode } from '@/lib/unlock-client';
 
 export const runtime = 'nodejs';
 
@@ -28,10 +29,6 @@ const UNLOCK_RATE_LIMIT = {
   maxAttempts: 10,
   windowMs: 10 * 60 * 1000,
 } as const;
-
-function normalizeInviteCode(value: string): string {
-  return value.trim().toUpperCase().replace(/[\s-]+/g, '');
-}
 
 async function inviteCodeExistsInGuestTable(inviteCode: string): Promise<boolean> {
   const normalizedCode = normalizeInviteCode(inviteCode);
@@ -57,6 +54,27 @@ function emptyUnlockCookie(response: NextResponse): void {
     path: '/',
     maxAge: 0,
   });
+}
+
+function applyUnlockSessionCookie(response: NextResponse, session: string): void {
+  response.cookies.set({
+    name: UNLOCK_COOKIE_NAME,
+    value: session,
+    httpOnly: true,
+    sameSite: 'lax',
+    secure: process.env.NODE_ENV === 'production',
+    path: '/',
+    maxAge: UNLOCK_SESSION_TTL_SECONDS,
+  });
+}
+
+async function issueUnlockSession(inviteCode: string): Promise<string> {
+  const session = await createUnlockSession(inviteCode);
+  if (!session) {
+    throw new Error('Invite unlock secret is missing. Please contact the hosts.');
+  }
+
+  return session;
 }
 
 export async function POST(request: NextRequest) {
@@ -103,29 +121,66 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const session = await createUnlockSession(inviteCode);
-  if (!session) {
+  let session = '';
+  try {
+    session = await issueUnlockSession(inviteCode);
+  } catch (error) {
     return NextResponse.json(
-      { ok: false, error: 'Invite unlock secret is missing. Please contact the hosts.' },
+      {
+        ok: false,
+        error: error instanceof Error
+          ? error.message
+          : 'Invite unlock secret is missing. Please contact the hosts.',
+      },
       { status: 500 }
     );
   }
 
   const response = NextResponse.json({ ok: true });
-  response.cookies.set({
-    name: UNLOCK_COOKIE_NAME,
-    value: session,
-    httpOnly: true,
-    sameSite: 'lax',
-    secure: process.env.NODE_ENV === 'production',
-    path: '/',
-    maxAge: UNLOCK_SESSION_TTL_SECONDS,
-  });
+  applyUnlockSessionCookie(response, session);
   resetRateLimit('unlock', clientKey);
   return response;
 }
 
 export async function GET(request: NextRequest) {
+  const inviteCode = normalizeInviteCode(request.nextUrl.searchParams.get('inviteCode') ?? '');
+  if (inviteCode) {
+    const clientKey = getRequestClientKey(request);
+    const rateLimit = consumeRateLimit('unlock', clientKey, UNLOCK_RATE_LIMIT);
+    if (!rateLimit.allowed) {
+      return NextResponse.redirect(new URL('/', request.url), {
+        headers: {
+          'Retry-After': String(rateLimit.retryAfterSeconds),
+          'Cache-Control': 'no-store',
+        },
+      });
+    }
+
+    let isInviteCodeValid = false;
+    try {
+      isInviteCodeValid = await inviteCodeExistsInGuestTable(inviteCode);
+    } catch (error) {
+      console.error('[unlock] Failed to validate invite code against guest table:', error);
+      return NextResponse.redirect(new URL('/', request.url));
+    }
+
+    if (!isInviteCodeValid) {
+      return NextResponse.redirect(new URL('/', request.url));
+    }
+
+    try {
+      const session = await issueUnlockSession(inviteCode);
+      const redirectUrl = new URL(`/rsvp/${encodeURIComponent(inviteCode)}`, request.url);
+      const response = NextResponse.redirect(redirectUrl);
+      applyUnlockSessionCookie(response, session);
+      resetRateLimit('unlock', clientKey);
+      return response;
+    } catch (error) {
+      console.error('[unlock] Failed to issue unlock session:', error);
+      return NextResponse.redirect(new URL('/', request.url));
+    }
+  }
+
   const sessionValue = request.cookies.get(UNLOCK_COOKIE_NAME)?.value;
   const session = await readUnlockSession(sessionValue);
 

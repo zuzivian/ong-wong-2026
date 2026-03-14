@@ -8,7 +8,7 @@ import { getVariantMeta } from '@/lib/design-variant';
 import Icon from '@/components/icon';
 import { DbConnection } from '@/module_bindings';
 import { loadGuestPortalState, type GuestPortalState } from '@/lib/guest-portal-state';
-import { RSVP_CUTOFF_AT_MICROS } from '../../shared/globals';
+import { useIsRsvpClosed } from '@/lib/use-is-rsvp-closed';
 import {
   normalizeInviteCode as normalizeUnlockedInviteCode,
   UNLOCKED_INVITE_CODE_STORAGE_KEY,
@@ -165,7 +165,7 @@ export default function RsvpFlow({ initialInviteCode = '' }: RsvpFlowProps) {
   const hydratedGuestId = useRef<bigint | null>(null);
   const unlockRefreshedForInviteCode = useRef<string | null>(null);
   const totalSteps = STEP_META.length;
-  const normalizedInviteCode = lookupInviteCode.trim().toUpperCase();
+  const normalizedInviteCode = normalizeUnlockedInviteCode(lookupInviteCode);
 
   const progressPercent = useMemo(
     () => Math.round((step / totalSteps) * 100),
@@ -175,9 +175,7 @@ export default function RsvpFlow({ initialInviteCode = '' }: RsvpFlowProps) {
   const activeRsvp = portalState.activeRsvp;
   const activeCompanions = portalState.companions;
 
-  const isRsvpClosed = useMemo(() => {
-    return BigInt(Date.now()) * 1000n > RSVP_CUTOFF_AT_MICROS;
-  }, []);
+  const isRsvpClosed = useIsRsvpClosed();
 
   const isNameSatisfied = Boolean(lookupFirstName.trim() && lookupLastName.trim());
   const isInviteCodeSatisfied = Boolean(normalizedInviteCode);
