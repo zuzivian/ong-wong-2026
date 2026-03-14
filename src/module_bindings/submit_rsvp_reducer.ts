@@ -23,4 +23,5 @@ export default {
   get companions() {
     return __t.array(CompanionInput);
   },
+  submitted: __t.bool(),
 };

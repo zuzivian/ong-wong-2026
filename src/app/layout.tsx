@@ -6,12 +6,25 @@ import LogoutButton from '@/components/logout-button';
 import SiteMotion from '@/components/site-motion';
 import SpacetimeAppProvider from '@/components/spacetimedb-app-provider';
 import { UNLOCK_COOKIE_NAME, verifyUnlockSession } from '@/lib/invite-unlock';
+import { withSpacetimeConnection } from '@/lib/spacetimedb-server';
+import { getGuestPortalState } from '@/lib/spacetimedb-procedures';
 import './globals.css';
 
 export const metadata: Metadata = {
   title: 'Samuel and Natasha | Wedding',
   description: 'Wedding website and RSVP for Samuel and Natasha.',
 };
+
+async function isRsvpSubmitted(): Promise<boolean> {
+  try {
+    const portalState = await withSpacetimeConnection((connection) =>
+      getGuestPortalState(connection, {})
+    );
+    return portalState.activeRsvp !== undefined && portalState.activeRsvp.submitted;
+  } catch {
+    return false;
+  }
+}
 
 export default async function RootLayout({
   children,
@@ -21,6 +34,7 @@ export default async function RootLayout({
   const cookieStore = await cookies();
   const unlockCookie = cookieStore.get(UNLOCK_COOKIE_NAME)?.value;
   const isUnlocked = await verifyUnlockSession(unlockCookie);
+  const rsvpSubmitted = isUnlocked ? await isRsvpSubmitted() : false;
 
   return (
     <html lang="en">
@@ -38,7 +52,9 @@ export default async function RootLayout({
                 <nav className="top-nav" aria-label="Primary navigation">
                   <Link href="/">Home</Link>
                   <Link href="/faq">FAQ</Link>
-                  <Link href="/dashboard" className="rsvp-button">Your RSVP</Link>
+                  <Link href="/dashboard" className="rsvp-button">
+                    {rsvpSubmitted ? 'Your RSVP' : 'Submit RSVP'}
+                  </Link>
                   <LogoutButton />
                 </nav>
               </div>

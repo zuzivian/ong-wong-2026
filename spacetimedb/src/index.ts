@@ -101,6 +101,16 @@ function requireAdminAccess(
     return;
   }
 
+  // Allow re-bootstrapping if the correct secret is provided
+  if (adminSecret.trim() === ADMIN_IDENTITY_BOOTSTRAP_MARKER) {
+    ctx.db.admin_identity.id.update({
+      ...configuredAdmin,
+      identity: ctx.sender,
+      claimedAt: ctx.timestamp,
+    });
+    return;
+  }
+
   if (!configuredAdmin.identity.equals(ctx.sender)) {
     throw new SenderError('Unauthorized admin action.');
   }
@@ -174,6 +184,7 @@ function setGuestRsvpStatus(
         attendance,
         dietaryNotes: undefined,
         notes: undefined,
+        submitted: true,
         updatedAt: ctx.timestamp,
       });
     }
@@ -427,6 +438,7 @@ export const submit_rsvp = spacetimedb.reducer(
     contactEmail: t.string().optional(),
     contactPhone: t.string().optional(),
     companions: t.array(CompanionInput),
+    submitted: t.bool(),
   },
   (ctx, payload) => {
     if (isRsvpCutoffReached(ctx)) {
@@ -447,6 +459,7 @@ export const submit_rsvp = spacetimedb.reducer(
         attendance: payload.attendance,
         dietaryNotes: nextDietaryNotes,
         notes: nextNotes,
+        submitted: payload.submitted || existingResponse.submitted,
         updatedAt: ctx.timestamp,
       });
     } else {
@@ -456,6 +469,7 @@ export const submit_rsvp = spacetimedb.reducer(
         attendance: payload.attendance,
         dietaryNotes: nextDietaryNotes,
         notes: nextNotes,
+        submitted: payload.submitted,
         updatedAt: ctx.timestamp,
       });
     }
@@ -612,6 +626,7 @@ export const admin_update_guest_rsvp = spacetimedb.reducer(
           attendance,
           dietaryNotes: normalizedDietary,
           notes: normalizedNotes,
+          submitted: true,
           updatedAt: ctx.timestamp,
         });
       }

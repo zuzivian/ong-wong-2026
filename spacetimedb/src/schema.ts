@@ -27,6 +27,7 @@ export const RsvpResponse = table(
     attendance: t.bool(),
     dietaryNotes: t.string().optional(),
     notes: t.string().optional(),
+    submitted: t.bool(),
     updatedAt: t.timestamp(),
   }
 );

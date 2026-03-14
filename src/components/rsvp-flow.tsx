@@ -472,6 +472,7 @@ export default function RsvpFlow({ initialToken }: RsvpFlowProps) {
               relationship: undefined,
             }))
           : [],
+      submitted: false,
     });
     await refreshPortalState();
   };
@@ -598,6 +599,7 @@ export default function RsvpFlow({ initialToken }: RsvpFlowProps) {
                 relationship: undefined,
               }))
             : [],
+        submitted: true,
       });
       await refreshPortalState();
       setSubmitted(true);

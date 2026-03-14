@@ -21,7 +21,7 @@ export default function HomeRsvpCta({ inviteCode }: { inviteCode: string }) {
     loadGuestPortalState(connection, inviteCode)
       .then((state) => {
         if (!cancelled) {
-          setHasSubmitted(state.activeRsvp !== undefined);
+          setHasSubmitted(state.activeRsvp !== undefined && state.activeRsvp.submitted);
         }
       })
       .catch(() => {

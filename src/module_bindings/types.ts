@@ -111,6 +111,7 @@ export const RsvpResponse = __t.object("RsvpResponse", {
   attendance: __t.bool(),
   dietaryNotes: __t.option(__t.string()),
   notes: __t.option(__t.string()),
+  submitted: __t.bool(),
   updatedAt: __t.timestamp(),
 });
 export type RsvpResponse = __Infer<typeof RsvpResponse>;
