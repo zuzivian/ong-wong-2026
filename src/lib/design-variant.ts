@@ -7,11 +7,11 @@ type VariantMeta = {
 };
 
 const HEIRLOOM_META: VariantMeta = {
-  label: 'Heirloom',
-  heroClass: 'hero-heirloom',
-  stepperClass: 'stepper-heirloom',
-  themeClass: 'theme-heirloom',
-  description: 'Warm ivory and marigold with formal editorial contrast.',
+  label: 'Editorial',
+  heroClass: 'hero-editorial',
+  stepperClass: 'stepper-editorial',
+  themeClass: 'theme-editorial',
+  description: 'Soft editorial minimalism with modern typography and restrained romance.',
 };
 
 export function getVariantMeta(): VariantMeta {

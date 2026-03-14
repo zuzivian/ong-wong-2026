@@ -11,6 +11,17 @@ import {
 
 const CONNECTION_SCHEMA_SALT = 'schema-2026-03-01-v1';
 
+function getClientSpacetimeHost(): string {
+  const configured = process.env.NEXT_PUBLIC_SPACETIMEDB_HOST?.trim();
+  if (configured) {
+    return configured;
+  }
+  if (process.env.NODE_ENV !== 'production') {
+    return 'http://127.0.0.1:3000';
+  }
+  throw new Error('NEXT_PUBLIC_SPACETIMEDB_HOST must be set in production.');
+}
+
 function normalizeToWsUri(input: string): string {
   const parsed = new URL(input);
   if (parsed.protocol === 'https:') {
@@ -31,7 +42,7 @@ function withConnectionSalt(uri: string, salt: string): string {
 }
 
 export default function SpacetimeAppProvider({ children }: PropsWithChildren) {
-  const host = process.env.NEXT_PUBLIC_SPACETIMEDB_HOST ?? 'http://127.0.0.1:3000';
+  const host = getClientSpacetimeHost();
   const databaseName = process.env.NEXT_PUBLIC_SPACETIMEDB_DB_NAME ?? '';
   const wsHost = useMemo(() => withConnectionSalt(normalizeToWsUri(host), CONNECTION_SCHEMA_SALT), [host]);
 
@@ -47,16 +58,20 @@ export default function SpacetimeAppProvider({ children }: PropsWithChildren) {
         .withDatabaseName(databaseName)
         .onConnect((connection, identity) => {
           attachConnectionDebug(connection);
-          console.info('[STDB DEBUG] onConnect', {
-            connectionId: connection.connectionId.toHexString(),
-            identity: identity.toHexString(),
-          });
+          if (process.env.NEXT_PUBLIC_SPACETIMEDB_DEBUG === '1') {
+            console.info('[STDB DEBUG] onConnect', {
+              connectionId: connection.connectionId.toHexString(),
+              identity: identity.toHexString(),
+            });
+          }
         })
         .onDisconnect((ctx, error) => {
-          console.warn('[STDB DEBUG] onDisconnect', {
-            isActive: ctx.isActive,
-            error,
-          });
+          if (process.env.NEXT_PUBLIC_SPACETIMEDB_DEBUG === '1') {
+            console.warn('[STDB DEBUG] onDisconnect', {
+              isActive: ctx.isActive,
+              error,
+            });
+          }
         })
         .onConnectError((_ctx, error) => {
           console.error('Failed to connect to SpacetimeDB:', error);

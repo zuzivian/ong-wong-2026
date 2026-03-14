@@ -158,42 +158,7 @@ function upsertGuestSession(
   });
 }
 
-export const init = spacetimedb.init(ctx => {
-  const seedGuest = (
-    firstName: string,
-    lastName: string,
-    inviteCode: string,
-    qrToken: string,
-    canAddCompanions: boolean,
-    maxCompanions: bigint
-  ) => {
-    const normalizedCode = normalizeInviteCode(inviteCode);
-    if (ctx.db.guest.inviteCode.find(normalizedCode)) {
-      return;
-    }
-
-    ctx.db.guest.insert({
-      id: 0n,
-      firstName,
-      lastName,
-      inviteCode: normalizedCode,
-      qrToken,
-      canAddCompanions,
-      maxCompanions,
-      contactEmail: undefined,
-      contactPhone: undefined,
-      rsvpStatus: RSVP_STATUS_PENDING,
-      updatedAt: ctx.timestamp,
-    });
-  };
-
-  seedGuest('Natasha', 'Wong', 'NW26101', 'nw26-token-101', true, 2n);
-  seedGuest('Samuel', 'Ong', 'SO26102', 'so26-token-102', false, 0n);
-  seedGuest('Mark', 'Wong', 'MW26103', 'mw26-token-103', false, 0n);
-  seedGuest('Regina', 'Wong', 'RW26104', 'rw26-token-104', false, 0n);
-  seedGuest('Nadine', 'Wong', 'NDW26105', 'ndw26-token-105', false, 0n);
-  seedGuest('Nathaniel', 'Wong', 'NAW26106', 'naw26-token-106', false, 0n);
-});
+export const init = spacetimedb.init(() => {});
 
 export const on_connect = spacetimedb.clientConnected(() => {});
 

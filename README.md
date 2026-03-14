@@ -15,24 +15,21 @@ Current version: **0.0.2** (March 1, 2026)
 Implemented routes:
 
 - `/` Home
-- `/unlock` Invite unlock entry
-- `/event-details`
 - `/rsvp`
 - `/rsvp/[token]`
 - `/dashboard`
 - `/faq`
-- `/design-lab` (internal design review)
+- `/admin/login`
 - `/admin/guests` (admin)
 
 Core implemented capabilities:
 
-- Invite unlock gate for non-public routes (signed server cookie, 14-day TTL)
+- Invite unlock gate for non-public routes (signed server cookie, 180-day TTL)
 - QR-first RSVP with fallback lookup (`firstName + lastName + inviteCode`)
 - Multi-step RSVP submission (attendance, dietary, optional contact, companions)
 - Guest dashboard with RSVP summary, companion list, and guest messaging
-- Fixed RSVP cutoff in `shared/globals.ts`
-- 30-day remembered SpacetimeDB session token
-- Theme variants for design comparison (`heirloom`, `botanical`, `chapel`)
+- Admin guest operations dashboard with search, bulk RSVP actions, import, QR tools, and message triage
+- Fixed RSVP cutoff in `shared/globals.ts` (31 May 2026, 11:59 PM Singapore time)
 
 ## Project Structure
 
@@ -82,12 +79,18 @@ Create `.env.local` with:
 ```env
 NEXT_PUBLIC_SPACETIMEDB_HOST=http://127.0.0.1:3000
 NEXT_PUBLIC_SPACETIMEDB_DB_NAME=<your_db_name>
-WEDDING_UNLOCK_SECRET=<set-a-long-random-secret-for-production>
+NEXT_PUBLIC_APP_URL=http://localhost:3000
+NEXT_PUBLIC_SPACETIMEDB_DEBUG=0
+WEDDING_UNLOCK_SECRET=<set-a-long-random-secret>
 ADMIN_PIN=<pin-for-accessing-admin-routes>
 ```
 
-If `NEXT_PUBLIC_SPACETIMEDB_HOST` is omitted, frontend defaults to `http://127.0.0.1:3000`.
-`WEDDING_UNLOCK_SECRET` should be unique per deployment environment.
+Notes:
+
+- `NEXT_PUBLIC_SPACETIMEDB_HOST` defaults to `http://127.0.0.1:3000` only in development.
+- `NEXT_PUBLIC_APP_URL` should be the canonical public site origin in deployed environments so QR codes point at the correct domain.
+- `NEXT_PUBLIC_SPACETIMEDB_DEBUG=1` enables verbose client-side SpacetimeDB debug logging; leave it `0` for normal use.
+- `WEDDING_UNLOCK_SECRET` must be set in production and should be unique per deployment environment.
 
 ## Useful Scripts
 
@@ -101,5 +104,6 @@ If `NEXT_PUBLIC_SPACETIMEDB_HOST` is omitted, frontend defaults to `http://127.0
 ## Notes
 
 - SpacetimeDB generated files in `src/module_bindings/` should be regenerated, not hand-edited.
-- Design system is intentionally not finalized yet; use `/design-lab` and `?v=` query param previews for comparison.
+- `/event-details` now redirects to `/`, and the legacy `/unlock` route also redirects home.
+- Seed/sample guests have been removed from backend init; load real invite data before launch.
 - Full product/design rationale is documented in `docs/wedding-frontend-design-doc.md`.

@@ -2,7 +2,6 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { cookies } from 'next/headers';
 import { Suspense } from 'react';
-import Icon from '@/components/icon';
 import LogoutButton from '@/components/logout-button';
 import SiteMotion from '@/components/site-motion';
 import SpacetimeAppProvider from '@/components/spacetimedb-app-provider';
@@ -31,28 +30,16 @@ export default async function RootLayout({
             <header className="site-header">
               <div className="container nav-wrap">
                 <Link href="/" className="brand">
-                  <Icon name="auto_awesome" className="brand-icon" />
                   <span className="brand-text">
                     <span className="brand-title">Samuel & Natasha</span>
+                    <span className="brand-subtext">Wedding Celebration</span>
                   </span>
                 </Link>
                 <nav className="top-nav" aria-label="Primary navigation">
-                  <Link href="/">
-                    <Icon name="home" className="nav-icon" />
-                    <span>Home</span>
-                  </Link>
-                  <Link href="/dashboard">
-                    <Icon name="dashboard" className="nav-icon" />
-                    <span>Guest Information</span>
-                  </Link>
-                  <Link href="/faq">
-                    <Icon name="help" className="nav-icon" />
-                    <span>FAQ</span>
-                  </Link>
-                  <Link href="/rsvp" className="rsvp-button">
-                    <Icon name="how_to_reg" className="nav-icon" />
-                    <span>RSVP</span>
-                  </Link>
+                  <Link href="/">Home</Link>
+                  <Link href="/dashboard">Guest Information</Link>
+                  <Link href="/faq">FAQ</Link>
+                  <Link href="/rsvp" className="rsvp-button">RSVP</Link>
                   <LogoutButton />
                 </nav>
               </div>
@@ -64,6 +51,7 @@ export default async function RootLayout({
             </Suspense>
           </main>
           <footer className="site-footer">
+            <p className="site-footer-note">Samuel & Natasha, 15 August 2026</p>
             <Link href="/admin" className="site-footer-admin-link">
               admin
             </Link>

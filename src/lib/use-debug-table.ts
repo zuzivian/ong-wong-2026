@@ -6,7 +6,7 @@ import { useTable } from 'spacetimedb/react';
 const PREFIX = '[STDB DEBUG]';
 
 function isDebugEnabled(): boolean {
-  return process.env.NEXT_PUBLIC_SPACETIMEDB_DEBUG !== '0';
+  return process.env.NEXT_PUBLIC_SPACETIMEDB_DEBUG === '1';
 }
 
 function safeSerialize(value: unknown): unknown {

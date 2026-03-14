@@ -1,6 +1,6 @@
 'use client';
 
-import { ChangeEvent, Fragment, useMemo, useState } from 'react';
+import { ChangeEvent, Fragment, useEffect, useMemo, useRef, useState } from 'react';
 import { useSpacetimeDB } from 'spacetimedb/react';
 import Icon from '@/components/icon';
 import { DbConnection, tables } from '@/module_bindings';
@@ -27,10 +27,6 @@ type GuestDraft = {
 type ImportDraft = {
   firstName: string;
   lastName: string;
-  inviteCode: string;
-  qrToken?: string;
-  canAddCompanions: boolean;
-  maxCompanions: bigint;
   contactEmail?: string;
   contactPhone?: string;
 };
@@ -228,10 +224,6 @@ async function copyInvitationBundleToClipboard(invitation: CreatedInvitation, me
   ]);
 }
 
-function safeLower(text: string | undefined): string {
-  return (text ?? '').toLowerCase();
-}
-
 function normalizeCodeFragment(value: string): string {
   const normalized = value.trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
   return normalized.length > 0 ? normalized : 'X';
@@ -362,14 +354,25 @@ function parseImportCsv(csv: string): { rows: ImportDraft[]; errors: string[] } 
     return { rows: [], errors: ['CSV is empty.'] };
   }
 
-  const [headerRow, ...dataRows] = lines;
-  const headers = headerRow.map((h) => h.trim());
-  const indexOf = (name: string) => headers.findIndex((h) => h.toLowerCase() === name.toLowerCase());
+  const normalizeImportHeader = (header: string) =>
+    header
+      .trim()
+      .toLowerCase()
+      .replace(/\(optional\)/g, '')
+      .replace(/[^a-z0-9]+/g, '');
+  const [firstRow, ...remainingRows] = lines;
+  const normalizedFirstRow = firstRow.map(normalizeImportHeader);
+  const looksLikeHeader = normalizedFirstRow.some((header) =>
+    ['firstname', 'lastname', 'contactemail', 'email', 'contactphone', 'phone'].includes(header)
+  );
+  const headers = looksLikeHeader ? normalizedFirstRow : ['firstname', 'lastname', 'contactemail', 'contactphone'];
+  const dataRows = looksLikeHeader ? remainingRows : lines;
+  const indexOf = (...names: string[]) => headers.findIndex((header) => names.includes(header));
 
-  const required = ['firstName', 'lastName', 'inviteCode', 'canAddCompanions', 'maxCompanions'];
+  const required = ['firstname', 'lastname'];
   const missing = required.filter((name) => indexOf(name) < 0);
   if (missing.length > 0) {
-    return { rows: [], errors: [`Missing required column(s): ${missing.join(', ')}`] };
+    return { rows: [], errors: ['Missing required column(s): firstName, lastName'] };
   }
 
   const output: ImportDraft[] = [];
@@ -377,43 +380,24 @@ function parseImportCsv(csv: string): { rows: ImportDraft[]; errors: string[] } 
 
   dataRows.forEach((cols, rowIndex) => {
     const rowNo = rowIndex + 2;
-    const read = (name: string) => {
-      const idx = indexOf(name);
+    const read = (...names: string[]) => {
+      const idx = indexOf(...names);
       return idx >= 0 ? (cols[idx] ?? '').trim() : '';
     };
 
-    const firstName = read('firstName');
-    const lastName = read('lastName');
-    const inviteCode = read('inviteCode').toUpperCase();
-    const qrToken = read('qrToken') || undefined;
-    const canAddRaw = safeLower(read('canAddCompanions'));
-    const maxCompanionsRaw = read('maxCompanions');
-    const contactEmail = read('contactEmail') || undefined;
-    const contactPhone = read('contactPhone') || undefined;
+    const firstName = read('firstname');
+    const lastName = read('lastname');
+    const contactEmail = read('contactemail', 'email') || undefined;
+    const contactPhone = read('contactphone', 'phone') || undefined;
 
-    if (!firstName || !lastName || !inviteCode) {
-      errors.push(`Row ${rowNo}: firstName, lastName, and inviteCode are required.`);
-      return;
-    }
-
-    const canAddCompanions = canAddRaw === 'true' || canAddRaw === '1' || canAddRaw === 'yes';
-    if (!canAddCompanions && !(canAddRaw === 'false' || canAddRaw === '0' || canAddRaw === 'no')) {
-      errors.push(`Row ${rowNo}: canAddCompanions must be true/false.`);
-      return;
-    }
-
-    if (!/^\d+$/.test(maxCompanionsRaw)) {
-      errors.push(`Row ${rowNo}: maxCompanions must be an integer >= 0.`);
+    if (!firstName || !lastName) {
+      errors.push(`Row ${rowNo}: firstName and lastName are required.`);
       return;
     }
 
     output.push({
       firstName,
       lastName,
-      inviteCode,
-      qrToken,
-      canAddCompanions,
-      maxCompanions: BigInt(maxCompanionsRaw),
       contactEmail,
       contactPhone,
     });
@@ -461,8 +445,7 @@ export default function AdminGuestsPage() {
   const [inviteDraft, setInviteDraft] = useState<InvitationWizardDraft>(INITIAL_INVITATION_DRAFT);
   const [createdInvitation, setCreatedInvitation] = useState<CreatedInvitation | null>(null);
   const [shareAction, setShareAction] = useState<'text' | 'qr' | 'bundle' | null>(null);
-
-  const isLoading = guestsLoading || responsesLoading || companionsLoading || messagesLoading;
+  const isLoading = !db.isActive;
 
   const responseByGuestId = useMemo(() => {
     const map = new Map<bigint, RsvpResponse>();
@@ -623,6 +606,15 @@ export default function AdminGuestsPage() {
     const selected = new Set(selectedGuestIds);
     return filteredGuests.filter((guest) => selected.has(guest.id.toString()));
   }, [filteredGuests, selectedGuestIds]);
+  const allFilteredSelected = filteredGuests.length > 0 && selectedRows.length === filteredGuests.length;
+  const partiallyFilteredSelected = selectedRows.length > 0 && selectedRows.length < filteredGuests.length;
+  const selectAllRef = useRef<HTMLInputElement | null>(null);
+
+  useEffect(() => {
+    if (selectAllRef.current) {
+      selectAllRef.current.indeterminate = partiallyFilteredSelected;
+    }
+  }, [partiallyFilteredSelected]);
 
   const clearMessages = () => {
     setActionError('');
@@ -717,6 +709,18 @@ export default function AdminGuestsPage() {
     });
   };
 
+  const toggleSelectAllFiltered = (checked: boolean) => {
+    setSelectedGuestIds((prev) => {
+      const next = new Set(prev);
+      for (const guest of filteredGuests) {
+        const key = guest.id.toString();
+        if (checked) next.add(key);
+        else next.delete(key);
+      }
+      return next;
+    });
+  };
+
   const applyBulkStatus = async () => {
     clearMessages();
     if (!connection) {
@@ -755,14 +759,23 @@ export default function AdminGuestsPage() {
     }
 
     try {
+      const inviteCodes = new Set(existingInviteCodes);
+      const qrTokens = new Set(existingQrTokens);
+
       for (const row of parsedImport.rows) {
+        const inviteCode = generateInviteCode(row.firstName, row.lastName, inviteCodes);
+        inviteCodes.add(inviteCode);
+
+        const qrToken = generateQrToken(inviteCode, qrTokens);
+        qrTokens.add(qrToken);
+
         await connection.reducers.adminUpsertGuest({
           firstName: row.firstName,
           lastName: row.lastName,
-          inviteCode: row.inviteCode,
-          qrToken: row.qrToken,
-          canAddCompanions: row.canAddCompanions,
-          maxCompanions: row.maxCompanions,
+          inviteCode,
+          qrToken,
+          canAddCompanions: false,
+          maxCompanions: 0n,
           contactEmail: row.contactEmail,
           contactPhone: row.contactPhone,
         });
@@ -956,7 +969,7 @@ export default function AdminGuestsPage() {
   };
 
   return (
-    <div className="dashboard-page">
+    <div className="dashboard-page admin-dashboard-page">
       <section className="page-head">
         <h1 className="heading-with-icon">
           <Icon name="groups" className="heading-icon" />
@@ -1250,38 +1263,21 @@ export default function AdminGuestsPage() {
       <section className="card">
         <h2 className="heading-with-icon" style={{ marginBottom: '0.6rem' }}>
           <Icon name="playlist_add_check" className="heading-icon" />
-          <span>Bulk Actions and Import</span>
+          <span>Guest Import</span>
         </h2>
-        <div className="cta-row" style={{ justifyContent: 'flex-start' }}>
-          <label>
-            Bulk RSVP status
-            <select value={bulkStatus} onChange={(event) => setBulkStatus(event.target.value as RsvpStatus)}>
-              <option value="attending">Attending</option>
-              <option value="declining">Declining</option>
-              <option value="pending">Pending</option>
-            </select>
-          </label>
-          <button type="button" className="button-secondary" onClick={applyBulkStatus}>
-            <Icon name="done_all" className="button-icon" /> Apply to selected ({selectedRows.length})
-          </button>
-          <button type="button" className="button-secondary" onClick={regenerateSelectedQr}>
-            <Icon name="qr_code_2" className="button-icon" /> Regenerate QR for selected
-          </button>
-          <button type="button" className="button-secondary" onClick={downloadSelectedQr}>
-            <Icon name="download" className="button-icon" /> Download selected QR
-          </button>
-        </div>
-
         <div style={{ marginTop: '1rem', display: 'grid', gap: '0.5rem' }}>
           <label>
-            CSV import (firstName,lastName,inviteCode,qrToken,canAddCompanions,maxCompanions,contactEmail,contactPhone)
+            CSV import (firstName,lastName,contact email (optional),contact phone (optional))
             <textarea
               rows={6}
               value={csvInput}
               onChange={(event: ChangeEvent<HTMLTextAreaElement>) => setCsvInput(event.target.value)}
-              placeholder="firstName,lastName,inviteCode,qrToken,canAddCompanions,maxCompanions,contactEmail,contactPhone"
+              placeholder={'firstName,lastName,contact email (optional),contact phone (optional)\nJohn,Doe,john@example.com,+65 9123 4567'}
             />
           </label>
+          <p className="small-note" style={{ margin: 0 }}>
+            Each row creates one guest. You can include just `firstName,lastName`, or also add optional email and phone columns. Invite codes and QR tokens are generated automatically, and imported guests default to no companions.
+          </p>
           {parsedImport.errors.length > 0 ? (
             <ul className="small-note" style={{ margin: 0 }}>
               {parsedImport.errors.map((error) => (
@@ -1293,7 +1289,7 @@ export default function AdminGuestsPage() {
           )}
           <div className="cta-row" style={{ justifyContent: 'flex-start' }}>
             <button type="button" className="button-secondary" onClick={importGuests}>
-              <Icon name="upload" className="button-icon" /> Import / Upsert Guests
+              <Icon name="upload" className="button-icon" /> Import Guests
             </button>
           </div>
         </div>
@@ -1312,11 +1308,47 @@ export default function AdminGuestsPage() {
               </p>
             </div>
 
+            <div className="cta-row" style={{ justifyContent: 'flex-start', marginBottom: '0.9rem' }}>
+              <label>
+                Bulk RSVP status
+                <select value={bulkStatus} onChange={(event) => setBulkStatus(event.target.value as RsvpStatus)}>
+                  <option value="attending">Attending</option>
+                  <option value="declining">Declining</option>
+                  <option value="pending">Pending</option>
+                </select>
+              </label>
+              <button type="button" className="button-secondary" onClick={applyBulkStatus}>
+                <Icon name="done_all" className="button-icon" /> Apply to selected ({selectedRows.length})
+              </button>
+              <button type="button" className="button-secondary" onClick={regenerateSelectedQr}>
+                <Icon name="qr_code_2" className="button-icon" /> Regenerate QR for selected
+              </button>
+              <button type="button" className="button-secondary" onClick={downloadSelectedQr}>
+                <Icon name="download" className="button-icon" /> Download selected QR
+              </button>
+            </div>
+
             <div style={{ overflowX: 'auto' }}>
               <table className="admin-guest-table">
                 <thead>
                   <tr>
-                    <th />
+                    <th>
+                      <label
+                        style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}
+                        title={allFilteredSelected ? 'Clear all visible guests' : 'Select all visible guests'}
+                      >
+                        <input
+                          ref={selectAllRef}
+                          type="checkbox"
+                          checked={allFilteredSelected}
+                          onChange={(event) => toggleSelectAllFiltered(event.target.checked)}
+                          aria-label={allFilteredSelected ? 'Clear all visible guests' : 'Select all visible guests'}
+                        />
+                        <span className="small-note" style={{ margin: 0 }}>
+                          All
+                        </span>
+                      </label>
+                    </th>
                     <th>Guest</th>
                     <th>Status</th>
                     <th>Dietary / Notes</th>

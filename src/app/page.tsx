@@ -250,9 +250,12 @@ export default async function HomePage() {
       >
         <div className="container jumbo-inner">
           <div className="jumbo-content">
-            <p className="eyebrow">The matrimony of</p>
+            <p className="eyebrow">15 August 2026 • Singapore</p>
             <h1 className="jumbo-title">Samuel & Natasha</h1>
-            <p className="jumbo-date">15 Aug 2026</p>
+            <p className="jumbo-date">A quiet, joyful celebration with the people we love most.</p>
+            <p className="jumbo-subtitle">
+              A simple place for the day&apos;s details, your invitation, and RSVP.
+            </p>
             <div className="cta-row">
               {isUnlocked ? (
                 <>
@@ -315,24 +318,10 @@ export default async function HomePage() {
           >
             <div className="container">
               <article className="invitation-card">
-                <div className="invitation-ornaments" aria-hidden="true">
-                  <span className="invitation-ornament invitation-ornament-tl">
-                    ✦
-                  </span>
-                  <span className="invitation-ornament invitation-ornament-tr">
-                    ✦
-                  </span>
-                  <span className="invitation-ornament invitation-ornament-bl">
-                    ✦
-                  </span>
-                  <span className="invitation-ornament invitation-ornament-br">
-                    ✦
-                  </span>
-                </div>
                 <p className="eyebrow">Invitation</p>
                 <h2 className="invitation-card-title">Samuel &amp; Natasha</h2>
                 <p className="invitation-card-subtitle">
-                  With joy, we invite you to celebrate our wedding day.
+                  We would be honored by your presence as we celebrate our wedding day.
                 </p>
                 <dl className="invitation-card-grid">
                   <div className="invitation-card-item">
@@ -531,14 +520,12 @@ export default async function HomePage() {
                 <span>Welcome</span>
               </h2>
               <p>
-                We warmly invite you to celebrate our covenant service and
-                reception. Your love, prayers, and presence mean a great deal to
-                us and our families.
+                We warmly invite you to celebrate our covenant service and reception. Your love,
+                prayers, and presence mean a great deal to us and our families.
               </p>
               <p>
-                Our wedding is on <strong>15 Aug 2026</strong>. Once you enter
-                your invite code, you will see ceremony timing, venue details,
-                RSVP, and your guest information.
+                Our wedding is on <strong>15 Aug 2026</strong>. Once you enter your invite code,
+                you will see ceremony timing, venue details, RSVP, and your guest information.
               </p>
             </article>
             <article className="home-info-card">

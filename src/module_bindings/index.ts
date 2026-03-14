@@ -65,10 +65,10 @@ const tablesSchema = __schema({
   companion: __table({
     name: 'companion',
     indexes: [
-      { name: 'companion_guest_id', algorithm: 'btree', columns: [
+      { accessor: 'companion_guest_id', name: 'companion_guest_id', algorithm: 'btree', columns: [
         'guestId',
       ] },
-      { name: 'id', algorithm: 'btree', columns: [
+      { accessor: 'id', name: 'id', algorithm: 'btree', columns: [
         'id',
       ] },
     ],
@@ -79,13 +79,13 @@ const tablesSchema = __schema({
   guest: __table({
     name: 'guest',
     indexes: [
-      { name: 'id', algorithm: 'btree', columns: [
+      { accessor: 'id', name: 'id', algorithm: 'btree', columns: [
         'id',
       ] },
-      { name: 'inviteCode', algorithm: 'btree', columns: [
+      { accessor: 'inviteCode', name: 'inviteCode', algorithm: 'btree', columns: [
         'inviteCode',
       ] },
-      { name: 'qrToken', algorithm: 'btree', columns: [
+      { accessor: 'qrToken', name: 'qrToken', algorithm: 'btree', columns: [
         'qrToken',
       ] },
     ],
@@ -98,10 +98,10 @@ const tablesSchema = __schema({
   guest_message: __table({
     name: 'guest_message',
     indexes: [
-      { name: 'guest_message_guest_id', algorithm: 'btree', columns: [
+      { accessor: 'guest_message_guest_id', name: 'guest_message_guest_id', algorithm: 'btree', columns: [
         'guestId',
       ] },
-      { name: 'id', algorithm: 'btree', columns: [
+      { accessor: 'id', name: 'id', algorithm: 'btree', columns: [
         'id',
       ] },
     ],
@@ -112,10 +112,10 @@ const tablesSchema = __schema({
   guest_session: __table({
     name: 'guest_session',
     indexes: [
-      { name: 'guest_session_guest_id', algorithm: 'btree', columns: [
+      { accessor: 'guest_session_guest_id', name: 'guest_session_guest_id', algorithm: 'btree', columns: [
         'guestId',
       ] },
-      { name: 'sender', algorithm: 'btree', columns: [
+      { accessor: 'sender', name: 'sender', algorithm: 'btree', columns: [
         'sender',
       ] },
     ],
@@ -126,10 +126,10 @@ const tablesSchema = __schema({
   rsvp_response: __table({
     name: 'rsvp_response',
     indexes: [
-      { name: 'guestId', algorithm: 'btree', columns: [
+      { accessor: 'guestId', name: 'guestId', algorithm: 'btree', columns: [
         'guestId',
       ] },
-      { name: 'id', algorithm: 'btree', columns: [
+      { accessor: 'id', name: 'id', algorithm: 'btree', columns: [
         'id',
       ] },
     ],
@@ -211,4 +211,3 @@ export class DbConnection extends __DbConnectionImpl<typeof REMOTE_MODULE> {
     return new SubscriptionBuilder(this);
   };
 }
-

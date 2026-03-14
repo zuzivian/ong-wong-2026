@@ -1,9 +1,19 @@
 export const ADMIN_COOKIE_NAME = 'wedding_admin';
 export const ADMIN_SESSION_TTL_SECONDS = 60 * 60 * 8; // 8 hours
 
-function getAdminSecret(): string {
+function isProduction(): boolean {
+  return process.env.NODE_ENV === 'production';
+}
+
+function getAdminSecret(): string | undefined {
   const base = process.env.WEDDING_UNLOCK_SECRET?.trim();
-  return base ? `admin:${base}` : 'dev-only-admin-secret';
+  if (base) {
+    return `admin:${base}`;
+  }
+  if (isProduction()) {
+    return undefined;
+  }
+  return 'dev-only-admin-secret';
 }
 
 function timingSafeEqual(a: string, b: string): boolean {
@@ -18,9 +28,14 @@ function timingSafeEqual(a: string, b: string): boolean {
 }
 
 async function signPayload(payload: string): Promise<string> {
+  const secret = getAdminSecret();
+  if (!secret) {
+    throw new Error('WEDDING_UNLOCK_SECRET must be set in production.');
+  }
+
   const key = await crypto.subtle.importKey(
     'raw',
-    new TextEncoder().encode(getAdminSecret()),
+    new TextEncoder().encode(secret),
     { name: 'HMAC', hash: 'SHA-256' },
     false,
     ['sign']
@@ -55,7 +70,7 @@ export async function readAdminSession(value: string | undefined): Promise<boole
 
 export function validateAdminPin(pin: string): boolean {
   const configured = process.env.ADMIN_PIN?.trim();
-  if (!configured) {
+  if (!configured || (isProduction() && !getAdminSecret())) {
     return false;
   }
   return timingSafeEqual(pin.trim(), configured);

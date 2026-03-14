@@ -35,7 +35,7 @@ export default function AdminLoginPage() {
   };
 
   return (
-    <section className="page-head">
+    <section className="page-head card admin-login-shell">
       <h1 className="heading-with-icon">
         <Icon name="admin_panel_settings" className="heading-icon" />
         <span>Admin Access</span>
