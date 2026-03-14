@@ -4,9 +4,18 @@ function isProduction(): boolean {
   return process.env.NODE_ENV === 'production';
 }
 
-export function getSessionSigningSecret(): string | undefined {
+export function getConfiguredSessionSigningSecret(): string | undefined {
   const configuredSecret =
     process.env.SESSION_SIGNING_SECRET?.trim() || process.env.WEDDING_UNLOCK_SECRET?.trim();
+  if (configuredSecret) {
+    return configuredSecret;
+  }
+
+  return undefined;
+}
+
+export function getSessionSigningSecret(): string | undefined {
+  const configuredSecret = getConfiguredSessionSigningSecret();
   if (configuredSecret) {
     return configuredSecret;
   }

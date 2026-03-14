@@ -186,6 +186,35 @@ function setGuestRsvpStatus(
   });
 }
 
+function deleteGuestRecords(
+  ctx: Parameters<typeof identify_guest_by_token>[0],
+  guestId: bigint
+): void {
+  const guest = ctx.db.guest.id.find(guestId);
+  if (!guest) {
+    throw new SenderError('Guest not found.');
+  }
+
+  const existingResponse = ctx.db.rsvp_response.guestId.find(guestId);
+  if (existingResponse) {
+    ctx.db.rsvp_response.id.delete(existingResponse.id);
+  }
+
+  for (const companion of ctx.db.companion.companion_guest_id.filter(guestId)) {
+    ctx.db.companion.id.delete(companion.id);
+  }
+
+  for (const message of ctx.db.guest_message.guest_message_guest_id.filter(guestId)) {
+    ctx.db.guest_message.id.delete(message.id);
+  }
+
+  for (const session of ctx.db.guest_session.guest_session_guest_id.filter(guestId)) {
+    ctx.db.guest_session.sender.delete(session.sender);
+  }
+
+  ctx.db.guest.id.delete(guestId);
+}
+
 function upsertGuestSession(
   ctx: Parameters<typeof identify_guest_by_token>[0],
   guestId: bigint
@@ -716,6 +745,17 @@ export const admin_upsert_guest = spacetimedb.reducer(
       rsvpStatus: RSVP_STATUS_PENDING,
       updatedAt: ctx.timestamp,
     });
+  }
+);
+
+export const admin_delete_guest = spacetimedb.reducer(
+  {
+    adminSecret: t.string(),
+    guestId: t.u64(),
+  },
+  (ctx, { adminSecret, guestId }) => {
+    requireAdminAccess(ctx, adminSecret);
+    deleteGuestRecords(ctx, guestId);
   }
 );
 

@@ -55,6 +55,10 @@ type AdminActionBody =
       guestId: string;
     }
   | {
+      action: 'deleteGuest';
+      guestId: string;
+    }
+  | {
       action: 'setGuestMessageStatus';
       messageId: string;
       status: string;
@@ -200,6 +204,12 @@ export async function POST(request: NextRequest) {
           return;
         case 'regenerateGuestQrToken':
           await connection.reducers.adminRegenerateGuestQrToken({
+            adminSecret,
+            guestId: BigInt(body.guestId),
+          });
+          return;
+        case 'deleteGuest':
+          await connection.reducers.adminDeleteGuest({
             adminSecret,
             guestId: BigInt(body.guestId),
           });

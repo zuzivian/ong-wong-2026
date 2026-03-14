@@ -11,6 +11,7 @@
     "dev:stable": "set WATCHPACK_POLLING=true&& set CHOKIDAR_USEPOLLING=true&& next dev",
     "build": "next build",
     "start": "next start",
+    "test": "node --experimental-strip-types --test src/lib/invite-unlock.test.ts src/lib/session-secret.test.ts src/lib/admin-auth.test.ts src/lib/request-rate-limit.test.ts src/lib/unlock-client.test.ts",
     "generate": "cargo run -p gen-bindings -- --out-dir src/module_bindings --module-path spacetimedb && prettier --write src/module_bindings",
     "spacetime:generate": "spacetime generate --lang typescript --out-dir src/module_bindings --module-path spacetimedb",
     "spacetime:publish:local": "spacetime publish --server local --module-path spacetimedb",

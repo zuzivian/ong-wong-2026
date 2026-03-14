@@ -1,10 +1,10 @@
-import { getSessionSigningSecret } from './session-secret';
+import { getConfiguredSessionSigningSecret } from './session-secret.ts';
 
 export const ADMIN_COOKIE_NAME = 'wedding_admin';
 export const ADMIN_SESSION_TTL_SECONDS = 60 * 60 * 8; // 8 hours
 
 function getAdminSecret(): string | undefined {
-  const base = getSessionSigningSecret();
+  const base = getConfiguredSessionSigningSecret();
   if (base) {
     return `admin:${base}`;
   }

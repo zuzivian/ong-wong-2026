@@ -66,13 +66,14 @@ const DASHBOARD_TAB_SUMMARIES: Record<DashboardTab, string> = {
 };
 
 const IDENTIFIER_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+const DEFAULT_MAX_COMPANIONS = '5';
 const INITIAL_INVITATION_DRAFT: InvitationWizardDraft = {
   firstName: '',
   lastName: '',
   contactEmail: '',
   contactPhone: '',
   canAddCompanions: true,
-  maxCompanions: '5',
+  maxCompanions: DEFAULT_MAX_COMPANIONS,
 };
 
 const STATUS_ORDER: Record<RsvpStatus, number> = {
@@ -945,8 +946,8 @@ export default function AdminGuestsPage() {
           lastName: row.lastName,
           inviteCode,
           qrToken,
-          canAddCompanions: false,
-          maxCompanions: '0',
+          canAddCompanions: true,
+          maxCompanions: DEFAULT_MAX_COMPANIONS,
           contactEmail: row.contactEmail,
           contactPhone: row.contactPhone,
         });
@@ -1070,6 +1071,39 @@ export default function AdminGuestsPage() {
     setCreatedInvitation(buildInvitationRecordFromGuest(guest));
     setActiveTab('invite');
     setMessageNotice(`Prepared invitation message for ${guest.firstName} ${guest.lastName}.`);
+  };
+
+  const deleteGuest = async (guest: Guest) => {
+    clearMessages();
+
+    const guestName = `${guest.firstName} ${guest.lastName}`.trim();
+    const confirmed = window.confirm(
+      `Remove ${guestName} from the guest list? This also deletes their RSVP, companions, messages, and active guest sessions.`
+    );
+    if (!confirmed) {
+      return;
+    }
+
+    try {
+      await runAdminAction({
+        action: 'deleteGuest',
+        guestId: guest.id.toString(),
+      });
+      await refreshAdminSnapshot();
+
+      setSelectedGuestIds((prev) => {
+        const next = new Set(prev);
+        next.delete(guest.id.toString());
+        return next;
+      });
+      if (editingGuestId === guest.id) {
+        setEditingGuestId(null);
+        setDraft(null);
+      }
+      setMessageNotice(`Removed ${guestName} from the guest list.`);
+    } catch (error) {
+      setActionError(error instanceof Error ? error.message : 'Unable to remove the guest.');
+    }
   };
 
   const copyInvitationText = async () => {
@@ -1446,7 +1480,7 @@ export default function AdminGuestsPage() {
             />
           </label>
           <p className="small-note" style={{ margin: 0 }}>
-            Each row creates one guest. You can include just `firstName,lastName`, or also add optional email and phone columns. Invite codes and QR tokens are generated automatically, and imported guests default to no companions.
+            Each row creates one guest. You can include just `firstName,lastName`, or also add optional email and phone columns. Invite codes and QR tokens are generated automatically, and imported guests default to up to {DEFAULT_MAX_COMPANIONS} companions.
           </p>
           {parsedImport.errors.length > 0 ? (
             <ul className="small-note" style={{ margin: 0 }}>
@@ -1639,6 +1673,15 @@ export default function AdminGuestsPage() {
                                 title={`Regenerate QR token for ${guestName}`}
                               >
                                 <Icon name="autorenew" className="button-icon" />
+                              </button>
+                              <button
+                                type="button"
+                                className="button-secondary admin-guest-action-button"
+                                onClick={() => void deleteGuest(guest)}
+                                aria-label={`Remove ${guestName}`}
+                                title={`Remove ${guestName}`}
+                              >
+                                <Icon name="delete" className="button-icon" />
                               </button>
                             </div>
                           </td>

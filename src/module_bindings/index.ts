@@ -34,6 +34,7 @@ import {
 } from "spacetimedb";
 
 // Import all reducer arg schemas
+import AdminDeleteGuestReducer from "./admin_delete_guest_reducer";
 import AdminBulkSetRsvpStatusReducer from "./admin_bulk_set_rsvp_status_reducer";
 import AdminRegenerateGuestQrTokenReducer from "./admin_regenerate_guest_qr_token_reducer";
 import AdminReplaceGuestCompanionsReducer from "./admin_replace_guest_companions_reducer";
@@ -65,6 +66,7 @@ const tablesSchema = __schema({
 
 /** The schema information for all reducers in this module. This is defined the same way as the reducers would have been defined in the server, except the body of the reducer is omitted in code generation. */
 const reducersSchema = __reducers(
+  __reducerSchema("admin_delete_guest", AdminDeleteGuestReducer),
   __reducerSchema("admin_bulk_set_rsvp_status", AdminBulkSetRsvpStatusReducer),
   __reducerSchema("admin_regenerate_guest_qr_token", AdminRegenerateGuestQrTokenReducer),
   __reducerSchema("admin_replace_guest_companions", AdminReplaceGuestCompanionsReducer),
@@ -138,4 +140,3 @@ export class DbConnection extends __DbConnectionImpl<typeof REMOTE_MODULE> {
     return new SubscriptionBuilder(this);
   };
 }
-

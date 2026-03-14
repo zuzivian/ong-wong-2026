@@ -6,6 +6,7 @@
 import { type Infer as __Infer } from "spacetimedb";
 
 // Import all reducer arg schemas
+import AdminDeleteGuestReducer from "../admin_delete_guest_reducer";
 import AdminBulkSetRsvpStatusReducer from "../admin_bulk_set_rsvp_status_reducer";
 import AdminRegenerateGuestQrTokenReducer from "../admin_regenerate_guest_qr_token_reducer";
 import AdminReplaceGuestCompanionsReducer from "../admin_replace_guest_companions_reducer";
@@ -21,6 +22,7 @@ import SubmitRsvpReducer from "../submit_rsvp_reducer";
 import UpdateGuestMessageReducer from "../update_guest_message_reducer";
 import UpdateGuestPhoneReducer from "../update_guest_phone_reducer";
 
+export type AdminDeleteGuestParams = __Infer<typeof AdminDeleteGuestReducer>;
 export type AdminBulkSetRsvpStatusParams = __Infer<typeof AdminBulkSetRsvpStatusReducer>;
 export type AdminRegenerateGuestQrTokenParams = __Infer<typeof AdminRegenerateGuestQrTokenReducer>;
 export type AdminReplaceGuestCompanionsParams = __Infer<typeof AdminReplaceGuestCompanionsReducer>;
@@ -35,4 +37,3 @@ export type SendGuestMessageParams = __Infer<typeof SendGuestMessageReducer>;
 export type SubmitRsvpParams = __Infer<typeof SubmitRsvpReducer>;
 export type UpdateGuestMessageParams = __Infer<typeof UpdateGuestMessageReducer>;
 export type UpdateGuestPhoneParams = __Infer<typeof UpdateGuestPhoneReducer>;
-
