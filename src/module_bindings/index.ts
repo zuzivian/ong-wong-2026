@@ -36,7 +36,6 @@ import {
 // Import all reducer arg schemas
 import AdminBulkSetRsvpStatusReducer from "./admin_bulk_set_rsvp_status_reducer";
 import AdminDeleteGuestReducer from "./admin_delete_guest_reducer";
-import AdminRegenerateGuestQrTokenReducer from "./admin_regenerate_guest_qr_token_reducer";
 import AdminReplaceGuestCompanionsReducer from "./admin_replace_guest_companions_reducer";
 import AdminSetGuestMessageStatusReducer from "./admin_set_guest_message_status_reducer";
 import AdminUpdateGuestRsvpReducer from "./admin_update_guest_rsvp_reducer";
@@ -44,7 +43,6 @@ import AdminUpsertGuestReducer from "./admin_upsert_guest_reducer";
 import ClearGuestSessionReducer from "./clear_guest_session_reducer";
 import DeleteGuestMessageReducer from "./delete_guest_message_reducer";
 import IdentifyGuestByFallbackReducer from "./identify_guest_by_fallback_reducer";
-import IdentifyGuestByTokenReducer from "./identify_guest_by_token_reducer";
 import SendGuestMessageReducer from "./send_guest_message_reducer";
 import SubmitRsvpReducer from "./submit_rsvp_reducer";
 import UpdateGuestMessageReducer from "./update_guest_message_reducer";
@@ -52,9 +50,11 @@ import UpdateGuestPhoneReducer from "./update_guest_phone_reducer";
 
 // Import all procedure arg schemas
 import * as GetAdminDashboardSnapshotProcedure from "./get_admin_dashboard_snapshot_procedure";
+import * as GetAdminGuestPageProcedure from "./get_admin_guest_page_procedure";
+import * as GetAdminInviteCodesProcedure from "./get_admin_invite_codes_procedure";
+import * as GetAdminMessagePageProcedure from "./get_admin_message_page_procedure";
 import * as GetGuestPortalStateProcedure from "./get_guest_portal_state_procedure";
 import * as GetGuestPreviewByInviteCodeProcedure from "./get_guest_preview_by_invite_code_procedure";
-import * as GetInviteCodeByQrTokenProcedure from "./get_invite_code_by_qr_token_procedure";
 
 // Import all table schema definitions
 
@@ -68,7 +68,6 @@ const tablesSchema = __schema({
 const reducersSchema = __reducers(
   __reducerSchema("admin_bulk_set_rsvp_status", AdminBulkSetRsvpStatusReducer),
   __reducerSchema("admin_delete_guest", AdminDeleteGuestReducer),
-  __reducerSchema("admin_regenerate_guest_qr_token", AdminRegenerateGuestQrTokenReducer),
   __reducerSchema("admin_replace_guest_companions", AdminReplaceGuestCompanionsReducer),
   __reducerSchema("admin_set_guest_message_status", AdminSetGuestMessageStatusReducer),
   __reducerSchema("admin_update_guest_rsvp", AdminUpdateGuestRsvpReducer),
@@ -76,7 +75,6 @@ const reducersSchema = __reducers(
   __reducerSchema("clear_guest_session", ClearGuestSessionReducer),
   __reducerSchema("delete_guest_message", DeleteGuestMessageReducer),
   __reducerSchema("identify_guest_by_fallback", IdentifyGuestByFallbackReducer),
-  __reducerSchema("identify_guest_by_token", IdentifyGuestByTokenReducer),
   __reducerSchema("send_guest_message", SendGuestMessageReducer),
   __reducerSchema("submit_rsvp", SubmitRsvpReducer),
   __reducerSchema("update_guest_message", UpdateGuestMessageReducer),
@@ -86,9 +84,11 @@ const reducersSchema = __reducers(
 /** The schema information for all procedures in this module. This is defined the same way as the procedures would have been defined in the server. */
 const proceduresSchema = __procedures(
   __procedureSchema("get_admin_dashboard_snapshot", GetAdminDashboardSnapshotProcedure.params, GetAdminDashboardSnapshotProcedure.returnType),
+  __procedureSchema("get_admin_guest_page", GetAdminGuestPageProcedure.params, GetAdminGuestPageProcedure.returnType),
+  __procedureSchema("get_admin_invite_codes", GetAdminInviteCodesProcedure.params, GetAdminInviteCodesProcedure.returnType),
+  __procedureSchema("get_admin_message_page", GetAdminMessagePageProcedure.params, GetAdminMessagePageProcedure.returnType),
   __procedureSchema("get_guest_portal_state", GetGuestPortalStateProcedure.params, GetGuestPortalStateProcedure.returnType),
   __procedureSchema("get_guest_preview_by_invite_code", GetGuestPreviewByInviteCodeProcedure.params, GetGuestPreviewByInviteCodeProcedure.returnType),
-  __procedureSchema("get_invite_code_by_qr_token", GetInviteCodeByQrTokenProcedure.params, GetInviteCodeByQrTokenProcedure.returnType),
 );
 
 /** The remote SpacetimeDB module schema, both runtime and type information. */
@@ -140,4 +140,3 @@ export class DbConnection extends __DbConnectionImpl<typeof REMOTE_MODULE> {
     return new SubscriptionBuilder(this);
   };
 }
-

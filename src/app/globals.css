@@ -672,10 +672,16 @@ a {
 .invitation-card-footer {
   margin-top: 0.32rem;
   display: flex;
+  flex-wrap: wrap;
   justify-content: center;
+  gap: 0.75rem;
 }
 
 .invitation-card-rsvp {
+  min-width: 220px;
+}
+
+.invitation-card-calendar {
   min-width: 220px;
 }
 
@@ -1715,6 +1721,10 @@ textarea {
 
   .invitation-card-rsvp {
     width: min(280px, 100%);
+  }
+
+  .invitation-card-calendar {
+    width: min(320px, 100%);
   }
 }
 

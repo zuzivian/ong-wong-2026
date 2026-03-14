@@ -10,6 +10,7 @@ function getAppBaseUrl(request: NextRequest): string {
   if (configured) {
     return configured.replace(/\/$/, '');
   }
+
   const { protocol, host } = request.nextUrl;
   return `${protocol}//${host}`;
 }

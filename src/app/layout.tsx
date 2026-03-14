@@ -6,30 +6,14 @@ import NavRsvpLink from '@/components/nav-rsvp-link';
 import LogoutButton from '@/components/logout-button';
 import SiteMotion from '@/components/site-motion';
 import SpacetimeAppProvider from '@/components/spacetimedb-app-provider';
+import { getGuestSessionSummary } from '@/lib/guest-session-summary';
 import { readUnlockSession, UNLOCK_COOKIE_NAME } from '@/lib/invite-unlock';
-import { withSpacetimeConnection } from '@/lib/spacetimedb-server';
-import { getGuestPortalState } from '@/lib/spacetimedb-procedures';
 import './globals.css';
 
 export const metadata: Metadata = {
   title: 'Samuel and Natasha | Wedding',
   description: 'Wedding website and RSVP for Samuel and Natasha.',
 };
-
-async function isRsvpSubmitted(inviteCode?: string): Promise<boolean> {
-  if (!inviteCode) {
-    return false;
-  }
-
-  try {
-    const portalState = await withSpacetimeConnection((connection) =>
-      getGuestPortalState(connection, { inviteCode })
-    );
-    return portalState.activeRsvp !== undefined && portalState.activeRsvp.submitted;
-  } catch {
-    return false;
-  }
-}
 
 export default async function RootLayout({
   children,
@@ -40,7 +24,10 @@ export default async function RootLayout({
   const unlockCookie = cookieStore.get(UNLOCK_COOKIE_NAME)?.value;
   const unlockSession = await readUnlockSession(unlockCookie);
   const isUnlocked = unlockSession !== undefined;
-  const rsvpSubmitted = isUnlocked ? await isRsvpSubmitted(unlockSession.inviteCode) : false;
+  const guestSessionSummary = isUnlocked
+    ? await getGuestSessionSummary(unlockSession.inviteCode)
+    : undefined;
+  const rsvpSubmitted = guestSessionSummary?.rsvpSubmitted ?? false;
 
   return (
     <html lang="en">
@@ -59,7 +46,7 @@ export default async function RootLayout({
                   <Link href="/">Home</Link>
                   <Link href="/faq">FAQ</Link>
                   <NavRsvpLink
-                    initialInviteCode={unlockSession?.inviteCode}
+                    initialInviteCode={guestSessionSummary?.inviteCode ?? unlockSession?.inviteCode}
                     initialSubmitted={rsvpSubmitted}
                   />
                   <LogoutButton />

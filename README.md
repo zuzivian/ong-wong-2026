@@ -101,9 +101,17 @@ Notes:
 - `npm run dev` Start Next.js dev server
 - `npm run build` Build app
 - `npm run start` Run production server
+- `npm test` Run the unit test suite
+- `npm run test:e2e` Run the smoke end-to-end checks against a running app
 - `npm run spacetime:generate` Generate TS bindings from module
 - `npm run spacetime:publish:local` Publish module to local server
 - `npm run spacetime:publish` Publish module to maincloud
+
+## QA and Release Gates
+
+- Route-level acceptance criteria and accessibility baseline live in `docs/route-acceptance-criteria.md`.
+- GitHub Actions CI is defined in `.github/workflows/ci.yml`.
+- CI currently gates on unit tests, a production build, and a smoke end-to-end flow for home, unlock-cookie recovery, RSVP, dashboard, and admin login/admin dashboard access.
 
 ## Notes
 

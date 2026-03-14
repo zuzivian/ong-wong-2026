@@ -10,7 +10,18 @@ import {
   type Infer as __Infer,
 } from "spacetimedb";
 
+import {
+  AdminGuestPage,
+} from "./types";
+
 export const params = {
-  qrToken: __t.string(),
+  adminSecret: __t.string(),
+  page: __t.i32(),
+  pageSize: __t.i32(),
+  search: __t.option(__t.string()),
+  rsvpStatus: __t.option(__t.string()),
+  hasDietary: __t.option(__t.string()),
+  hasCompanions: __t.option(__t.string()),
+  messageStatus: __t.option(__t.string()),
 };
-export const returnType = __t.option(__t.string())
+export const returnType = AdminGuestPage;

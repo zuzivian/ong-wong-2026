@@ -7,16 +7,21 @@ import { type Infer as __Infer } from "spacetimedb";
 
 // Import all procedure arg schemas
 import * as GetAdminDashboardSnapshotProcedure from "../get_admin_dashboard_snapshot_procedure";
+import * as GetAdminGuestPageProcedure from "../get_admin_guest_page_procedure";
+import * as GetAdminInviteCodesProcedure from "../get_admin_invite_codes_procedure";
+import * as GetAdminMessagePageProcedure from "../get_admin_message_page_procedure";
 import * as GetGuestPortalStateProcedure from "../get_guest_portal_state_procedure";
 import * as GetGuestPreviewByInviteCodeProcedure from "../get_guest_preview_by_invite_code_procedure";
-import * as GetInviteCodeByQrTokenProcedure from "../get_invite_code_by_qr_token_procedure";
 
 export type GetAdminDashboardSnapshotArgs = __Infer<typeof GetAdminDashboardSnapshotProcedure.params>;
 export type GetAdminDashboardSnapshotResult = __Infer<typeof GetAdminDashboardSnapshotProcedure.returnType>;
+export type GetAdminGuestPageArgs = __Infer<typeof GetAdminGuestPageProcedure.params>;
+export type GetAdminGuestPageResult = __Infer<typeof GetAdminGuestPageProcedure.returnType>;
+export type GetAdminInviteCodesArgs = __Infer<typeof GetAdminInviteCodesProcedure.params>;
+export type GetAdminInviteCodesResult = __Infer<typeof GetAdminInviteCodesProcedure.returnType>;
+export type GetAdminMessagePageArgs = __Infer<typeof GetAdminMessagePageProcedure.params>;
+export type GetAdminMessagePageResult = __Infer<typeof GetAdminMessagePageProcedure.returnType>;
 export type GetGuestPortalStateArgs = __Infer<typeof GetGuestPortalStateProcedure.params>;
 export type GetGuestPortalStateResult = __Infer<typeof GetGuestPortalStateProcedure.returnType>;
 export type GetGuestPreviewByInviteCodeArgs = __Infer<typeof GetGuestPreviewByInviteCodeProcedure.params>;
 export type GetGuestPreviewByInviteCodeResult = __Infer<typeof GetGuestPreviewByInviteCodeProcedure.returnType>;
-export type GetInviteCodeByQrTokenArgs = __Infer<typeof GetInviteCodeByQrTokenProcedure.params>;
-export type GetInviteCodeByQrTokenResult = __Infer<typeof GetInviteCodeByQrTokenProcedure.returnType>;
-

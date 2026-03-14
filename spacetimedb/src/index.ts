@@ -39,6 +39,50 @@ const AdminDashboardSnapshot = t.object('AdminDashboardSnapshot', {
   messages: t.array(GuestMessage.rowType),
 });
 
+const AdminDashboardStats = t.object('AdminDashboardStats', {
+  invited: t.i32(),
+  attending: t.i32(),
+  declining: t.i32(),
+  pending: t.i32(),
+  headcount: t.i32(),
+  dietaryCount: t.i32(),
+  companionCount: t.i32(),
+});
+
+const AdminMessageStats = t.object('AdminMessageStats', {
+  total: t.i32(),
+  newCount: t.i32(),
+  inProgressCount: t.i32(),
+  resolvedCount: t.i32(),
+});
+
+const AdminGuestPage = t.object('AdminGuestPage', {
+  totalGuests: t.i32(),
+  filteredGuests: t.i32(),
+  totalPages: t.i32(),
+  page: t.i32(),
+  pageSize: t.i32(),
+  stats: AdminDashboardStats,
+  guests: t.array(Guest.rowType),
+  responses: t.array(RsvpResponse.rowType),
+  companions: t.array(Companion.rowType),
+  messages: t.array(GuestMessage.rowType),
+});
+
+const AdminMessagePage = t.object('AdminMessagePage', {
+  totalMessages: t.i32(),
+  totalPages: t.i32(),
+  page: t.i32(),
+  pageSize: t.i32(),
+  messageStats: AdminMessageStats,
+  guests: t.array(Guest.rowType),
+  messages: t.array(GuestMessage.rowType),
+});
+
+const AdminInviteCodes = t.object('AdminInviteCodes', {
+  inviteCodes: t.array(t.string()),
+});
+
 function normalize(text: string): string {
   return text.trim().toLowerCase();
 }
@@ -79,11 +123,13 @@ function normalizeMessageStatus(status: string): string {
   return normalized;
 }
 
+type ModuleContext = Parameters<typeof identify_guest_by_fallback>[0];
+
 function requireAdminAccess(
   ctx: {
-    sender: Parameters<typeof identify_guest_by_token>[0]['sender'];
-    timestamp: Parameters<typeof identify_guest_by_token>[0]['timestamp'];
-    db: Parameters<typeof identify_guest_by_token>[0]['db'];
+    sender: ModuleContext['sender'];
+    timestamp: ModuleContext['timestamp'];
+    db: ModuleContext['db'];
   },
   adminSecret: string
 ): void {
@@ -116,7 +162,7 @@ function requireAdminAccess(
   }
 }
 
-function requireGuestForSender(ctx: Parameters<typeof identify_guest_by_token>[0]) {
+function requireGuestForSender(ctx: ModuleContext) {
   const session = ctx.db.guest_session.sender.find(ctx.sender);
   if (!session) {
     throw new SenderError('Please verify your invitation details first.');
@@ -131,7 +177,7 @@ function requireGuestForSender(ctx: Parameters<typeof identify_guest_by_token>[0
 }
 
 function requireGuestMessageForSender(
-  ctx: Parameters<typeof identify_guest_by_token>[0],
+  ctx: ModuleContext,
   messageId: bigint
 ) {
   const { guest } = requireGuestForSender(ctx);
@@ -146,12 +192,12 @@ function requireGuestMessageForSender(
   return guestMessage;
 }
 
-function isRsvpCutoffReached(ctx: Parameters<typeof identify_guest_by_token>[0]): boolean {
+function isRsvpCutoffReached(ctx: ModuleContext): boolean {
   return ctx.timestamp.microsSinceUnixEpoch > RSVP_CUTOFF_AT_MICROS;
 }
 
 function setGuestRsvpStatus(
-  ctx: Parameters<typeof identify_guest_by_token>[0],
+  ctx: ModuleContext,
   guestId: bigint,
   status: string
 ): void {
@@ -198,7 +244,7 @@ function setGuestRsvpStatus(
 }
 
 function deleteGuestRecords(
-  ctx: Parameters<typeof identify_guest_by_token>[0],
+  ctx: ModuleContext,
   guestId: bigint
 ): void {
   const guest = ctx.db.guest.id.find(guestId);
@@ -227,7 +273,7 @@ function deleteGuestRecords(
 }
 
 function upsertGuestSession(
-  ctx: Parameters<typeof identify_guest_by_token>[0],
+  ctx: ModuleContext,
   guestId: bigint
 ): void {
   const existing = ctx.db.guest_session.sender.find(ctx.sender);
@@ -273,25 +319,6 @@ export const init = spacetimedb.init(() => {});
 export const on_connect = spacetimedb.clientConnected(() => {});
 
 export const on_disconnect = spacetimedb.clientDisconnected(() => {});
-
-export const identify_guest_by_token = spacetimedb.reducer(
-  {
-    token: t.string(),
-  },
-  (ctx, { token }) => {
-    const normalizedToken = token.trim();
-    if (!normalizedToken) {
-      throw new SenderError('Invitation token is required.');
-    }
-
-    const guest = ctx.db.guest.qrToken.find(normalizedToken);
-    if (!guest) {
-      throw new SenderError('Invitation token not found.');
-    }
-
-    upsertGuestSession(ctx, guest.id);
-  }
-);
 
 export const identify_guest_by_fallback = spacetimedb.reducer(
   {
@@ -346,21 +373,6 @@ export const get_guest_preview_by_invite_code = spacetimedb.procedure(
   }
 );
 
-export const get_invite_code_by_qr_token = spacetimedb.procedure(
-  {
-    qrToken: t.string(),
-  },
-  t.option(t.string()),
-  (ctx, { qrToken }) => {
-    const normalizedToken = qrToken.trim();
-    if (!normalizedToken) {
-      return undefined;
-    }
-
-    return ctx.withTx(tx => tx.db.guest.qrToken.find(normalizedToken)?.inviteCode);
-  }
-);
-
 export const get_guest_portal_state = spacetimedb.procedure(
   {
     inviteCode: t.string().optional(),
@@ -412,6 +424,273 @@ export const get_admin_dashboard_snapshot = spacetimedb.procedure(
         responses: [...tx.db.rsvp_response.iter()],
         companions: [...tx.db.companion.iter()],
         messages: [...tx.db.guest_message.iter()],
+      };
+    });
+  }
+);
+
+function compareGuests(a: any, b: any): number {
+  const statusOrder = (status: string) => {
+    if (status === RSVP_STATUS_ATTENDING) return 0;
+    if (status === RSVP_STATUS_DECLINING) return 1;
+    return 2;
+  };
+
+  const order = statusOrder(a.rsvpStatus) - statusOrder(b.rsvpStatus);
+  if (order !== 0) {
+    return order;
+  }
+
+  return `${a.firstName} ${a.lastName}`.localeCompare(`${b.firstName} ${b.lastName}`);
+}
+
+function matchesGuestSearch(guest: any, searchNeedle: string): boolean {
+  if (!searchNeedle) {
+    return true;
+  }
+
+  const searchable = [
+    `${guest.firstName} ${guest.lastName}`,
+    guest.inviteCode,
+    guest.contactEmail ?? '',
+    guest.contactPhone ?? '',
+  ]
+    .join(' ')
+    .toLowerCase();
+
+  return searchable.includes(searchNeedle);
+}
+
+function buildAdminDashboardStats(
+  guests: any[],
+  getResponse: (guestId: bigint) => any,
+  getCompanions: (guestId: bigint) => any[]
+) {
+  let attending = 0;
+  let declining = 0;
+  let pending = 0;
+  let companionCount = 0;
+  let dietaryCount = 0;
+
+  for (const guest of guests) {
+    if (guest.rsvpStatus === RSVP_STATUS_ATTENDING) attending += 1;
+    else if (guest.rsvpStatus === RSVP_STATUS_DECLINING) declining += 1;
+    else pending += 1;
+
+    const guestCompanions = getCompanions(guest.id);
+    if (guest.rsvpStatus === RSVP_STATUS_ATTENDING) {
+      companionCount += guestCompanions.length;
+    }
+
+    const response = getResponse(guest.id);
+    if (response?.dietaryNotes || guestCompanions.some((companion) => companion.dietaryNotes)) {
+      dietaryCount += 1;
+    }
+  }
+
+  return {
+    invited: guests.length,
+    attending,
+    declining,
+    pending,
+    headcount: attending + companionCount,
+    dietaryCount,
+    companionCount,
+  };
+}
+
+function clampPage(page: number, totalPages: number): number {
+  if (totalPages <= 0) {
+    return 1;
+  }
+  if (page < 1) {
+    return 1;
+  }
+  if (page > totalPages) {
+    return totalPages;
+  }
+  return page;
+}
+
+export const get_admin_guest_page = spacetimedb.procedure(
+  {
+    adminSecret: t.string(),
+    page: t.i32(),
+    pageSize: t.i32(),
+    search: t.string().optional(),
+    rsvpStatus: t.string().optional(),
+    hasDietary: t.string().optional(),
+    hasCompanions: t.string().optional(),
+    messageStatus: t.string().optional(),
+  },
+  AdminGuestPage,
+  (ctx, params) => {
+    return ctx.withTx(tx => {
+      requireAdminAccess(tx, params.adminSecret);
+
+      const searchNeedle = normalizeOptional(params.search)?.toLowerCase() ?? '';
+      const normalizedStatus = normalizeOptional(params.rsvpStatus);
+      const hasDietary = normalizeOptional(params.hasDietary);
+      const hasCompanions = normalizeOptional(params.hasCompanions);
+      const messageStatus = normalizeOptional(params.messageStatus);
+
+      const allGuests = [...tx.db.guest.iter()].sort(compareGuests);
+      const getResponse = (guestId: bigint) => tx.db.rsvp_response.guestId.find(guestId) ?? undefined;
+      const getCompanions = (guestId: bigint) => [...tx.db.companion.companion_guest_id.filter(guestId)];
+      const getMessages = (guestId: bigint) => [...tx.db.guest_message.guest_message_guest_id.filter(guestId)];
+
+      const filteredGuests = allGuests.filter((guest) => {
+        const response = getResponse(guest.id);
+        const companions = getCompanions(guest.id);
+        const messages = getMessages(guest.id);
+
+        if (!matchesGuestSearch(guest, searchNeedle)) {
+          return false;
+        }
+
+        if (normalizedStatus && normalizedStatus !== 'all' && guest.rsvpStatus !== normalizedStatus) {
+          return false;
+        }
+
+        const hasDietaryNotes = Boolean(response?.dietaryNotes) || companions.some((companion) => companion.dietaryNotes);
+        if (hasDietary === 'yes' && !hasDietaryNotes) {
+          return false;
+        }
+        if (hasDietary === 'no' && hasDietaryNotes) {
+          return false;
+        }
+
+        const hasCompanionRows = companions.length > 0;
+        if (hasCompanions === 'yes' && !hasCompanionRows) {
+          return false;
+        }
+        if (hasCompanions === 'no' && hasCompanionRows) {
+          return false;
+        }
+
+        if (messageStatus) {
+          if (messageStatus === 'none') {
+            return messages.length === 0;
+          }
+
+          return messages.some((message) => message.status === messageStatus);
+        }
+
+        return true;
+      });
+
+      const safePageSize = Math.max(1, Math.min(params.pageSize, 100));
+      const totalPages = Math.max(1, Math.ceil(filteredGuests.length / safePageSize));
+      const page = clampPage(params.page, totalPages);
+      const start = (page - 1) * safePageSize;
+      const pageGuests = filteredGuests.slice(start, start + safePageSize);
+
+      return {
+        totalGuests: allGuests.length,
+        filteredGuests: filteredGuests.length,
+        totalPages,
+        page,
+        pageSize: safePageSize,
+        stats: buildAdminDashboardStats(allGuests, getResponse, getCompanions),
+        guests: pageGuests,
+        responses: pageGuests
+          .map((guest) => getResponse(guest.id))
+          .filter((row) => row !== undefined),
+        companions: pageGuests.flatMap((guest) => getCompanions(guest.id)),
+        messages: pageGuests.flatMap((guest) => getMessages(guest.id)),
+      };
+    });
+  }
+);
+
+export const get_admin_message_page = spacetimedb.procedure(
+  {
+    adminSecret: t.string(),
+    page: t.i32(),
+    pageSize: t.i32(),
+    search: t.string().optional(),
+    status: t.string().optional(),
+  },
+  AdminMessagePage,
+  (ctx, params) => {
+    return ctx.withTx(tx => {
+      requireAdminAccess(tx, params.adminSecret);
+
+      const searchNeedle = normalizeOptional(params.search)?.toLowerCase() ?? '';
+      const normalizedStatus = normalizeOptional(params.status);
+      const allMessages = [...tx.db.guest_message.iter()].sort((a, b) =>
+        b.createdAt.microsSinceUnixEpoch > a.createdAt.microsSinceUnixEpoch ? 1 : -1
+      );
+
+      const filteredMessages = allMessages.filter((message) => {
+        if (normalizedStatus && normalizedStatus !== 'all' && message.status !== normalizedStatus) {
+          return false;
+        }
+
+        if (!searchNeedle) {
+          return true;
+        }
+
+        const guest = tx.db.guest.id.find(message.guestId);
+        const searchable = [
+          message.message,
+          guest ? `${guest.firstName} ${guest.lastName}` : '',
+          guest?.inviteCode ?? '',
+        ]
+          .join(' ')
+          .toLowerCase();
+
+        return searchable.includes(searchNeedle);
+      });
+
+      const safePageSize = Math.max(1, Math.min(params.pageSize, 100));
+      const totalPages = Math.max(1, Math.ceil(filteredMessages.length / safePageSize));
+      const page = clampPage(params.page, totalPages);
+      const start = (page - 1) * safePageSize;
+      const pageMessages = filteredMessages.slice(start, start + safePageSize);
+      const guestIds = [...new Set(pageMessages.map((message) => message.guestId.toString()))].map((id) =>
+        BigInt(id)
+      );
+
+      let newCount = 0;
+      let inProgressCount = 0;
+      let resolvedCount = 0;
+      for (const message of allMessages) {
+        if (message.status === RSVP_MESSAGE_NEW) newCount += 1;
+        else if (message.status === RSVP_MESSAGE_IN_PROGRESS) inProgressCount += 1;
+        else if (message.status === RSVP_MESSAGE_RESOLVED) resolvedCount += 1;
+      }
+
+      return {
+        totalMessages: filteredMessages.length,
+        totalPages,
+        page,
+        pageSize: safePageSize,
+        messageStats: {
+          total: allMessages.length,
+          newCount,
+          inProgressCount,
+          resolvedCount,
+        },
+        guests: guestIds
+          .map((guestId) => tx.db.guest.id.find(guestId))
+          .filter((guest) => guest !== undefined),
+        messages: pageMessages,
+      };
+    });
+  }
+);
+
+export const get_admin_invite_codes = spacetimedb.procedure(
+  {
+    adminSecret: t.string(),
+  },
+  AdminInviteCodes,
+  (ctx, { adminSecret }) => {
+    return ctx.withTx(tx => {
+      requireAdminAccess(tx, adminSecret);
+      return {
+        inviteCodes: [...tx.db.guest.iter()].map((guest) => guest.inviteCode),
       };
     });
   }
@@ -700,7 +979,6 @@ export const admin_upsert_guest = spacetimedb.reducer(
     firstName: t.string(),
     lastName: t.string(),
     inviteCode: t.string(),
-    qrToken: t.string().optional(),
     contactEmail: t.string().optional(),
     contactPhone: t.string().optional(),
   },
@@ -713,21 +991,15 @@ export const admin_upsert_guest = spacetimedb.reducer(
       throw new SenderError('First name, last name, and invite code are required.');
     }
 
-    const qrToken = normalizeOptional(payload.qrToken) ?? `${inviteCode.toLowerCase()}-token`;
     const contactEmail = normalizeOptional(payload.contactEmail);
     const contactPhone = normalizeOptional(payload.contactPhone);
     const existingByInviteCode = ctx.db.guest.inviteCode.find(inviteCode);
-    const existingByQr = ctx.db.guest.qrToken.find(qrToken);
-    if (existingByQr && (!existingByInviteCode || existingByInviteCode.id !== existingByQr.id)) {
-      throw new SenderError('QR token already exists for another guest.');
-    }
 
     if (existingByInviteCode) {
       ctx.db.guest.id.update({
         ...existingByInviteCode,
         firstName,
         lastName,
-        qrToken,
         contactEmail,
         contactPhone,
         updatedAt: ctx.timestamp,
@@ -740,7 +1012,6 @@ export const admin_upsert_guest = spacetimedb.reducer(
       firstName,
       lastName,
       inviteCode,
-      qrToken,
       contactEmail,
       contactPhone,
       rsvpStatus: RSVP_STATUS_PENDING,
@@ -757,39 +1028,6 @@ export const admin_delete_guest = spacetimedb.reducer(
   (ctx, { adminSecret, guestId }) => {
     requireAdminAccess(ctx, adminSecret);
     deleteGuestRecords(ctx, guestId);
-  }
-);
-
-export const admin_regenerate_guest_qr_token = spacetimedb.reducer(
-  {
-    adminSecret: t.string(),
-    guestId: t.u64(),
-  },
-  (ctx, { adminSecret, guestId }) => {
-    requireAdminAccess(ctx, adminSecret);
-    const guest = ctx.db.guest.id.find(guestId);
-    if (!guest) {
-      throw new SenderError('Guest not found.');
-    }
-
-    const baseInviteCode = normalizeInviteCode(guest.inviteCode).toLowerCase();
-    let suffix = 0n;
-    let nextToken = '';
-    while (true) {
-      const micros = (ctx.timestamp.microsSinceUnixEpoch + suffix).toString(36);
-      nextToken = `${baseInviteCode}-${micros}`;
-      const existing = ctx.db.guest.qrToken.find(nextToken);
-      if (!existing || existing.id === guest.id) {
-        break;
-      }
-      suffix += 1n;
-    }
-
-    ctx.db.guest.id.update({
-      ...guest,
-      qrToken: nextToken,
-      updatedAt: ctx.timestamp,
-    });
   }
 );
 

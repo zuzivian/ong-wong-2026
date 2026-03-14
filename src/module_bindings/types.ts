@@ -26,6 +26,71 @@ export const AdminDashboardSnapshot = __t.object("AdminDashboardSnapshot", {
 });
 export type AdminDashboardSnapshot = __Infer<typeof AdminDashboardSnapshot>;
 
+export const AdminDashboardStats = __t.object("AdminDashboardStats", {
+  invited: __t.i32(),
+  attending: __t.i32(),
+  declining: __t.i32(),
+  pending: __t.i32(),
+  headcount: __t.i32(),
+  dietaryCount: __t.i32(),
+  companionCount: __t.i32(),
+});
+export type AdminDashboardStats = __Infer<typeof AdminDashboardStats>;
+
+export const AdminGuestPage = __t.object("AdminGuestPage", {
+  totalGuests: __t.i32(),
+  filteredGuests: __t.i32(),
+  totalPages: __t.i32(),
+  page: __t.i32(),
+  pageSize: __t.i32(),
+  get stats() {
+    return AdminDashboardStats;
+  },
+  get guests() {
+    return __t.array(Guest);
+  },
+  get responses() {
+    return __t.array(RsvpResponse);
+  },
+  get companions() {
+    return __t.array(Companion);
+  },
+  get messages() {
+    return __t.array(GuestMessage);
+  },
+});
+export type AdminGuestPage = __Infer<typeof AdminGuestPage>;
+
+export const AdminInviteCodes = __t.object("AdminInviteCodes", {
+  inviteCodes: __t.array(__t.string()),
+});
+export type AdminInviteCodes = __Infer<typeof AdminInviteCodes>;
+
+export const AdminMessageStats = __t.object("AdminMessageStats", {
+  total: __t.i32(),
+  newCount: __t.i32(),
+  inProgressCount: __t.i32(),
+  resolvedCount: __t.i32(),
+});
+export type AdminMessageStats = __Infer<typeof AdminMessageStats>;
+
+export const AdminMessagePage = __t.object("AdminMessagePage", {
+  totalMessages: __t.i32(),
+  totalPages: __t.i32(),
+  page: __t.i32(),
+  pageSize: __t.i32(),
+  get messageStats() {
+    return AdminMessageStats;
+  },
+  get guests() {
+    return __t.array(Guest);
+  },
+  get messages() {
+    return __t.array(GuestMessage);
+  },
+});
+export type AdminMessagePage = __Infer<typeof AdminMessagePage>;
+
 export const AdminIdentity = __t.object("AdminIdentity", {
   id: __t.u64(),
   identity: __t.identity(),
@@ -55,7 +120,6 @@ export const Guest = __t.object("Guest", {
   firstName: __t.string(),
   lastName: __t.string(),
   inviteCode: __t.string(),
-  qrToken: __t.string(),
   contactEmail: __t.option(__t.string()),
   contactPhone: __t.option(__t.string()),
   rsvpStatus: __t.string(),
@@ -115,4 +179,3 @@ export const RsvpResponse = __t.object("RsvpResponse", {
   updatedAt: __t.timestamp(),
 });
 export type RsvpResponse = __Infer<typeof RsvpResponse>;
-

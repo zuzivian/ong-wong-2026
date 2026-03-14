@@ -1,0 +1,48 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    env:
+      NEXT_PUBLIC_APP_URL: http://127.0.0.1:3000
+      SESSION_SIGNING_SECRET: ci-session-secret
+      ADMIN_PIN: 123456
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run unit tests
+        run: npm test
+
+      - name: Build app
+        run: npm run build
+
+      - name: Start app
+        run: npm run start > /tmp/next.log 2>&1 &
+
+      - name: Wait for app
+        run: |
+          for attempt in {1..30}; do
+            if curl -fsS http://127.0.0.1:3000 > /dev/null; then
+              exit 0
+            fi
+            sleep 2
+          done
+          cat /tmp/next.log
+          exit 1
+
+      - name: Run smoke e2e
+        run: npm run test:e2e

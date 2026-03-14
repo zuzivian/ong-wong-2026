@@ -10,7 +10,15 @@ import {
   type Infer as __Infer,
 } from "spacetimedb";
 
-export default {
+import {
+  AdminMessagePage,
+} from "./types";
+
+export const params = {
   adminSecret: __t.string(),
-  guestId: __t.u64(),
+  page: __t.i32(),
+  pageSize: __t.i32(),
+  search: __t.option(__t.string()),
+  status: __t.option(__t.string()),
 };
+export const returnType = AdminMessagePage;

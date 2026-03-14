@@ -41,3 +41,7 @@ export function serializeSpacetimeValue(value: unknown): unknown {
 
   return value;
 }
+
+export function serializeSpacetimeObject(value: Record<string, unknown>): Record<string, unknown> {
+  return serializeSpacetimeValue(value) as Record<string, unknown>;
+}

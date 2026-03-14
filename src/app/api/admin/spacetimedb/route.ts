@@ -6,8 +6,13 @@ import {
   readSpacetimeAdminCredentials,
   writeSpacetimeAdminCredentials,
 } from '@/lib/spacetimedb-admin-credentials';
-import { serializeSpacetimeValue } from '@/lib/spacetime-json';
-import { getAdminDashboardSnapshot } from '@/lib/spacetimedb-procedures';
+import { serializeSpacetimeObject } from '@/lib/spacetime-json';
+import {
+  getAdminDashboardSnapshot,
+  getAdminGuestPage,
+  getAdminInviteCodes,
+  getAdminMessagePage,
+} from '@/lib/spacetimedb-procedures';
 import { withSpacetimeConnection } from '@/lib/spacetimedb-server';
 import { ADMIN_IDENTITY_BOOTSTRAP_MARKER } from '../../../../../shared/admin-identity';
 
@@ -42,7 +47,6 @@ type AdminActionBody =
       firstName: string;
       lastName: string;
       inviteCode: string;
-      qrToken?: string;
       contactEmail?: string;
       contactPhone?: string;
     }
@@ -103,23 +107,66 @@ async function ensureAdminSession(): Promise<NextResponse | null> {
   return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 }
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   const unauthorizedResponse = await ensureAdminSession();
   if (unauthorizedResponse) {
     return unauthorizedResponse;
   }
 
   const adminSecret = getAdminMutationSecret();
+  const view = request.nextUrl.searchParams.get('view')?.trim() ?? 'guest-page';
+  const search = request.nextUrl.searchParams.get('search')?.trim() ?? undefined;
+  const page = Number.parseInt(request.nextUrl.searchParams.get('page') ?? '1', 10);
+  const pageSize = Number.parseInt(request.nextUrl.searchParams.get('pageSize') ?? '50', 10);
+  const rsvpStatus = request.nextUrl.searchParams.get('rsvpStatus')?.trim() ?? undefined;
+  const hasDietary = request.nextUrl.searchParams.get('hasDietary')?.trim() ?? undefined;
+  const hasCompanions = request.nextUrl.searchParams.get('hasCompanions')?.trim() ?? undefined;
+  const messageStatus = request.nextUrl.searchParams.get('messageStatus')?.trim() ?? undefined;
 
   try {
-    const snapshot = await withAdminSpacetimeConnection((connection) =>
-      getAdminDashboardSnapshot(connection, { adminSecret })
-    );
+    const payload = await withAdminSpacetimeConnection(async (connection) => {
+      if (view === 'guest-page') {
+        return {
+          guestPage: await getAdminGuestPage(connection, {
+            adminSecret,
+            page: Number.isFinite(page) ? page : 1,
+            pageSize: Number.isFinite(pageSize) ? pageSize : 50,
+            search,
+            rsvpStatus,
+            hasDietary,
+            hasCompanions,
+            messageStatus,
+          }),
+        };
+      }
+
+      if (view === 'message-page') {
+        return {
+          messagePage: await getAdminMessagePage(connection, {
+            adminSecret,
+            page: Number.isFinite(page) ? page : 1,
+            pageSize: Number.isFinite(pageSize) ? pageSize : 50,
+            search,
+            status: messageStatus,
+          }),
+        };
+      }
+
+      if (view === 'invite-codes') {
+        return {
+          inviteCodes: await getAdminInviteCodes(connection, { adminSecret }),
+        };
+      }
+
+      const snapshot = await getAdminDashboardSnapshot(connection, { adminSecret });
+      return { snapshot };
+    });
 
     return NextResponse.json(
       {
         ok: true,
-        snapshot: serializeSpacetimeValue(snapshot),
+        view,
+        ...serializeSpacetimeObject(payload),
       },
       {
         headers: { 'Cache-Control': 'no-store' },
@@ -132,6 +179,14 @@ export async function GET() {
       { status: 500 }
     );
   }
+}
+
+export async function HEAD() {
+  return new NextResponse(null, { status: 405 });
+}
+
+export async function OPTIONS() {
+  return new NextResponse(null, { status: 405 });
 }
 
 export async function POST(request: NextRequest) {
@@ -185,7 +240,6 @@ export async function POST(request: NextRequest) {
             firstName: body.firstName,
             lastName: body.lastName,
             inviteCode: body.inviteCode,
-            qrToken: body.qrToken,
             contactEmail: body.contactEmail,
             contactPhone: body.contactPhone,
           });

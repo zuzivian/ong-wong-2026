@@ -63,7 +63,9 @@ test('rejects tampered admin sessions', async () => {
   process.env.SESSION_SIGNING_SECRET = 'admin-secret';
 
   const session = await createAdminSession();
-  const tampered = `${session.slice(0, -1)}0`;
+  const lastChar = session.at(-1);
+  const replacement = lastChar === '0' ? '1' : '0';
+  const tampered = `${session.slice(0, -1)}${replacement}`;
 
   assert.equal(await readAdminSession(tampered), false);
 });

@@ -22,7 +22,7 @@ Wedding date: **15 August 2026**
 - Public Home
 - Invite unlock gate (inline on `/` with cookie/API session)
 - Event Details
-- RSVP Flow (QR + fallback lookup)
+- RSVP Flow (invite code + fallback lookup)
 - Guest Dashboard
 - FAQ
 
@@ -41,7 +41,7 @@ Wedding date: **15 August 2026**
 
 ## 5. Confirmed Product Decisions
 
-- RSVP access: **QR-first**
+- RSVP access: **invite code + name confirmation**
 - Fallback access: **first name + last name + invite code**
 - RSVP depth: attendance + dietary + optional contact details + companion details
 - Companion policy: all guests can invite up to 5 companions
@@ -68,7 +68,7 @@ Wedding date: **15 August 2026**
 - `/` Public Home
 - `/event-details` Event Details
 - `/rsvp` RSVP fallback entry
-- `/rsvp/[token]` QR-linked RSVP path
+- `/rsvp/[inviteCode]` invite-code RSVP path
 - `/dashboard` Guest Dashboard
 - `/faq` FAQ page
 
@@ -89,19 +89,18 @@ Access behavior:
 
 ## 9. RSVP Flow (Current Implementation)
 
-Flow is currently implemented as a **6-step wizard** backed by guest portal state:
+Flow is currently implemented as a **5-step wizard** backed by guest portal state:
 
-1. Confirm name
+1. Welcome and confirm invitation
 2. Attendance
 3. Dietary requirements
-4. Contact details (optional)
-5. Add loved ones (if invitation allows)
-6. Review and submit
+4. Add loved ones (if invitation allows)
+5. Review and submit
 
 Pre-step route:
 
 - Guests who are not yet unlocked are redirected to `/` before entering RSVP/dashboard routes.
-- QR entry (`/rsvp/[token]`) resolves the QR token server-side, refreshes the unlock cookie, and then resumes the RSVP flow.
+- Invite-code entry (`/rsvp/[inviteCode]`) refreshes the unlock cookie server-side, then resumes the RSVP flow.
 
 Post-submit actions:
 
@@ -113,7 +112,7 @@ Post-submit actions:
 Implemented entities:
 
 - `Guest`
-  - `id`, `firstName`, `lastName`, `inviteCode`, `qrToken`
+  - `id`, `firstName`, `lastName`, `inviteCode`
   - All guests can invite up to 5 companions
   - `contactEmail?`, `contactPhone?`
   - `rsvpStatus`, `updatedAt`
@@ -130,11 +129,11 @@ Implemented entities:
 
 ## 11. Authentication and Session Behavior
 
-- Guest identity is established by either token lookup or fallback name+code lookup.
+- Guest identity is established by invite-code unlock plus fallback name+code lookup.
 - Route-level access is controlled by signed unlock cookie (`wedding_unlock`) with 180-day TTL.
 - Unlock cookie payload contains both expiry and normalized invite code so the home page, RSVP flow, and dashboard can restore guest context without re-entry.
 - Verified guest mapping is stored in `GuestSession` (by authenticated sender identity).
-- Client additionally stores the normalized unlocked invite code in local storage to smooth QR and fallback transitions.
+- Client additionally stores the normalized unlocked invite code in local storage to smooth unlock and fallback transitions.
 - Dashboard and RSVP edits depend on active verified session plus guest portal state loaded through server procedures.
 - `SESSION_SIGNING_SECRET` is the primary signing key for both guest and admin cookies; `WEDDING_UNLOCK_SECRET` remains as a backward-compatibility fallback for older deployments.
 - Non-production environments use a development fallback signing secret when no env secret is provided.
@@ -147,7 +146,7 @@ Implemented entities:
   - Locked: Hero with unlock CTA, welcome copy, pre-RSVP checklist
 - `/event-details`
   - Redirects to `/` (content consolidated into home page)
-- `/rsvp` and `/rsvp/[token]`
+- `/rsvp` and `/rsvp/[inviteCode]`
   - Full stepper flow, validation, reducer calls, guest portal state loading, and cutoff-aware submit behavior
 - `/dashboard`
   - RSVP status summary, cutoff awareness, companion display, invite code recovery, message create/edit/delete, and event/FAQ links
@@ -158,7 +157,7 @@ Implemented entities:
 - `/admin/login`
   - PIN form posting to `/api/admin/auth`, rate-limited, and setting admin session cookie
 - `/admin/guests`
-  - Live operations dashboard for guest search, invitation creation/import, inline RSVP/contact edits, companion management, QR regeneration/export, bulk status changes, and message triage
+  - Live operations dashboard for guest search, invitation creation/import, inline RSVP/contact edits, companion management, bulk status changes, and message triage
 
 ## 13. Outstanding Decisions
 
@@ -168,7 +167,7 @@ No blocking product decisions currently open.
 
 1. ~~Document and enforce access strategy for `/admin/cutoff` (currently internal utility route, no role guard yet).~~ ✓ Route removed; cutoff is now fixed in `shared/globals.ts`.
 2. ~~Confirm whether Home should keep embedded map/schedule duplication or defer all details to `/event-details`.~~ ✓ Consolidated into home page; `/event-details` redirects to `/`.
-3. Add acceptance criteria per MVP route (content, UX states, accessibility baseline).
+3. ~~Add acceptance criteria per MVP route (content, UX states, accessibility baseline).~~ ✓ Baseline captured in `docs/route-acceptance-criteria.md`.
 
 ### Admin Guest Dashboard Status (Updated)
 
@@ -176,19 +175,17 @@ Current baseline in code: `/admin/guests` is now the live admin operations surfa
 
 **P0 / high priority**
 
-1. ~~**Fast search + filters**~~ — implemented for guest name, invite code, QR token, contact, and RSVP status. ✓
+1. ~~**Fast search + filters**~~ — implemented for guest name, invite code, contact, and RSVP status. ✓
 2. ~~**Inline RSVP editing**~~ — implemented for RSVP status, dietary notes, contact fields, companion access, and companion list updates. ✓
 3. ~~**Table-level actions**~~ — implemented for bulk row selection and bulk RSVP status changes; guest create/import flows now ship from the dashboard. ✓
-4. ~~**QR operations**~~ — implemented for token regeneration and per-guest QR download/preview. Bulk QR export still open.
-5. **Operational planning views** — expand current summary cards into explicit planning exports for venue/vendors.
-6. ~~**Guest message inbox workflow**~~ — implemented with per-message status transitions (`new`, `in_progress`, `resolved`). ✓
+4. **Operational planning views** — expand current summary cards into explicit planning exports for venue/vendors.
+5. ~~**Guest message inbox workflow**~~ — implemented with per-message status transitions (`new`, `in_progress`, `resolved`). ✓
 
 **P2 / deprioritized nice additions**
 
-7. Bulk QR export/download pack.
-8. Export mode for venue and planner handoff.
-9. Reminder workflow for pending RSVP contacts.
-10. Audit log of admin edits for traceability.
+7. Export mode for venue and planner handoff.
+8. Reminder workflow for pending RSVP contacts.
+9. Audit log of admin edits for traceability.
 
 ## 15. Immediate Next Steps
 
@@ -198,20 +195,18 @@ Current baseline in code: `/admin/guests` is now the live admin operations surfa
 4. ~~**Finalize and freeze production content**~~ — final copy for schedule wording, dress code, FAQ answers, venue details. ✓
 5. ~~**Decide home-page content density**~~ ✓ — Single-page: all event content (schedule, venue, transport, what to expect) lives on `/` when unlocked. `/event-details` redirects to `/`.
 6. ~~**Set the RSVP cutoff date**~~ — fixed in `shared/globals.ts` at 31 May 2026 23:59 Singapore time. ✓
-7. ~~**Build admin RSVP dashboard**~~ — operational dashboard now live at `/admin/guests` with editing, QR, import, bulk status, and message management. ✓
+7. ~~**Build admin RSVP dashboard**~~ — operational dashboard now live at `/admin/guests` with editing, import, bulk status, and message management. ✓
 8. **Seed real guest data** — load all invited guests into SpacetimeDB before launch.
-9. **Generate and validate QR codes** — produce per-guest QR tokens and confirm `/rsvp/[token]` unlock flow works end-to-end.
-10. **Deliver remaining admin P0 follow-ups** — bulk QR export and stronger planning/reporting views.
-11. **Add Google Calendar invite link on the invitation card** — add an "Add to Google Calendar" action with the wedding date/time/location prefilled on the unlocked invitation card.
+9. **Deliver remaining admin P0 follow-ups** — stronger planning/reporting views.
+10. ~~**Add Google Calendar invite link on the invitation card**~~ ✓ Added to the unlocked home CTA row and invitation card with the wedding date/time/location prefilled.
 
 ### Production Readiness TODO
 
-12. **Replace in-memory rate limiting** — move unlock/admin auth rate limits off `globalThis` and into a shared backing store suitable for multi-instance/serverless deployments.
-13. **Consolidate guest session data loading** — remove duplicate SpacetimeDB reads across layout, home, nav, and dashboard entry paths by introducing a single shared guest-session summary/data loader.
-14. **Harden admin auth and credential handling** — replace the current bootstrap-marker/shared-secret approach and avoid persisting reusable SpacetimeDB admin credentials on the app filesystem in production.
-15. **Scale the admin data surface** — stop loading the full guest snapshot into the browser on first paint; add pagination, scoped fetches, and server-side filtering/search where possible.
-16. **Refactor large client workflows** — split `/dashboard` and the RSVP flow into smaller hooks/components so state orchestration, reducer calls, and rendering are easier to test and maintain.
-17. **Add CI production gates** — require typecheck, production build, and at least one end-to-end happy-path test for unlock, RSVP, dashboard, and admin login flows before release.
+12. **Consolidate guest session data loading** — shared guest-session summary loading now dedupes layout/home/nav reads; dashboard still hydrates its full portal state client-side for live editing.
+13. **Harden admin auth and credential handling** — replace the current bootstrap-marker/shared-secret approach and avoid persisting reusable SpacetimeDB admin credentials on the app filesystem in production.
+14. ~~**Scale the admin data surface**~~ ✓ Guest and message tabs now use paginated, scoped fetches with server-side filtering/search instead of loading the full snapshot on first paint.
+15. **Refactor large client workflows** — split `/dashboard` and the RSVP flow into smaller hooks/components so state orchestration, reducer calls, and rendering are easier to test and maintain.
+16. ~~**Add CI production gates**~~ ✓ GitHub Actions now runs unit tests, production build, and a smoke end-to-end suite covering unlock-cookie, RSVP, dashboard, and admin login happy paths.
 
 ## 16. Known Bugs and UX Issues
 

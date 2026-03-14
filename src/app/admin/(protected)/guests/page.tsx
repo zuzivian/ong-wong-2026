@@ -38,12 +38,6 @@ const DASHBOARD_TAB_SUMMARIES: Record<DashboardTab, string> = {
 
 const IDENTIFIER_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 
-const STATUS_ORDER: Record<RsvpStatus, number> = {
-  attending: 0,
-  declining: 1,
-  pending: 2,
-};
-
 function formatDate(ts: { toDate(): Date } | undefined): string {
   if (!ts) return '—';
   return ts.toDate().toLocaleDateString('en-SG', {
@@ -134,10 +128,43 @@ type SerializedGuestMessage = Omit<GuestMessage, 'id' | 'guestId' | 'createdAt'>
   createdAt: SerializedTimestamp;
 };
 
-type AdminSnapshotPayload = {
+type AdminDashboardStatsPayload = {
+  invited: number;
+  attending: number;
+  declining: number;
+  pending: number;
+  headcount: number;
+  dietaryCount: number;
+  companionCount: number;
+};
+
+type AdminMessageStatsPayload = {
+  total: number;
+  newCount: number;
+  inProgressCount: number;
+  resolvedCount: number;
+};
+
+type AdminGuestPagePayload = {
+  totalGuests: number;
+  filteredGuests: number;
+  totalPages: number;
+  page: number;
+  pageSize: number;
+  stats: AdminDashboardStatsPayload;
   guests: SerializedGuest[];
   responses: SerializedRsvpResponse[];
   companions: SerializedCompanion[];
+  messages: SerializedGuestMessage[];
+};
+
+type AdminMessagePagePayload = {
+  totalMessages: number;
+  totalPages: number;
+  page: number;
+  pageSize: number;
+  messageStats: AdminMessageStatsPayload;
+  guests: SerializedGuest[];
   messages: SerializedGuestMessage[];
 };
 
@@ -203,32 +230,130 @@ function parseGuestMessage(row: SerializedGuestMessage): GuestMessage {
   };
 }
 
-async function fetchAdminSnapshot(): Promise<{
+async function fetchAdminGuestPage(params: {
+  page: number;
+  pageSize: number;
+  search: string;
+  statusFilter: 'all' | RsvpStatus;
+  hasDietaryFilter: 'all' | 'yes' | 'no';
+  hasCompanionsFilter: 'all' | 'yes' | 'no';
+  messageStatusFilter: 'all' | MessageStatus | 'none';
+}): Promise<{
+  totalGuests: number;
+  filteredGuests: number;
+  totalPages: number;
+  page: number;
+  pageSize: number;
+  stats: AdminDashboardStatsPayload;
   guests: Guest[];
   responses: RsvpResponse[];
   companions: Companion[];
   messages: GuestMessage[];
 }> {
-  const response = await fetch('/api/admin/spacetimedb', {
+  const query = new URLSearchParams({
+    view: 'guest-page',
+    page: String(params.page),
+    pageSize: String(params.pageSize),
+  });
+  if (params.search.trim()) query.set('search', params.search.trim());
+  if (params.statusFilter !== 'all') query.set('rsvpStatus', params.statusFilter);
+  if (params.hasDietaryFilter !== 'all') query.set('hasDietary', params.hasDietaryFilter);
+  if (params.hasCompanionsFilter !== 'all') query.set('hasCompanions', params.hasCompanionsFilter);
+  if (params.messageStatusFilter !== 'all') query.set('messageStatus', params.messageStatusFilter);
+
+  const response = await fetch(`/api/admin/spacetimedb?${query.toString()}`, {
     method: 'GET',
     credentials: 'same-origin',
     cache: 'no-store',
   });
 
   const payload = (await response.json().catch(() => null)) as
-    | { error?: string; snapshot?: AdminSnapshotPayload }
+    | { error?: string; guestPage?: AdminGuestPagePayload }
     | null;
 
-  if (!response.ok || !payload?.snapshot) {
-    throw new Error(payload?.error || 'Unable to load admin dashboard data.');
+  if (!response.ok || !payload?.guestPage) {
+    throw new Error(payload?.error || 'Unable to load admin guest data.');
   }
 
   return {
-    guests: payload.snapshot.guests.map(parseGuest),
-    responses: payload.snapshot.responses.map(parseResponse),
-    companions: payload.snapshot.companions.map(parseCompanion),
-    messages: payload.snapshot.messages.map(parseGuestMessage),
+    totalGuests: payload.guestPage.totalGuests,
+    filteredGuests: payload.guestPage.filteredGuests,
+    totalPages: payload.guestPage.totalPages,
+    page: payload.guestPage.page,
+    pageSize: payload.guestPage.pageSize,
+    stats: payload.guestPage.stats,
+    guests: payload.guestPage.guests.map(parseGuest),
+    responses: payload.guestPage.responses.map(parseResponse),
+    companions: payload.guestPage.companions.map(parseCompanion),
+    messages: payload.guestPage.messages.map(parseGuestMessage),
   };
+}
+
+async function fetchAdminMessagePage(params: {
+  page: number;
+  pageSize: number;
+  search: string;
+  messageStatusFilter: 'all' | MessageStatus | 'none';
+}): Promise<{
+  totalMessages: number;
+  totalPages: number;
+  page: number;
+  pageSize: number;
+  messageStats: AdminMessageStatsPayload;
+  guests: Guest[];
+  messages: GuestMessage[];
+}> {
+  const query = new URLSearchParams({
+    view: 'message-page',
+    page: String(params.page),
+    pageSize: String(params.pageSize),
+  });
+  if (params.search.trim()) query.set('search', params.search.trim());
+  if (params.messageStatusFilter !== 'all' && params.messageStatusFilter !== 'none') {
+    query.set('messageStatus', params.messageStatusFilter);
+  }
+
+  const response = await fetch(`/api/admin/spacetimedb?${query.toString()}`, {
+    method: 'GET',
+    credentials: 'same-origin',
+    cache: 'no-store',
+  });
+
+  const payload = (await response.json().catch(() => null)) as
+    | { error?: string; messagePage?: AdminMessagePagePayload }
+    | null;
+
+  if (!response.ok || !payload?.messagePage) {
+    throw new Error(payload?.error || 'Unable to load admin message data.');
+  }
+
+  return {
+    totalMessages: payload.messagePage.totalMessages,
+    totalPages: payload.messagePage.totalPages,
+    page: payload.messagePage.page,
+    pageSize: payload.messagePage.pageSize,
+    messageStats: payload.messagePage.messageStats,
+    guests: payload.messagePage.guests.map(parseGuest),
+    messages: payload.messagePage.messages.map(parseGuestMessage),
+  };
+}
+
+async function fetchAdminInviteCodes(): Promise<Set<string>> {
+  const response = await fetch('/api/admin/spacetimedb?view=invite-codes', {
+    method: 'GET',
+    credentials: 'same-origin',
+    cache: 'no-store',
+  });
+
+  const payload = (await response.json().catch(() => null)) as
+    | { error?: string; inviteCodes?: { inviteCodes: string[] } }
+    | null;
+
+  if (!response.ok || !payload?.inviteCodes?.inviteCodes) {
+    throw new Error(payload?.error || 'Unable to load existing invite codes.');
+  }
+
+  return new Set(payload.inviteCodes.inviteCodes);
 }
 
 function normalizeCodeFragment(value: string): string {
@@ -397,11 +522,34 @@ function StatCell({ label, value }: { label: string; value: string | number }) {
 }
 
 export default function AdminGuestsPage() {
+  const PAGE_SIZE = 50;
   const [guests, setGuests] = useState<Guest[]>([]);
   const [responses, setResponses] = useState<RsvpResponse[]>([]);
   const [companions, setCompanions] = useState<Companion[]>([]);
   const [messages, setMessages] = useState<GuestMessage[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [stats, setStats] = useState<AdminDashboardStatsPayload>({
+    invited: 0,
+    attending: 0,
+    declining: 0,
+    pending: 0,
+    headcount: 0,
+    dietaryCount: 0,
+    companionCount: 0,
+  });
+  const [messageStats, setMessageStats] = useState<AdminMessageStatsPayload>({
+    total: 0,
+    newCount: 0,
+    inProgressCount: 0,
+    resolvedCount: 0,
+  });
+  const [guestPage, setGuestPage] = useState(1);
+  const [guestTotalPages, setGuestTotalPages] = useState(1);
+  const [totalGuests, setTotalGuests] = useState(0);
+  const [filteredGuestCount, setFilteredGuestCount] = useState(0);
+  const [messagePage, setMessagePage] = useState(1);
+  const [messageTotalPages, setMessageTotalPages] = useState(1);
+  const [totalMessages, setTotalMessages] = useState(0);
 
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | RsvpStatus>('all');
@@ -422,31 +570,73 @@ export default function AdminGuestsPage() {
   const [actionError, setActionError] = useState('');
   const [activeTab, setActiveTab] = useState<DashboardTab>('guests');
 
-  const refreshAdminSnapshot = async () => {
-    const snapshot = await fetchAdminSnapshot();
-    setGuests(snapshot.guests);
-    setResponses(snapshot.responses);
-    setCompanions(snapshot.companions);
-    setMessages(snapshot.messages);
+  const loadGuestPage = async (requestedPage = guestPage) => {
+    const page = await fetchAdminGuestPage({
+      page: requestedPage,
+      pageSize: PAGE_SIZE,
+      search,
+      statusFilter,
+      hasDietaryFilter,
+      hasCompanionsFilter,
+      messageStatusFilter,
+    });
+    setGuests(page.guests);
+    setResponses(page.responses);
+    setCompanions(page.companions);
+    setMessages(page.messages);
+    setStats(page.stats);
+    setGuestPage(page.page);
+    setGuestTotalPages(page.totalPages);
+    setTotalGuests(page.totalGuests);
+    setFilteredGuestCount(page.filteredGuests);
+  };
+
+  const loadMessagePage = async (requestedPage = messagePage) => {
+    const page = await fetchAdminMessagePage({
+      page: requestedPage,
+      pageSize: PAGE_SIZE,
+      search,
+      messageStatusFilter,
+    });
+    setGuests(page.guests);
+    setMessages(page.messages);
+    setResponses([]);
+    setCompanions([]);
+    setMessageStats(page.messageStats);
+    setMessagePage(page.page);
+    setMessageTotalPages(page.totalPages);
+    setTotalMessages(page.totalMessages);
+  };
+
+  const refreshActiveTab = async () => {
+    if (activeTab === 'messages') {
+      await loadMessagePage(messagePage);
+      return;
+    }
+
+    await loadGuestPage(guestPage);
   };
 
   useEffect(() => {
+    setGuestPage(1);
+  }, [search, statusFilter, hasDietaryFilter, hasCompanionsFilter, messageStatusFilter]);
+
+  useEffect(() => {
+    setMessagePage(1);
+  }, [search, messageStatusFilter]);
+
+  useEffect(() => {
+    if (activeTab !== 'guests') {
+      return;
+    }
+
     let cancelled = false;
     setIsLoading(true);
 
-    fetchAdminSnapshot()
-      .then((snapshot) => {
-        if (cancelled) {
-          return;
-        }
-        setGuests(snapshot.guests);
-        setResponses(snapshot.responses);
-        setCompanions(snapshot.companions);
-        setMessages(snapshot.messages);
-      })
+    loadGuestPage(guestPage)
       .catch((error) => {
         if (!cancelled) {
-          setActionError(error instanceof Error ? error.message : 'Unable to load admin dashboard data.');
+          setActionError(error instanceof Error ? error.message : 'Unable to load admin guest data.');
         }
       })
       .finally(() => {
@@ -458,7 +648,32 @@ export default function AdminGuestsPage() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [activeTab, guestPage, search, statusFilter, hasDietaryFilter, hasCompanionsFilter, messageStatusFilter]);
+
+  useEffect(() => {
+    if (activeTab !== 'messages') {
+      return;
+    }
+
+    let cancelled = false;
+    setIsLoading(true);
+
+    loadMessagePage(messagePage)
+      .catch((error) => {
+        if (!cancelled) {
+          setActionError(error instanceof Error ? error.message : 'Unable to load admin message data.');
+        }
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setIsLoading(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [activeTab, messagePage, search, messageStatusFilter]);
 
   const responseByGuestId = useMemo(() => {
     const map = new Map<bigint, RsvpResponse>();
@@ -496,122 +711,17 @@ export default function AdminGuestsPage() {
     return map;
   }, [messages]);
 
-  const sortedGuests = useMemo(() => {
-    return [...guests].sort((a, b) => {
-      const order = STATUS_ORDER[a.rsvpStatus as RsvpStatus] - STATUS_ORDER[b.rsvpStatus as RsvpStatus];
-      if (order !== 0) return order;
-      return `${a.firstName} ${a.lastName}`.localeCompare(`${b.firstName} ${b.lastName}`);
-    });
-  }, [guests]);
-
-  const filteredGuests = useMemo(() => {
-    const needle = search.trim().toLowerCase();
-    return sortedGuests.filter((guest) => {
-      const guestResponse = responseByGuestId.get(guest.id);
-      const guestCompanions = companionsByGuestId.get(guest.id) ?? [];
-      const guestMessages = messagesByGuestId.get(guest.id) ?? [];
-
-      const searchable = [
-        `${guest.firstName} ${guest.lastName}`,
-        guest.inviteCode,
-      ]
-        .join(' ')
-        .toLowerCase();
-
-      if (needle && !searchable.includes(needle)) return false;
-      if (statusFilter !== 'all' && guest.rsvpStatus !== statusFilter) return false;
-
-      const hasDietary = Boolean(guestResponse?.dietaryNotes) || guestCompanions.some((c) => Boolean(c.dietaryNotes));
-      if (hasDietaryFilter === 'yes' && !hasDietary) return false;
-      if (hasDietaryFilter === 'no' && hasDietary) return false;
-
-      const hasCompanions = guestCompanions.length > 0;
-      if (hasCompanionsFilter === 'yes' && !hasCompanions) return false;
-      if (hasCompanionsFilter === 'no' && hasCompanions) return false;
-
-      if (messageStatusFilter !== 'all') {
-        if (messageStatusFilter === 'none') {
-          if (guestMessages.length > 0) return false;
-        } else if (!guestMessages.some((m) => m.status === messageStatusFilter)) {
-          return false;
-        }
-      }
-
-      return true;
-    });
-  }, [
-    companionsByGuestId,
-    hasCompanionsFilter,
-    hasDietaryFilter,
-    messageStatusFilter,
-    messagesByGuestId,
-    responseByGuestId,
-    search,
-    sortedGuests,
-    statusFilter,
-  ]);
-
-  const stats = useMemo(() => {
-    let attending = 0;
-    let declining = 0;
-    let pending = 0;
-    let companionCount = 0;
-    let dietaryCount = 0;
-
-    for (const guest of guests) {
-      if (guest.rsvpStatus === 'attending') attending += 1;
-      else if (guest.rsvpStatus === 'declining') declining += 1;
-      else pending += 1;
-
-      const guestCompanions = companionsByGuestId.get(guest.id) ?? [];
-      if (guest.rsvpStatus === 'attending') {
-        companionCount += guestCompanions.length;
-      }
-
-      const response = responseByGuestId.get(guest.id);
-      if (response?.dietaryNotes || guestCompanions.some((c) => c.dietaryNotes)) {
-        dietaryCount += 1;
-      }
-    }
-
-    return {
-      invited: guests.length,
-      attending,
-      declining,
-      pending,
-      headcount: attending + companionCount,
-      dietaryCount,
-      companionCount,
-    };
-  }, [companionsByGuestId, guests, responseByGuestId]);
-
-  const messageStats = useMemo(() => {
-    let newCount = 0;
-    let inProgressCount = 0;
-    let resolvedCount = 0;
-    for (const message of messages) {
-      if (message.status === 'new') newCount += 1;
-      else if (message.status === 'in_progress') inProgressCount += 1;
-      else if (message.status === 'resolved') resolvedCount += 1;
-    }
-    return { total: messages.length, newCount, inProgressCount, resolvedCount };
-  }, [messages]);
-
-  const sortedMessages = useMemo(() => {
-    return [...messages].sort(
-      (a, b) => Number(b.createdAt.microsSinceUnixEpoch - a.createdAt.microsSinceUnixEpoch)
-    );
-  }, [messages]);
+  const pagedGuests = guests;
+  const pagedMessages = messages;
 
   const parsedImport = useMemo(() => parseImportCsv(csvInput), [csvInput]);
-  const existingInviteCodes = useMemo(() => new Set(guests.map((guest) => guest.inviteCode)), [guests]);
 
   const selectedRows = useMemo(() => {
     const selected = new Set(selectedGuestIds);
-    return filteredGuests.filter((guest) => selected.has(guest.id.toString()));
-  }, [filteredGuests, selectedGuestIds]);
-  const allFilteredSelected = filteredGuests.length > 0 && selectedRows.length === filteredGuests.length;
-  const partiallyFilteredSelected = selectedRows.length > 0 && selectedRows.length < filteredGuests.length;
+    return pagedGuests.filter((guest) => selected.has(guest.id.toString()));
+  }, [pagedGuests, selectedGuestIds]);
+  const allFilteredSelected = pagedGuests.length > 0 && selectedRows.length === pagedGuests.length;
+  const partiallyFilteredSelected = selectedRows.length > 0 && selectedRows.length < pagedGuests.length;
   const selectAllRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
@@ -663,7 +773,7 @@ export default function AdminGuestsPage() {
         guestId: editingGuestId.toString(),
         companions: parseCompanionsText(draft.companionsText),
       });
-      await refreshAdminSnapshot();
+      await refreshActiveTab();
 
       setMessageNotice('Guest details saved.');
       setEditingGuestId(null);
@@ -686,7 +796,7 @@ export default function AdminGuestsPage() {
   const toggleSelectAllFiltered = (checked: boolean) => {
     setSelectedGuestIds((prev) => {
       const next = new Set(prev);
-      for (const guest of filteredGuests) {
+      for (const guest of pagedGuests) {
         const key = guest.id.toString();
         if (checked) next.add(key);
         else next.delete(key);
@@ -708,7 +818,7 @@ export default function AdminGuestsPage() {
         guestIds: selectedRows.map((g) => g.id.toString()),
         rsvpStatus: bulkStatus,
       });
-      await refreshAdminSnapshot();
+      await refreshActiveTab();
       setMessageNotice(`Updated ${selectedRows.length} guest(s) to ${bulkStatus}.`);
     } catch (error) {
       setActionError(error instanceof Error ? error.message : 'Bulk action failed.');
@@ -727,7 +837,7 @@ export default function AdminGuestsPage() {
     }
 
     try {
-      const inviteCodes = new Set(existingInviteCodes);
+      const inviteCodes = await fetchAdminInviteCodes();
 
       for (const row of parsedImport.rows) {
         const inviteCode = generateInviteCode(row.firstName, row.lastName, inviteCodes);
@@ -740,7 +850,7 @@ export default function AdminGuestsPage() {
           inviteCode,
         });
       }
-      await refreshAdminSnapshot();
+      await refreshActiveTab();
       setImportNotice(`Imported ${parsedImport.rows.length} row(s).`);
       setCsvInput('');
     } catch (error) {
@@ -764,7 +874,7 @@ export default function AdminGuestsPage() {
         action: 'deleteGuest',
         guestId: guest.id.toString(),
       });
-      await refreshAdminSnapshot();
+      await refreshActiveTab();
 
       setSelectedGuestIds((prev) => {
         const next = new Set(prev);
@@ -789,7 +899,7 @@ export default function AdminGuestsPage() {
         messageId: messageId.toString(),
         status,
       });
-      await refreshAdminSnapshot();
+      await refreshActiveTab();
       setMessageNotice('Message status updated.');
     } catch (error) {
       setActionError(error instanceof Error ? error.message : 'Unable to update message status.');
@@ -948,7 +1058,7 @@ export default function AdminGuestsPage() {
           <>
             <div className="cta-row" style={{ justifyContent: 'space-between', marginBottom: '0.5rem' }}>
               <p className="small-note" style={{ margin: 0 }}>
-                Showing {filteredGuests.length} of {guests.length} guests.
+                Showing page {guestPage} of {guestTotalPages}. {pagedGuests.length} visible on this page, {filteredGuestCount} matched, {totalGuests} total.
               </p>
             </div>
 
@@ -996,7 +1106,7 @@ export default function AdminGuestsPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredGuests.map((guest) => {
+                  {pagedGuests.map((guest) => {
                     const response = responseByGuestId.get(guest.id);
                     const guestCompanions = companionsByGuestId.get(guest.id) ?? [];
                     const guestMessages = messagesByGuestId.get(guest.id) ?? [];
@@ -1148,6 +1258,29 @@ export default function AdminGuestsPage() {
                 </tbody>
               </table>
             </div>
+            <div className="cta-row" style={{ justifyContent: 'space-between', marginTop: '0.9rem' }}>
+              <p className="small-note" style={{ margin: 0 }}>
+                Page {guestPage} of {guestTotalPages}
+              </p>
+              <div className="cta-row" style={{ justifyContent: 'flex-end', margin: 0 }}>
+                <button
+                  type="button"
+                  className="button-secondary"
+                  disabled={guestPage <= 1}
+                  onClick={() => setGuestPage((current) => Math.max(1, current - 1))}
+                >
+                  Previous
+                </button>
+                <button
+                  type="button"
+                  className="button-secondary"
+                  disabled={guestPage >= guestTotalPages}
+                  onClick={() => setGuestPage((current) => Math.min(guestTotalPages, current + 1))}
+                >
+                  Next
+                </button>
+              </div>
+            </div>
           </>
         )}
       </section>
@@ -1162,6 +1295,9 @@ export default function AdminGuestsPage() {
         <p className="small-note" style={{ marginTop: 0 }}>
           Total {messageStats.total} · New {messageStats.newCount} · In progress {messageStats.inProgressCount} · Resolved {messageStats.resolvedCount}
         </p>
+        <p className="small-note" style={{ marginTop: 0 }}>
+          Showing page {messagePage} of {messageTotalPages}. {pagedMessages.length} visible on this page, {totalMessages} matched.
+        </p>
         <div style={{ overflowX: 'auto' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.93rem' }}>
             <thead>
@@ -1173,7 +1309,7 @@ export default function AdminGuestsPage() {
               </tr>
             </thead>
             <tbody>
-              {sortedMessages.map((message) => {
+              {pagedMessages.map((message) => {
                 const guest = guests.find((g) => g.id === message.guestId);
                 return (
                   <tr key={message.id.toString()}>
@@ -1197,7 +1333,7 @@ export default function AdminGuestsPage() {
                   </tr>
                 );
               })}
-              {sortedMessages.length === 0 ? (
+              {pagedMessages.length === 0 ? (
                 <tr>
                   <td colSpan={4} style={{ padding: '1rem', textAlign: 'center' }}>
                     <span className="small-note">No messages yet.</span>
@@ -1206,6 +1342,24 @@ export default function AdminGuestsPage() {
               ) : null}
             </tbody>
           </table>
+        </div>
+        <div className="cta-row" style={{ justifyContent: 'flex-end', marginTop: '0.9rem' }}>
+          <button
+            type="button"
+            className="button-secondary"
+            disabled={messagePage <= 1}
+            onClick={() => setMessagePage((current) => Math.max(1, current - 1))}
+          >
+            Previous
+          </button>
+          <button
+            type="button"
+            className="button-secondary"
+            disabled={messagePage >= messageTotalPages}
+            onClick={() => setMessagePage((current) => Math.min(messageTotalPages, current + 1))}
+          >
+            Next
+          </button>
         </div>
       </section>
       ) : null}

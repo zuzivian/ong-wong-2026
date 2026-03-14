@@ -15,7 +15,6 @@ export default {
   firstName: __t.string(),
   lastName: __t.string(),
   inviteCode: __t.string(),
-  qrToken: __t.option(__t.string()),
   contactEmail: __t.option(__t.string()),
   contactPhone: __t.option(__t.string()),
 };

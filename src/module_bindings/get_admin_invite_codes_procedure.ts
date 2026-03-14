@@ -10,6 +10,11 @@ import {
   type Infer as __Infer,
 } from "spacetimedb";
 
-export default {
-  token: __t.string(),
+import {
+  AdminInviteCodes,
+} from "./types";
+
+export const params = {
+  adminSecret: __t.string(),
 };
+export const returnType = AdminInviteCodes;

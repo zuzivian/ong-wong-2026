@@ -3,13 +3,10 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { useSpacetimeDB } from 'spacetimedb/react';
-import { loadGuestPortalState } from '@/lib/guest-portal-state';
 import {
   normalizeInviteCode,
   UNLOCKED_INVITE_CODE_STORAGE_KEY,
 } from '@/lib/unlock-client';
-import { DbConnection } from '@/module_bindings';
 
 type NavRsvpLinkProps = {
   initialInviteCode?: string;
@@ -33,8 +30,6 @@ export default function NavRsvpLink({
   initialInviteCode = '',
   initialSubmitted,
 }: NavRsvpLinkProps) {
-  const db = useSpacetimeDB();
-  const connection = db.getConnection() as DbConnection | null;
   const pathname = usePathname();
   const pathnameInviteCode = getInviteCodeFromPathname(pathname);
 
@@ -69,28 +64,6 @@ export default function NavRsvpLink({
       window.localStorage.setItem(UNLOCKED_INVITE_CODE_STORAGE_KEY, pathnameInviteCode);
     }
   }, [inviteCode, pathnameInviteCode]);
-
-  useEffect(() => {
-    if (!connection || !inviteCode) {
-      return;
-    }
-
-    let cancelled = false;
-
-    loadGuestPortalState(connection, inviteCode)
-      .then((state) => {
-        if (!cancelled) {
-          setHasSubmitted(state.activeRsvp !== undefined && state.activeRsvp.submitted);
-        }
-      })
-      .catch(() => {
-        // Fall back to the initial server-rendered state.
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [connection, inviteCode]);
 
   return (
     <Link href={hasSubmitted ? '/dashboard' : '/rsvp'} className="rsvp-button">

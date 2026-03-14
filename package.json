@@ -11,16 +11,16 @@
     "dev:stable": "WATCHPACK_POLLING=true CHOKIDAR_USEPOLLING=true next dev --webpack",
     "build": "next build --webpack",
     "start": "next start",
-    "test": "node --experimental-strip-types --test src/lib/invite-unlock.test.ts src/lib/session-secret.test.ts src/lib/admin-auth.test.ts src/lib/request-rate-limit.test.ts src/lib/unlock-client.test.ts",
+    "test": "npm run test:unit",
+    "test:unit": "node --experimental-strip-types --test src/lib/invite-unlock.test.ts src/lib/session-secret.test.ts src/lib/admin-auth.test.ts src/lib/request-rate-limit.test.ts src/lib/unlock-client.test.ts src/lib/google-calendar.test.ts",
+    "test:e2e": "node --experimental-strip-types scripts/e2e-smoke.ts",
     "generate": "cargo run -p gen-bindings -- --out-dir src/module_bindings --module-path spacetimedb && prettier --write src/module_bindings",
     "spacetime:generate": "spacetime generate --lang typescript --out-dir src/module_bindings --module-path spacetimedb",
     "spacetime:publish:local": "spacetime publish --server local --module-path spacetimedb",
     "spacetime:publish": "spacetime publish --server maincloud --module-path spacetimedb"
   },
   "dependencies": {
-    "@types/qrcode": "^1.5.6",
     "next": "^16.1.6",
-    "qrcode": "^1.5.4",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
     "spacetimedb": "^2.0.1"

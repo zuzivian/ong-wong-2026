@@ -9,7 +9,6 @@ export const Guest = table(
     firstName: t.string(),
     lastName: t.string(),
     inviteCode: t.string().unique(),
-    qrToken: t.string().unique(),
     contactEmail: t.string().optional(),
     contactPhone: t.string().optional(),
     rsvpStatus: t.string(),

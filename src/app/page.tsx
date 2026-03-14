@@ -5,17 +5,9 @@ import HomeInvitationFocus from "@/components/home-invitation-focus";
 import HomeRsvpCta from "@/components/home-rsvp-cta";
 import HomeUnlockCta from "@/components/home-unlock-cta";
 import { getVariantMeta } from "@/lib/design-variant";
+import { buildWeddingGoogleCalendarUrl } from "@/lib/google-calendar";
+import { getGuestSessionSummary } from "@/lib/guest-session-summary";
 import { UNLOCK_COOKIE_NAME, readUnlockSession } from "@/lib/invite-unlock";
-import {
-  getGuestPortalState,
-  getGuestPreviewByInviteCode,
-} from "@/lib/spacetimedb-procedures";
-import { withSpacetimeConnection } from "@/lib/spacetimedb-server";
-
-type GuestTableRow = {
-  firstName: string;
-  lastName: string;
-};
 
 const SCHEDULE_ITEMS = [
   {
@@ -123,63 +115,18 @@ const HDB_PARKING_OPTIONS = [
   },
 ] as const;
 
-function formatGuestName(row: GuestTableRow | undefined): string | undefined {
-  if (!row) {
-    return undefined;
-  }
-
-  const name = `${row.firstName ?? ""} ${row.lastName ?? ""}`.trim();
-  return name.length > 0 ? name : undefined;
-}
-
-async function getGuestNameByInviteCode(
-  inviteCode: string,
-): Promise<string | undefined> {
-  if (!inviteCode.trim()) {
-    return undefined;
-  }
-
-  try {
-    const preview = await withSpacetimeConnection((connection) =>
-      getGuestPreviewByInviteCode(connection, {
-        inviteCode: inviteCode.trim().toUpperCase(),
-      })
-    );
-    return formatGuestName(preview);
-  } catch {
-    return undefined;
-  }
-}
-
-async function isRsvpSubmitted(inviteCode?: string): Promise<boolean> {
-  if (!inviteCode?.trim()) {
-    return false;
-  }
-
-  try {
-    const portalState = await withSpacetimeConnection((connection) =>
-      getGuestPortalState(connection, {
-        inviteCode: inviteCode.trim().toUpperCase(),
-      })
-    );
-    return portalState.activeRsvp !== undefined && portalState.activeRsvp.submitted;
-  } catch {
-    return false;
-  }
-}
-
 export default async function HomePage() {
   const variantMeta = getVariantMeta();
+  const googleCalendarUrl = buildWeddingGoogleCalendarUrl();
   const cookieStore = await cookies();
   const unlockCookie = cookieStore.get(UNLOCK_COOKIE_NAME)?.value;
   const unlockSession = await readUnlockSession(unlockCookie);
   const isUnlocked = unlockSession !== undefined;
-  const guestName = unlockSession?.inviteCode
-    ? await getGuestNameByInviteCode(unlockSession.inviteCode)
+  const guestSessionSummary = unlockSession?.inviteCode
+    ? await getGuestSessionSummary(unlockSession.inviteCode)
     : undefined;
-  const rsvpSubmitted = unlockSession?.inviteCode
-    ? await isRsvpSubmitted(unlockSession.inviteCode)
-    : false;
+  const guestName = guestSessionSummary?.guestName;
+  const rsvpSubmitted = guestSessionSummary?.rsvpSubmitted ?? false;
 
   return (
     <div className={`theme-page ${variantMeta.themeClass}`}>
@@ -202,9 +149,17 @@ export default async function HomePage() {
               {isUnlocked ? (
                 <>
                   <HomeRsvpCta
-                    inviteCode={unlockSession?.inviteCode ?? ""}
                     initialSubmitted={rsvpSubmitted}
                   />
+                  <a
+                    href={googleCalendarUrl}
+                    className="button-secondary"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    <Icon name="calendar_month" className="button-icon" /> Add
+                    to Calendar
+                  </a>
                   <a href="#schedule" className="button-secondary">
                     <Icon name="event_note" className="button-icon" /> Event
                     Details
@@ -298,6 +253,15 @@ export default async function HomePage() {
                     hideWhenSubmitted
                     className="button-primary invitation-card-rsvp"
                   />
+                  <a
+                    href={googleCalendarUrl}
+                    className="button-secondary invitation-card-calendar"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    <Icon name="calendar_month" className="button-icon" /> Add
+                    to Google Calendar
+                  </a>
                 </div>
               </article>
             </div>

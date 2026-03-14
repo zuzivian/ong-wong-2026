@@ -1,8 +1,14 @@
 import { DbConnection } from '@/module_bindings';
+import * as GetAdminGuestPageProcedure from '@/module_bindings/get_admin_guest_page_procedure';
+import * as GetAdminInviteCodesProcedure from '@/module_bindings/get_admin_invite_codes_procedure';
+import * as GetAdminMessagePageProcedure from '@/module_bindings/get_admin_message_page_procedure';
 import * as GetAdminDashboardSnapshotProcedure from '@/module_bindings/get_admin_dashboard_snapshot_procedure';
 import * as GetGuestPortalStateProcedure from '@/module_bindings/get_guest_portal_state_procedure';
 import * as GetGuestPreviewByInviteCodeProcedure from '@/module_bindings/get_guest_preview_by_invite_code_procedure';
 import type {
+  GetAdminGuestPageResult,
+  GetAdminInviteCodesResult,
+  GetAdminMessagePageResult,
   GetAdminDashboardSnapshotResult,
   GetGuestPortalStateResult,
   GetGuestPreviewByInviteCodeResult,
@@ -51,6 +57,63 @@ export function getAdminDashboardSnapshot(
     GetAdminDashboardSnapshotProcedure.params,
     params,
     GetAdminDashboardSnapshotProcedure.returnType
+  );
+}
+
+export function getAdminGuestPage(
+  connection: DbConnection,
+  params: {
+    adminSecret: string;
+    page: number;
+    pageSize: number;
+    search?: string;
+    rsvpStatus?: string;
+    hasDietary?: string;
+    hasCompanions?: string;
+    messageStatus?: string;
+  }
+): Promise<GetAdminGuestPageResult> {
+  return callProcedure<GetAdminGuestPageResult>(
+    connection,
+    'get_admin_guest_page',
+    'getAdminGuestPage',
+    GetAdminGuestPageProcedure.params,
+    params,
+    GetAdminGuestPageProcedure.returnType
+  );
+}
+
+export function getAdminMessagePage(
+  connection: DbConnection,
+  params: {
+    adminSecret: string;
+    page: number;
+    pageSize: number;
+    search?: string;
+    status?: string;
+  }
+): Promise<GetAdminMessagePageResult> {
+  return callProcedure<GetAdminMessagePageResult>(
+    connection,
+    'get_admin_message_page',
+    'getAdminMessagePage',
+    GetAdminMessagePageProcedure.params,
+    params,
+    GetAdminMessagePageProcedure.returnType
+  );
+}
+
+export function getAdminInviteCodes(
+  connection: DbConnection,
+  params: { adminSecret: string }
+): Promise<GetAdminInviteCodesResult> {
+  return callProcedure<GetAdminInviteCodesResult>(
+    connection,
+    'get_admin_invite_codes',
+    'getAdminInviteCodes',
+    GetAdminInviteCodesProcedure.params,
+    params,
+    GetAdminInviteCodesProcedure.returnType
   );
 }
 
