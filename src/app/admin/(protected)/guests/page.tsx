@@ -58,9 +58,11 @@ function formatDateTime(ts: { toDate(): Date } | undefined): string {
   return ts.toDate().toLocaleString('en-SG');
 }
 
-function buildRsvpUrl(token: string): string {
+function buildRsvpUrl(inviteCode: string): string {
   const baseUrl = typeof window === 'undefined' ? '' : window.location.origin;
-  return `${baseUrl}/rsvp/${encodeURIComponent(token)}`;
+  const configuredBaseUrl = process.env.NEXT_PUBLIC_APP_URL?.trim().replace(/\/$/, '');
+  const resolvedBaseUrl = configuredBaseUrl || baseUrl;
+  return `${resolvedBaseUrl}/rsvp/${encodeURIComponent(inviteCode)}`;
 }
 
 async function copyTextToClipboard(text: string): Promise<void> {

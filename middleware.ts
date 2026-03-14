@@ -27,11 +27,19 @@ function isPublicPath(pathname: string): boolean {
     return true;
   }
 
+  if (pathname === '/api/rsvp-unlock' || pathname.startsWith('/api/rsvp-unlock/')) {
+    return true;
+  }
+
   if (pathname === '/api/admin/auth' || pathname.startsWith('/api/admin/auth/')) {
     return true;
   }
 
   if (pathname === '/admin/login') {
+    return true;
+  }
+
+  if (pathname.startsWith('/rsvp/')) {
     return true;
   }
 

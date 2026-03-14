@@ -2,10 +2,11 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { cookies } from 'next/headers';
 import { Suspense } from 'react';
+import NavRsvpLink from '@/components/nav-rsvp-link';
 import LogoutButton from '@/components/logout-button';
 import SiteMotion from '@/components/site-motion';
 import SpacetimeAppProvider from '@/components/spacetimedb-app-provider';
-import { UNLOCK_COOKIE_NAME, verifyUnlockSession } from '@/lib/invite-unlock';
+import { readUnlockSession, UNLOCK_COOKIE_NAME } from '@/lib/invite-unlock';
 import { withSpacetimeConnection } from '@/lib/spacetimedb-server';
 import { getGuestPortalState } from '@/lib/spacetimedb-procedures';
 import './globals.css';
@@ -15,10 +16,14 @@ export const metadata: Metadata = {
   description: 'Wedding website and RSVP for Samuel and Natasha.',
 };
 
-async function isRsvpSubmitted(): Promise<boolean> {
+async function isRsvpSubmitted(inviteCode?: string): Promise<boolean> {
+  if (!inviteCode) {
+    return false;
+  }
+
   try {
     const portalState = await withSpacetimeConnection((connection) =>
-      getGuestPortalState(connection, {})
+      getGuestPortalState(connection, { inviteCode })
     );
     return portalState.activeRsvp !== undefined && portalState.activeRsvp.submitted;
   } catch {
@@ -33,8 +38,9 @@ export default async function RootLayout({
 }>) {
   const cookieStore = await cookies();
   const unlockCookie = cookieStore.get(UNLOCK_COOKIE_NAME)?.value;
-  const isUnlocked = await verifyUnlockSession(unlockCookie);
-  const rsvpSubmitted = isUnlocked ? await isRsvpSubmitted() : false;
+  const unlockSession = await readUnlockSession(unlockCookie);
+  const isUnlocked = unlockSession !== undefined;
+  const rsvpSubmitted = isUnlocked ? await isRsvpSubmitted(unlockSession.inviteCode) : false;
 
   return (
     <html lang="en">
@@ -52,9 +58,10 @@ export default async function RootLayout({
                 <nav className="top-nav" aria-label="Primary navigation">
                   <Link href="/">Home</Link>
                   <Link href="/faq">FAQ</Link>
-                  <Link href="/dashboard" className="rsvp-button">
-                    {rsvpSubmitted ? 'Your RSVP' : 'Submit RSVP'}
-                  </Link>
+                  <NavRsvpLink
+                    initialInviteCode={unlockSession?.inviteCode}
+                    initialSubmitted={rsvpSubmitted}
+                  />
                   <LogoutButton />
                 </nav>
               </div>

@@ -2,12 +2,10 @@ import { DbConnection } from '@/module_bindings';
 import * as GetAdminDashboardSnapshotProcedure from '@/module_bindings/get_admin_dashboard_snapshot_procedure';
 import * as GetGuestPortalStateProcedure from '@/module_bindings/get_guest_portal_state_procedure';
 import * as GetGuestPreviewByInviteCodeProcedure from '@/module_bindings/get_guest_preview_by_invite_code_procedure';
-import * as GetInviteCodeByQrTokenProcedure from '@/module_bindings/get_invite_code_by_qr_token_procedure';
 import type {
   GetAdminDashboardSnapshotResult,
   GetGuestPortalStateResult,
   GetGuestPreviewByInviteCodeResult,
-  GetInviteCodeByQrTokenResult,
 } from '@/module_bindings/types/procedures';
 
 type ProcedureCaller = {
@@ -81,19 +79,5 @@ export function getGuestPreviewByInviteCode(
     GetGuestPreviewByInviteCodeProcedure.params,
     params,
     GetGuestPreviewByInviteCodeProcedure.returnType
-  );
-}
-
-export function getInviteCodeByQrToken(
-  connection: DbConnection,
-  params: { qrToken: string }
-): Promise<GetInviteCodeByQrTokenResult> {
-  return callProcedure<GetInviteCodeByQrTokenResult>(
-    connection,
-    'get_invite_code_by_qr_token',
-    'getInviteCodeByQrToken',
-    GetInviteCodeByQrTokenProcedure.params,
-    params,
-    GetInviteCodeByQrTokenProcedure.returnType
   );
 }

@@ -47,10 +47,6 @@ type AdminActionBody =
       contactPhone?: string;
     }
   | {
-      action: 'regenerateGuestQrToken';
-      guestId: string;
-    }
-  | {
       action: 'deleteGuest';
       guestId: string;
     }
@@ -192,12 +188,6 @@ export async function POST(request: NextRequest) {
             qrToken: body.qrToken,
             contactEmail: body.contactEmail,
             contactPhone: body.contactPhone,
-          });
-          return;
-        case 'regenerateGuestQrToken':
-          await connection.reducers.adminRegenerateGuestQrToken({
-            adminSecret,
-            guestId: BigInt(body.guestId),
           });
           return;
         case 'deleteGuest':

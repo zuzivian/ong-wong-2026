@@ -1,50 +1,47 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getInviteCodeByQrToken } from '@/lib/spacetimedb-procedures';
+import { getGuestPreviewByInviteCode } from '@/lib/spacetimedb-procedures';
 import { withSpacetimeConnection } from '@/lib/spacetimedb-server';
 import {
   createUnlockSession,
   UNLOCK_COOKIE_NAME,
   UNLOCK_SESSION_TTL_SECONDS,
 } from '@/lib/invite-unlock';
+import { normalizeInviteCode } from '@/lib/unlock-client';
 
 export const runtime = 'nodejs';
 
-async function findInviteCodeByQrToken(qrToken: string): Promise<string | null> {
-  const normalizedToken = qrToken.trim();
-  if (!normalizedToken) {
-    return null;
+async function inviteCodeExists(inviteCode: string): Promise<boolean> {
+  const normalizedCode = normalizeInviteCode(inviteCode);
+  if (!normalizedCode) {
+    return false;
   }
 
   return withSpacetimeConnection(async (connection) => {
-    const inviteCode = await getInviteCodeByQrToken(connection, {
-      qrToken: normalizedToken,
-    });
-    return inviteCode ?? null;
+    const preview = await getGuestPreviewByInviteCode(connection, { inviteCode: normalizedCode });
+    return preview !== undefined;
   });
 }
 
 export async function GET(request: NextRequest) {
-  const token = request.nextUrl.searchParams.get('token')?.trim() ?? '';
-
-  if (!token) {
-    return NextResponse.redirect(new URL('/', request.url));
-  }
-
-  let inviteCode: string | null = null;
-  try {
-    inviteCode = await findInviteCodeByQrToken(token);
-  } catch (error) {
-    console.error('[qr-unlock] Failed to validate QR token:', error);
-    return NextResponse.redirect(new URL('/', request.url));
-  }
-
+  const inviteCode = normalizeInviteCode(request.nextUrl.searchParams.get('inviteCode') ?? '');
   if (!inviteCode) {
-    // Token not found — redirect to home rather than exposing details.
+    return NextResponse.redirect(new URL('/', request.url));
+  }
+
+  let exists = false;
+  try {
+    exists = await inviteCodeExists(inviteCode);
+  } catch (error) {
+    console.error('[rsvp-unlock] Failed to validate invite code:', error);
+    return NextResponse.redirect(new URL('/', request.url));
+  }
+
+  if (!exists) {
     return NextResponse.redirect(new URL('/', request.url));
   }
 
   const session = await createUnlockSession(inviteCode);
-  const redirectUrl = new URL(`/rsvp/${encodeURIComponent(token)}`, request.url);
+  const redirectUrl = new URL(`/rsvp/${encodeURIComponent(inviteCode)}`, request.url);
   const response = NextResponse.redirect(redirectUrl);
   response.cookies.set({
     name: UNLOCK_COOKIE_NAME,

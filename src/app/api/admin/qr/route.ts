@@ -22,14 +22,17 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const token = request.nextUrl.searchParams.get('token')?.trim() ?? '';
+  const inviteCode =
+    request.nextUrl.searchParams.get('inviteCode')?.trim() ??
+    request.nextUrl.searchParams.get('token')?.trim() ??
+    '';
   const shouldDownload = request.nextUrl.searchParams.get('download') !== '0';
-  if (!token) {
-    return NextResponse.json({ error: 'token is required.' }, { status: 400 });
+  if (!inviteCode) {
+    return NextResponse.json({ error: 'inviteCode is required.' }, { status: 400 });
   }
 
   const baseUrl = getAppBaseUrl(request);
-  const rsvpUrl = `${baseUrl}/rsvp/${encodeURIComponent(token)}`;
+  const rsvpUrl = `${baseUrl}/rsvp/${encodeURIComponent(inviteCode)}`;
 
   try {
     const pngBuffer = await QRCode.toBuffer(rsvpUrl, {
@@ -38,7 +41,7 @@ export async function GET(request: NextRequest) {
       margin: 2,
     });
 
-    const safeFilename = token.replace(/[^a-zA-Z0-9._-]/g, '_');
+    const safeFilename = inviteCode.replace(/[^a-zA-Z0-9._-]/g, '_');
     return new NextResponse(pngBuffer, {
       status: 200,
       headers: {

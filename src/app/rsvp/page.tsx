@@ -2,7 +2,7 @@ import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import RsvpFlow from '@/components/rsvp-flow';
 import { getVariantMeta } from '@/lib/design-variant';
-import { UNLOCK_COOKIE_NAME, verifyUnlockSession } from '@/lib/invite-unlock';
+import { readUnlockSession, UNLOCK_COOKIE_NAME, verifyUnlockSession } from '@/lib/invite-unlock';
 
 export default async function RsvpPage() {
   const cookieStore = await cookies();
@@ -11,11 +11,12 @@ export default async function RsvpPage() {
   if (!isUnlocked) {
     redirect('/');
   }
+  const unlockSession = await readUnlockSession(unlockCookie);
 
   const meta = getVariantMeta();
   return (
     <div className={`theme-page ${meta.themeClass}`}>
-      <RsvpFlow />
+      <RsvpFlow initialInviteCode={unlockSession?.inviteCode ?? ''} />
     </div>
   );
 }

@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { FormEvent, useEffect, useMemo, useRef, useState } from 'react';
 import { useSpacetimeDB } from 'spacetimedb/react';
 import { getVariantMeta } from '@/lib/design-variant';
@@ -23,7 +24,7 @@ type Companion = {
 };
 
 type RsvpFlowProps = {
-  initialToken?: string;
+  initialInviteCode?: string;
 };
 
 const DIETARY_OPTIONS = [
@@ -127,24 +128,18 @@ function composeDietaryNotes(mode: DietaryMode, selectedOptions: string[], notes
   return parts.join(' | ');
 }
 
-export default function RsvpFlow({ initialToken }: RsvpFlowProps) {
+export default function RsvpFlow({ initialInviteCode = '' }: RsvpFlowProps) {
   const variantMeta = getVariantMeta();
   const db = useSpacetimeDB();
   const connection = db.getConnection() as DbConnection | null;
+  const router = useRouter();
 
   const [step, setStep] = useState(1);
   const [isEditingStep, setIsEditingStep] = useState(false);
 
   const [lookupFirstName, setLookupFirstName] = useState('');
   const [lookupLastName, setLookupLastName] = useState('');
-  const [lookupInviteCode, setLookupInviteCode] = useState(() => {
-    if (typeof window === 'undefined') {
-      return '';
-    }
-    return normalizeUnlockedInviteCode(
-      window.localStorage.getItem(UNLOCKED_INVITE_CODE_STORAGE_KEY) ?? ''
-    );
-  });
+  const [lookupInviteCode, setLookupInviteCode] = useState(initialInviteCode);
 
   const [attendance, setAttendance] = useState<Attendance>('');
   const [dietaryMode, setDietaryMode] = useState<DietaryMode>('');
@@ -168,10 +163,8 @@ export default function RsvpFlow({ initialToken }: RsvpFlowProps) {
   });
 
   const hydratedGuestId = useRef<bigint | null>(null);
-  const tokenSyncAttemptRef = useRef<string | null>(null);
   const unlockRefreshedForInviteCode = useRef<string | null>(null);
   const totalSteps = STEP_META.length;
-  const normalizedInitialToken = initialToken?.trim() ?? '';
   const normalizedInviteCode = lookupInviteCode.trim().toUpperCase();
 
   const progressPercent = useMemo(
@@ -186,18 +179,15 @@ export default function RsvpFlow({ initialToken }: RsvpFlowProps) {
     return BigInt(Date.now()) * 1000n > RSVP_CUTOFF_AT_MICROS;
   }, []);
 
-  const isNameSatisfied = Boolean(normalizedInitialToken) || Boolean(
-    lookupFirstName.trim() && lookupLastName.trim()
-  );
-
-  const isInviteCodeSatisfied = Boolean(normalizedInitialToken) || Boolean(normalizedInviteCode);
+  const isNameSatisfied = Boolean(lookupFirstName.trim() && lookupLastName.trim());
+  const isInviteCodeSatisfied = Boolean(normalizedInviteCode);
   const detectedGuestByInviteCode = portalState.previewGuest;
   const hasDetectedName = Boolean(detectedGuestByInviteCode);
 
   const maxCompanions = 5;
 
   useEffect(() => {
-    if (normalizedInitialToken || typeof window === 'undefined') {
+    if (typeof window === 'undefined') {
       return;
     }
 
@@ -207,7 +197,7 @@ export default function RsvpFlow({ initialToken }: RsvpFlowProps) {
     if (storedCode && storedCode !== lookupInviteCode) {
       setLookupInviteCode(storedCode);
     }
-  }, [lookupInviteCode, normalizedInitialToken]);
+  }, [lookupInviteCode]);
 
   const refreshPortalState = async (inviteCodeOverride?: string) => {
     if (!connection) {
@@ -243,39 +233,7 @@ export default function RsvpFlow({ initialToken }: RsvpFlowProps) {
   }, [connection, normalizedInviteCode]);
 
   useEffect(() => {
-    if (!normalizedInitialToken || !connection) {
-      return;
-    }
-
-    if (tokenSyncAttemptRef.current === normalizedInitialToken) {
-      return;
-    }
-
-    tokenSyncAttemptRef.current = normalizedInitialToken;
-    setLookupError('');
-    setSubmitError('');
-    setVerificationState('verifying');
-    setVerificationMessage('Opening your invitation...');
-
-    connection.reducers
-      .identifyGuestByToken({ token: normalizedInitialToken })
-      .then(async () => {
-        await refreshPortalState();
-        setVerificationState('verified');
-        setVerificationMessage('Invitation verified successfully.');
-      })
-      .catch((error) => {
-        tokenSyncAttemptRef.current = null;
-        setVerificationState('failed');
-        setVerificationMessage('');
-        setLookupError(
-          error instanceof Error ? error.message : 'Unable to verify invitation details.'
-        );
-      });
-  }, [connection, normalizedInitialToken]);
-
-  useEffect(() => {
-    if (normalizedInitialToken || !detectedGuestByInviteCode) {
+    if (!detectedGuestByInviteCode) {
       return;
     }
 
@@ -283,7 +241,7 @@ export default function RsvpFlow({ initialToken }: RsvpFlowProps) {
       setLookupFirstName(detectedGuestByInviteCode.firstName);
       setLookupLastName(detectedGuestByInviteCode.lastName);
     }
-  }, [detectedGuestByInviteCode, lookupFirstName, lookupLastName, normalizedInitialToken]);
+  }, [detectedGuestByInviteCode, lookupFirstName, lookupLastName]);
 
   const canSubmitCurrentStep = useMemo(() => {
     if (step === 1) {
@@ -425,6 +383,7 @@ export default function RsvpFlow({ initialToken }: RsvpFlowProps) {
     if (typeof window !== 'undefined') {
       window.localStorage.setItem(UNLOCKED_INVITE_CODE_STORAGE_KEY, normalizedCode);
     }
+    router.refresh();
   };
 
   useEffect(() => {
@@ -513,25 +472,14 @@ export default function RsvpFlow({ initialToken }: RsvpFlowProps) {
     }
 
     if (step === 1) {
-      if (normalizedInitialToken && verificationState === 'verified') {
-        setVerificationMessage('Invitation verified successfully.');
-        setStep(2);
-        setIsEditingStep(false);
-        return;
-      }
-
       setVerificationState('verifying');
       setVerificationMessage('Verifying invitation details...');
       try {
-        if (normalizedInitialToken) {
-          await connection!.reducers.identifyGuestByToken({ token: normalizedInitialToken });
-        } else {
-          await connection!.reducers.identifyGuestByFallback({
-            firstName: lookupFirstName.trim(),
-            lastName: lookupLastName.trim(),
-            inviteCode: normalizedInviteCode,
-          });
-        }
+        await connection!.reducers.identifyGuestByFallback({
+          firstName: lookupFirstName.trim(),
+          lastName: lookupLastName.trim(),
+          inviteCode: normalizedInviteCode,
+        });
         await refreshPortalState(normalizedInviteCode);
       } catch (error) {
         setVerificationState('failed');
@@ -619,9 +567,9 @@ export default function RsvpFlow({ initialToken }: RsvpFlowProps) {
   };
 
   const current = STEP_META[step - 1];
-  const showNameEditor = step === 1 && (isEditingStep || (!normalizedInitialToken && !hasDetectedName));
-  const hasDefaultPath = step > 1 || Boolean(normalizedInitialToken) || hasDetectedName;
-  const editToggleDisabled = (step === 1 && !normalizedInitialToken && !hasDetectedName) || step === 4;
+  const showNameEditor = step === 1 && (isEditingStep || !hasDetectedName);
+  const hasDefaultPath = step > 1 || hasDetectedName;
+  const editToggleDisabled = (step === 1 && !hasDetectedName) || step === 4;
   const isVerifying = step === 1 && verificationState === 'verifying';
   const isRibbonNavigationDisabled = isVerifying || isSavingProgress;
   const dietarySummary = useMemo(() => {
@@ -667,7 +615,9 @@ export default function RsvpFlow({ initialToken }: RsvpFlowProps) {
         return 'Save Attendance';
       }
       if (step === 3) {
-        return 'Save Dietary Details';
+        return dietaryOptionsSelected.length > 0 || dietaryNotes.trim().length > 0
+          ? 'Save Dietary Details'
+          : 'No Dietary Restrictions';
       }
       return 'Save and Continue';
     }
@@ -679,7 +629,7 @@ export default function RsvpFlow({ initialToken }: RsvpFlowProps) {
       return 'No Dietary Restrictions';
     }
     return 'Continue';
-  }, [companions.length, isEditingStep, step]);
+  }, [companions.length, dietaryNotes, dietaryOptionsSelected.length, isEditingStep, step]);
 
   const jumpToCompletedStep = (targetStep: number) => {
     if (isRibbonNavigationDisabled || targetStep >= step) {
@@ -758,23 +708,17 @@ export default function RsvpFlow({ initialToken }: RsvpFlowProps) {
         {step === 1 ? (
           <fieldset>
             <legend>Confirm Your Invitation</legend>
-            {normalizedInitialToken ? (
-              <p className="small-note">Your invite code is included in your invitation link.</p>
+            <p className="small-note">We are using the invite code from your unlocked invitation.</p>
+            {normalizedInviteCode ? (
+              <p className="small-note">
+                Invite code found:
+                {' '}
+                <span className="detail-pill">{normalizedInviteCode}</span>
+              </p>
             ) : (
-              <>
-                <p className="small-note">We are using the invite code from your unlock session.</p>
-                {normalizedInviteCode ? (
-                  <p className="small-note">
-                    Invite code found:
-                    {' '}
-                    <span className="detail-pill">{normalizedInviteCode}</span>
-                  </p>
-                ) : (
-                  <p className="small-note">
-                    We could not find an unlocked invite code. Please return to <Link href="/">Home</Link> and unlock your invitation first.
-                  </p>
-                )}
-              </>
+              <p className="small-note">
+                We could not find an unlocked invite code. Please return to <Link href="/">Home</Link> and unlock your invitation first.
+              </p>
             )}
             {showNameEditor ? (
               <>

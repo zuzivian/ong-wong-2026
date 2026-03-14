@@ -371,23 +371,25 @@ export const get_guest_portal_state = spacetimedb.procedure(
 
     return ctx.withTx(tx => {
       const session = tx.db.guest_session.sender.find(tx.sender);
-      const activeGuest = session ? tx.db.guest.id.find(session.guestId) ?? undefined : undefined;
-      const previewGuest = normalizedInviteCode
-        ? buildGuestPreview(tx.db.guest.inviteCode.find(normalizedInviteCode) ?? undefined)
+      const sessionGuest = session ? tx.db.guest.id.find(session.guestId) ?? undefined : undefined;
+      const inviteCodeGuest = normalizedInviteCode
+        ? tx.db.guest.inviteCode.find(normalizedInviteCode) ?? undefined
         : undefined;
-      const activeRsvp = activeGuest
-        ? tx.db.rsvp_response.guestId.find(activeGuest.id) ?? undefined
+      const resolvedGuest = sessionGuest ?? inviteCodeGuest;
+      const previewGuest = buildGuestPreview(inviteCodeGuest);
+      const activeRsvp = resolvedGuest
+        ? tx.db.rsvp_response.guestId.find(resolvedGuest.id) ?? undefined
         : undefined;
-      const companions = activeGuest
-        ? [...tx.db.companion.companion_guest_id.filter(activeGuest.id)]
+      const companions = resolvedGuest
+        ? [...tx.db.companion.companion_guest_id.filter(resolvedGuest.id)]
         : [];
-      const messages = activeGuest
-        ? [...tx.db.guest_message.guest_message_guest_id.filter(activeGuest.id)]
+      const messages = resolvedGuest
+        ? [...tx.db.guest_message.guest_message_guest_id.filter(resolvedGuest.id)]
         : [];
 
       return {
         previewGuest,
-        activeGuest,
+        activeGuest: resolvedGuest,
         activeRsvp,
         companions,
         messages,

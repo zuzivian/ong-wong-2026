@@ -36,7 +36,7 @@ function summarizeRow(row: unknown): unknown {
 
   const source = row as Record<string, unknown>;
   const summary: Record<string, unknown> = {};
-  for (const key of ['id', 'guestId', 'sender', 'inviteCode', 'qrToken']) {
+  for (const key of ['id', 'guestId', 'sender', 'inviteCode']) {
     if (key in source) {
       const value = source[key];
       summary[key] =

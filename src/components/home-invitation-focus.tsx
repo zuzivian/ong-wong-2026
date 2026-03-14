@@ -7,14 +7,18 @@ type HomeInvitationFocusProps = {
 };
 
 const SPOTLIGHT_CLASS = 'invitation-card-spotlight';
-const MIN_SCROLL_DURATION_MS = 1500;
-const MAX_SCROLL_DURATION_MS = 2800;
-const SCROLL_PIXELS_PER_MS = 0.68;
+const MIN_SCROLL_DURATION_MS = 2250;
+const MAX_SCROLL_DURATION_MS = 4200;
+const SCROLL_PIXELS_PER_MS = 0.4533333333333333;
 
 function easeSteady(value: number): number {
   const sineEase = 0.5 - 0.5 * Math.cos(Math.PI * value);
-  // Blend linear and eased motion so movement starts promptly and stays steady.
-  return value * 0.32 + sineEase * 0.68;
+  const cubicEase = value < 0.5
+    ? 4 * value * value * value
+    : 1 - Math.pow(-2 * value + 2, 3) / 2;
+
+  // Bias toward a gentler ease-in so the scroll doesn't lurch on the first frames.
+  return sineEase * 0.35 + cubicEase * 0.65;
 }
 
 function getCenteredScrollTop(target: HTMLElement): number {

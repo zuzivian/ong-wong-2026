@@ -6,7 +6,10 @@ import HomeRsvpCta from "@/components/home-rsvp-cta";
 import HomeUnlockCta from "@/components/home-unlock-cta";
 import { getVariantMeta } from "@/lib/design-variant";
 import { UNLOCK_COOKIE_NAME, readUnlockSession } from "@/lib/invite-unlock";
-import { getGuestPreviewByInviteCode } from "@/lib/spacetimedb-procedures";
+import {
+  getGuestPortalState,
+  getGuestPreviewByInviteCode,
+} from "@/lib/spacetimedb-procedures";
 import { withSpacetimeConnection } from "@/lib/spacetimedb-server";
 
 type GuestTableRow = {
@@ -148,6 +151,23 @@ async function getGuestNameByInviteCode(
   }
 }
 
+async function isRsvpSubmitted(inviteCode?: string): Promise<boolean> {
+  if (!inviteCode?.trim()) {
+    return false;
+  }
+
+  try {
+    const portalState = await withSpacetimeConnection((connection) =>
+      getGuestPortalState(connection, {
+        inviteCode: inviteCode.trim().toUpperCase(),
+      })
+    );
+    return portalState.activeRsvp !== undefined && portalState.activeRsvp.submitted;
+  } catch {
+    return false;
+  }
+}
+
 export default async function HomePage() {
   const variantMeta = getVariantMeta();
   const cookieStore = await cookies();
@@ -157,6 +177,9 @@ export default async function HomePage() {
   const guestName = unlockSession?.inviteCode
     ? await getGuestNameByInviteCode(unlockSession.inviteCode)
     : undefined;
+  const rsvpSubmitted = unlockSession?.inviteCode
+    ? await isRsvpSubmitted(unlockSession.inviteCode)
+    : false;
 
   return (
     <div className={`theme-page ${variantMeta.themeClass}`}>
@@ -178,7 +201,10 @@ export default async function HomePage() {
             <div className="cta-row">
               {isUnlocked ? (
                 <>
-                  <HomeRsvpCta inviteCode={unlockSession?.inviteCode ?? ''} />
+                  <HomeRsvpCta
+                    inviteCode={unlockSession?.inviteCode ?? ""}
+                    initialSubmitted={rsvpSubmitted}
+                  />
                   <a href="#schedule" className="button-secondary">
                     <Icon name="event_note" className="button-icon" /> Event
                     Details
@@ -265,6 +291,14 @@ export default async function HomePage() {
                     <dd>Refreshments will be served after the ceremony.</dd>
                   </div>
                 </dl>
+                <div className="invitation-card-footer">
+                  <HomeRsvpCta
+                    inviteCode={unlockSession?.inviteCode ?? ""}
+                    initialSubmitted={rsvpSubmitted}
+                    hideWhenSubmitted
+                    className="button-primary invitation-card-rsvp"
+                  />
+                </div>
               </article>
             </div>
           </section>
