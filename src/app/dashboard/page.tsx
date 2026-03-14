@@ -379,6 +379,7 @@ export default function DashboardPage() {
       contactEmail: normalizeOptionalInput(activeGuest.contactEmail),
       contactPhone: normalizeOptionalInput(activeGuest.contactPhone),
       companions: nextAttendance ? companionPayload : [],
+      submitted: activeRsvp?.submitted ?? false,
     });
     await refreshPortalState();
   };
@@ -634,6 +635,7 @@ export default function DashboardPage() {
         contactEmail: normalizeOptionalInput(activeGuest.contactEmail),
         contactPhone: normalizeOptionalInput(activeGuest.contactPhone),
         companions: nextCompanions,
+        submitted: activeRsvp.submitted,
       });
       await refreshPortalState();
       setCompanionStatus('Loved ones attending were updated.');
