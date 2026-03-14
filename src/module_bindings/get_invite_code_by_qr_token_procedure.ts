@@ -10,10 +10,7 @@ import {
   type Infer as __Infer,
 } from "spacetimedb";
 
-export default __t.row({
-  id: __t.u64().primaryKey(),
-  guestId: __t.u64(),
-  message: __t.string(),
-  status: __t.string(),
-  createdAt: __t.timestamp(),
-});
+export const params = {
+  qrToken: __t.string(),
+};
+export const returnType = __t.option(__t.string())

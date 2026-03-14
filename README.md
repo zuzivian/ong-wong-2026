@@ -81,7 +81,7 @@ NEXT_PUBLIC_SPACETIMEDB_HOST=http://127.0.0.1:3000
 NEXT_PUBLIC_SPACETIMEDB_DB_NAME=<your_db_name>
 NEXT_PUBLIC_APP_URL=http://localhost:3000
 NEXT_PUBLIC_SPACETIMEDB_DEBUG=0
-WEDDING_UNLOCK_SECRET=<set-a-long-random-secret>
+SESSION_SIGNING_SECRET=<set-a-long-random-secret>
 ADMIN_PIN=<pin-for-accessing-admin-routes>
 ```
 
@@ -90,7 +90,8 @@ Notes:
 - `NEXT_PUBLIC_SPACETIMEDB_HOST` defaults to `http://127.0.0.1:3000` only in development.
 - `NEXT_PUBLIC_APP_URL` should be the canonical public site origin in deployed environments so QR codes point at the correct domain.
 - `NEXT_PUBLIC_SPACETIMEDB_DEBUG=1` enables verbose client-side SpacetimeDB debug logging; leave it `0` for normal use.
-- `WEDDING_UNLOCK_SECRET` must be set in production and should be unique per deployment environment.
+- `SESSION_SIGNING_SECRET` signs guest unlock and admin session cookies, must be set in production, and should be unique per deployment environment.
+- `WEDDING_UNLOCK_SECRET` is still accepted as a temporary fallback for older deployments, but new environments should use `SESSION_SIGNING_SECRET`.
 
 ## Useful Scripts
 

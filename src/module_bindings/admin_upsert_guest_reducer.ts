@@ -11,6 +11,7 @@ import {
 } from "spacetimedb";
 
 export default {
+  adminSecret: __t.string(),
   firstName: __t.string(),
   lastName: __t.string(),
   inviteCode: __t.string(),

@@ -5,8 +5,8 @@ import { FormEvent, useEffect, useMemo, useRef, useState } from 'react';
 import { useSpacetimeDB } from 'spacetimedb/react';
 import { getVariantMeta } from '@/lib/design-variant';
 import Icon from '@/components/icon';
-import { DbConnection, tables } from '@/module_bindings';
-import { useDebugTable } from '@/lib/use-debug-table';
+import { DbConnection } from '@/module_bindings';
+import { loadGuestPortalState, type GuestPortalState } from '@/lib/guest-portal-state';
 import { RSVP_CUTOFF_AT_MICROS } from '../../shared/globals';
 import {
   normalizeInviteCode as normalizeUnlockedInviteCode,
@@ -136,12 +136,6 @@ export default function RsvpFlow({ initialToken }: RsvpFlowProps) {
   const variantMeta = getVariantMeta();
   const db = useSpacetimeDB();
   const connection = db.getConnection() as DbConnection | null;
-  const senderIdentity = db.identity;
-
-  const [guestRows] = useDebugTable<any>('rsvp.guest', tables.guest);
-  const [sessionRows] = useDebugTable<any>('rsvp.guest_session', tables.guest_session);
-  const [rsvpRows] = useDebugTable<any>('rsvp.rsvp_response', tables.rsvp_response);
-  const [companionRows] = useDebugTable<any>('rsvp.companion', tables.companion);
 
   const [step, setStep] = useState(1);
   const [isEditingStep, setIsEditingStep] = useState(false);
@@ -177,6 +171,10 @@ export default function RsvpFlow({ initialToken }: RsvpFlowProps) {
   const [verificationState, setVerificationState] = useState<VerificationState>('idle');
   const [verificationMessage, setVerificationMessage] = useState('');
   const [submitted, setSubmitted] = useState(false);
+  const [portalState, setPortalState] = useState<GuestPortalState>({
+    companions: [],
+    messages: [],
+  });
 
   const hydratedGuestId = useRef<bigint | null>(null);
   const tokenSyncAttemptRef = useRef<string | null>(null);
@@ -189,33 +187,9 @@ export default function RsvpFlow({ initialToken }: RsvpFlowProps) {
     () => Math.round((step / totalSteps) * 100),
     [step, totalSteps]
   );
-
-  const activeSession = useMemo(() => {
-    if (!senderIdentity) {
-      return undefined;
-    }
-    const senderHex = senderIdentity.toHexString();
-    return sessionRows.find((row) => row.sender.toHexString() === senderHex);
-  }, [senderIdentity, sessionRows]);
-
-  const activeGuest = useMemo(() => {
-    const guestFromSession = guestRows.find((row) => row.id === activeSession?.guestId);
-    if (!normalizedInitialToken) {
-      return guestFromSession;
-    }
-
-    return guestRows.find((row) => row.qrToken === normalizedInitialToken) ?? guestFromSession;
-  }, [activeSession?.guestId, guestRows, normalizedInitialToken]);
-
-  const activeRsvp = useMemo(
-    () => (activeGuest ? rsvpRows.find((row) => row.guestId === activeGuest.id) : undefined),
-    [activeGuest, rsvpRows]
-  );
-
-  const activeCompanions = useMemo(
-    () => (activeGuest ? companionRows.filter((row) => row.guestId === activeGuest.id) : []),
-    [activeGuest, companionRows]
-  );
+  const activeGuest = portalState.activeGuest;
+  const activeRsvp = portalState.activeRsvp;
+  const activeCompanions = portalState.companions;
 
   const isRsvpClosed = useMemo(() => {
     return BigInt(Date.now()) * 1000n > RSVP_CUTOFF_AT_MICROS;
@@ -226,15 +200,7 @@ export default function RsvpFlow({ initialToken }: RsvpFlowProps) {
   );
 
   const isInviteCodeSatisfied = Boolean(normalizedInitialToken) || Boolean(normalizedInviteCode);
-  const detectedGuestByInviteCode = useMemo(() => {
-    if (!normalizedInviteCode) {
-      return undefined;
-    }
-
-    return guestRows.find(
-      (row) => normalizeUnlockedInviteCode(row.inviteCode) === normalizedInviteCode
-    );
-  }, [guestRows, normalizedInviteCode]);
+  const detectedGuestByInviteCode = portalState.previewGuest;
   const hasDetectedName = Boolean(detectedGuestByInviteCode);
 
   const companionAllowed = activeGuest?.canAddCompanions ?? false;
@@ -253,6 +219,39 @@ export default function RsvpFlow({ initialToken }: RsvpFlowProps) {
     }
   }, [lookupInviteCode, normalizedInitialToken]);
 
+  const refreshPortalState = async (inviteCodeOverride?: string) => {
+    if (!connection) {
+      return;
+    }
+
+    const nextState = await loadGuestPortalState(connection, inviteCodeOverride ?? normalizedInviteCode);
+    setPortalState(nextState);
+  };
+
+  useEffect(() => {
+    if (!connection) {
+      return;
+    }
+
+    let cancelled = false;
+
+    loadGuestPortalState(connection, normalizedInviteCode)
+      .then((nextState) => {
+        if (!cancelled) {
+          setPortalState(nextState);
+        }
+      })
+      .catch((error) => {
+        if (!cancelled) {
+          setLookupError(error instanceof Error ? error.message : 'Unable to load invitation details.');
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [connection, normalizedInviteCode]);
+
   useEffect(() => {
     if (!normalizedInitialToken || !connection) {
       return;
@@ -270,7 +269,8 @@ export default function RsvpFlow({ initialToken }: RsvpFlowProps) {
 
     connection.reducers
       .identifyGuestByToken({ token: normalizedInitialToken })
-      .then(() => {
+      .then(async () => {
+        await refreshPortalState();
         setVerificationState('verified');
         setVerificationMessage('Invitation verified successfully.');
       })
@@ -523,6 +523,7 @@ export default function RsvpFlow({ initialToken }: RsvpFlowProps) {
             }))
           : [],
     });
+    await refreshPortalState();
   };
 
   const chooseAttendanceAndContinue = async (nextAttendance: Attendance) => {
@@ -580,6 +581,7 @@ export default function RsvpFlow({ initialToken }: RsvpFlowProps) {
             inviteCode: normalizedInviteCode,
           });
         }
+        await refreshPortalState(normalizedInviteCode);
       } catch (error) {
         setVerificationState('failed');
         setVerificationMessage('');
@@ -653,6 +655,7 @@ export default function RsvpFlow({ initialToken }: RsvpFlowProps) {
               }))
             : [],
       });
+      await refreshPortalState();
       setSubmitted(true);
       try {
         const inviteCodeForRefresh = activeGuest?.inviteCode ?? lookupInviteCode;

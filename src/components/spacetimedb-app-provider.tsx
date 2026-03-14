@@ -3,6 +3,7 @@
 import { PropsWithChildren, useEffect, useMemo } from 'react';
 import { SpacetimeDBProvider } from 'spacetimedb/react';
 import { DbConnection } from '@/module_bindings';
+import '@/lib/promise-with-resolvers';
 import {
   attachConnectionDebug,
   installSpacetimeWindowDebugHooks,

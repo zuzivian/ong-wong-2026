@@ -15,6 +15,7 @@ import {
 } from "./types";
 
 export default {
+  adminSecret: __t.string(),
   guestId: __t.u64(),
   get companions() {
     return __t.array(CompanionInput);

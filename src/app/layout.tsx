@@ -18,7 +18,7 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const cookieStore = cookies();
+  const cookieStore = await cookies();
   const unlockCookie = cookieStore.get(UNLOCK_COOKIE_NAME)?.value;
   const isUnlocked = await verifyUnlockSession(unlockCookie);
 

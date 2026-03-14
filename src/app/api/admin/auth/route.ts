@@ -5,8 +5,33 @@ import {
   ADMIN_COOKIE_NAME,
   ADMIN_SESSION_TTL_SECONDS,
 } from '@/lib/admin-auth';
+import {
+  consumeRateLimit,
+  getRequestClientKey,
+  resetRateLimit,
+} from '@/lib/request-rate-limit';
+
+const ADMIN_AUTH_RATE_LIMIT = {
+  maxAttempts: 5,
+  windowMs: 15 * 60 * 1000,
+} as const;
 
 export async function POST(request: NextRequest) {
+  const clientKey = getRequestClientKey(request);
+  const rateLimit = consumeRateLimit('admin-auth', clientKey, ADMIN_AUTH_RATE_LIMIT);
+  if (!rateLimit.allowed) {
+    return NextResponse.json(
+      { error: 'Too many admin login attempts. Please wait a while and try again.' },
+      {
+        status: 429,
+        headers: {
+          'Retry-After': String(rateLimit.retryAfterSeconds),
+          'Cache-Control': 'no-store',
+        },
+      }
+    );
+  }
+
   const body = (await request.json().catch(() => null)) as { pin?: unknown } | null;
   const pin = typeof body?.pin === 'string' ? body.pin : '';
 
@@ -25,6 +50,7 @@ export async function POST(request: NextRequest) {
     path: '/',
     maxAge: ADMIN_SESSION_TTL_SECONDS,
   });
+  resetRateLimit('admin-auth', clientKey);
   return response;
 }
 

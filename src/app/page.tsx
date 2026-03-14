@@ -4,11 +4,10 @@ import { cookies } from "next/headers";
 import Icon from "@/components/icon";
 import HomeInvitationFocus from "@/components/home-invitation-focus";
 import HomeUnlockCta from "@/components/home-unlock-cta";
-import { DbConnection } from "@/module_bindings";
 import { getVariantMeta } from "@/lib/design-variant";
 import { UNLOCK_COOKIE_NAME, readUnlockSession } from "@/lib/invite-unlock";
-
-const DEFAULT_QUERY_TIMEOUT_MS = 5000;
+import { getGuestPreviewByInviteCode } from "@/lib/spacetimedb-procedures";
+import { withSpacetimeConnection } from "@/lib/spacetimedb-server";
 
 type GuestTableRow = {
   firstName: string;
@@ -121,38 +120,6 @@ const HDB_PARKING_OPTIONS = [
   },
 ] as const;
 
-function normalizeToWsUri(input: string): string {
-  const parsed = new URL(input);
-  if (parsed.protocol === "https:") {
-    parsed.protocol = "wss:";
-  } else if (parsed.protocol === "http:") {
-    parsed.protocol = "ws:";
-  }
-
-  return parsed.toString();
-}
-
-function escapeSqlLiteral(value: string): string {
-  return value.replace(/'/g, "''");
-}
-
-function getSpacetimeConfig(): { host: string; databaseName: string } | null {
-  const host =
-    process.env.SPACETIMEDB_HOST ??
-    process.env.NEXT_PUBLIC_SPACETIMEDB_HOST ??
-    "";
-  const databaseName =
-    process.env.SPACETIMEDB_DB_NAME ??
-    process.env.NEXT_PUBLIC_SPACETIMEDB_DB_NAME ??
-    "";
-
-  if (!host.trim() || !databaseName.trim()) {
-    return null;
-  }
-
-  return { host: host.trim(), databaseName: databaseName.trim() };
-}
-
 function formatGuestName(row: GuestTableRow | undefined): string | undefined {
   if (!row) {
     return undefined;
@@ -165,74 +132,26 @@ function formatGuestName(row: GuestTableRow | undefined): string | undefined {
 async function getGuestNameByInviteCode(
   inviteCode: string,
 ): Promise<string | undefined> {
-  const config = getSpacetimeConfig();
-  if (!config || !inviteCode.trim()) {
+  if (!inviteCode.trim()) {
     return undefined;
   }
 
-  return new Promise<string | undefined>((resolve) => {
-    let connection: DbConnection | null = null;
-    let settled = false;
-
-    const settle = (value: string | undefined) => {
-      if (settled) {
-        return;
-      }
-      settled = true;
-      clearTimeout(timeout);
-      if (connection) {
-        connection.disconnect();
-      }
-      resolve(value);
-    };
-
-    const timeout = setTimeout(() => {
-      settle(undefined);
-    }, DEFAULT_QUERY_TIMEOUT_MS);
-
-    try {
-      connection = DbConnection.builder()
-        .withUri(normalizeToWsUri(config.host))
-        .withDatabaseName(config.databaseName)
-        .onConnect((ctx) => {
-          const escapedInviteCode = escapeSqlLiteral(
-            inviteCode.trim().toUpperCase(),
-          );
-
-          ctx
-            .subscriptionBuilder()
-            .onApplied((subscriptionCtx) => {
-              const guestTable = (
-                subscriptionCtx.db as Record<
-                  string,
-                  { iter(): Iterable<GuestTableRow> }
-                >
-              ).guest;
-              const firstMatch = guestTable
-                ? Array.from(guestTable.iter())[0]
-                : undefined;
-              settle(formatGuestName(firstMatch));
-            })
-            .onError(() => {
-              settle(undefined);
-            })
-            .subscribe([
-              `SELECT * FROM guest WHERE inviteCode = '${escapedInviteCode}'`,
-            ]);
-        })
-        .onConnectError(() => {
-          settle(undefined);
-        })
-        .build();
-    } catch {
-      settle(undefined);
-    }
-  });
+  try {
+    const preview = await withSpacetimeConnection((connection) =>
+      getGuestPreviewByInviteCode(connection, {
+        inviteCode: inviteCode.trim().toUpperCase(),
+      })
+    );
+    return formatGuestName(preview);
+  } catch {
+    return undefined;
+  }
 }
 
 export default async function HomePage() {
   const variantMeta = getVariantMeta();
-  const unlockCookie = cookies().get(UNLOCK_COOKIE_NAME)?.value;
+  const cookieStore = await cookies();
+  const unlockCookie = cookieStore.get(UNLOCK_COOKIE_NAME)?.value;
   const unlockSession = await readUnlockSession(unlockCookie);
   const isUnlocked = unlockSession !== undefined;
   const guestName = unlockSession?.inviteCode

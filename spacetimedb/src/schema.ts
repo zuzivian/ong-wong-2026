@@ -3,7 +3,6 @@ import { CaseConversionPolicy, schema, table, t } from 'spacetimedb/server';
 export const Guest = table(
   {
     name: 'guest',
-    public: true,
   },
   {
     id: t.u64().primaryKey().autoInc(),
@@ -23,7 +22,6 @@ export const Guest = table(
 export const RsvpResponse = table(
   {
     name: 'rsvp_response',
-    public: true,
   },
   {
     id: t.u64().primaryKey().autoInc(),
@@ -38,7 +36,6 @@ export const RsvpResponse = table(
 export const Companion = table(
   {
     name: 'companion',
-    public: true,
     indexes: [
       {
         accessor: 'companion_guest_id',
@@ -60,7 +57,6 @@ export const Companion = table(
 export const GuestMessage = table(
   {
     name: 'guest_message',
-    public: true,
     indexes: [
       {
         accessor: 'guest_message_guest_id',
@@ -81,7 +77,6 @@ export const GuestMessage = table(
 export const GuestSession = table(
   {
     name: 'guest_session',
-    public: true,
     indexes: [
       {
         accessor: 'guest_session_guest_id',
@@ -97,8 +92,20 @@ export const GuestSession = table(
   }
 );
 
+export const AdminIdentity = table(
+  {
+    name: 'admin_identity',
+  },
+  {
+    id: t.u64().primaryKey(),
+    identity: t.identity().unique(),
+    claimedAt: t.timestamp(),
+  }
+);
+
 const spacetimedb = schema(
   {
+    admin_identity: AdminIdentity,
     guest: Guest,
     rsvp_response: RsvpResponse,
     companion: Companion,

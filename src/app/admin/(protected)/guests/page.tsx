@@ -1,11 +1,8 @@
 'use client';
 
 import { ChangeEvent, Fragment, useEffect, useMemo, useRef, useState } from 'react';
-import { useSpacetimeDB } from 'spacetimedb/react';
 import Icon from '@/components/icon';
-import { DbConnection, tables } from '@/module_bindings';
 import { type Companion, type Guest, type GuestMessage, type RsvpResponse } from '@/module_bindings/types';
-import { useDebugTable } from '@/lib/use-debug-table';
 
 const RSVP_STATUSES = ['attending', 'declining', 'pending'] as const;
 type RsvpStatus = (typeof RSVP_STATUSES)[number];
@@ -224,6 +221,147 @@ async function copyInvitationBundleToClipboard(invitation: CreatedInvitation, me
   ]);
 }
 
+async function runAdminAction(body: Record<string, unknown>): Promise<void> {
+  const response = await fetch('/api/admin/spacetimedb', {
+    method: 'POST',
+    credentials: 'same-origin',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+
+  const payload = (await response.json().catch(() => null)) as { error?: string } | null;
+  if (!response.ok) {
+    throw new Error(payload?.error || 'Admin action failed.');
+  }
+}
+
+type SerializedTimestamp = {
+  microsSinceUnixEpoch?: string;
+  __timestamp_micros_since_unix_epoch__?: string;
+};
+
+type SerializedGuest = Omit<Guest, 'id' | 'maxCompanions' | 'updatedAt'> & {
+  id: string;
+  maxCompanions: string;
+  updatedAt: SerializedTimestamp;
+};
+
+type SerializedRsvpResponse = Omit<RsvpResponse, 'id' | 'guestId' | 'updatedAt'> & {
+  id: string;
+  guestId: string;
+  updatedAt: SerializedTimestamp;
+};
+
+type SerializedCompanion = Omit<Companion, 'id' | 'guestId' | 'updatedAt'> & {
+  id: string;
+  guestId: string;
+  updatedAt: SerializedTimestamp;
+};
+
+type SerializedGuestMessage = Omit<GuestMessage, 'id' | 'guestId' | 'createdAt'> & {
+  id: string;
+  guestId: string;
+  createdAt: SerializedTimestamp;
+};
+
+type AdminSnapshotPayload = {
+  guests: SerializedGuest[];
+  responses: SerializedRsvpResponse[];
+  companions: SerializedCompanion[];
+  messages: SerializedGuestMessage[];
+};
+
+function parseTimestamp(timestamp: SerializedTimestamp): any {
+  const rawMicrosSinceUnixEpoch =
+    timestamp.microsSinceUnixEpoch ?? timestamp.__timestamp_micros_since_unix_epoch__;
+
+  if (rawMicrosSinceUnixEpoch === undefined) {
+    throw new Error('Admin snapshot is missing timestamp data.');
+  }
+
+  const microsSinceUnixEpoch = BigInt(rawMicrosSinceUnixEpoch);
+  return {
+    __timestamp_micros_since_unix_epoch__: microsSinceUnixEpoch,
+    microsSinceUnixEpoch,
+    toDate() {
+      return new Date(Number(microsSinceUnixEpoch / 1000n));
+    },
+    toMillis() {
+      return Number(microsSinceUnixEpoch / 1000n);
+    },
+    toISOString() {
+      return new Date(Number(microsSinceUnixEpoch / 1000n)).toISOString();
+    },
+    since(other: { microsSinceUnixEpoch: bigint }) {
+      return microsSinceUnixEpoch - other.microsSinceUnixEpoch;
+    },
+  };
+}
+
+function parseGuest(row: SerializedGuest): Guest {
+  return {
+    ...row,
+    id: BigInt(row.id),
+    maxCompanions: BigInt(row.maxCompanions),
+    updatedAt: parseTimestamp(row.updatedAt),
+  };
+}
+
+function parseResponse(row: SerializedRsvpResponse): RsvpResponse {
+  return {
+    ...row,
+    id: BigInt(row.id),
+    guestId: BigInt(row.guestId),
+    updatedAt: parseTimestamp(row.updatedAt),
+  };
+}
+
+function parseCompanion(row: SerializedCompanion): Companion {
+  return {
+    ...row,
+    id: BigInt(row.id),
+    guestId: BigInt(row.guestId),
+    updatedAt: parseTimestamp(row.updatedAt),
+  };
+}
+
+function parseGuestMessage(row: SerializedGuestMessage): GuestMessage {
+  return {
+    ...row,
+    id: BigInt(row.id),
+    guestId: BigInt(row.guestId),
+    createdAt: parseTimestamp(row.createdAt),
+  };
+}
+
+async function fetchAdminSnapshot(): Promise<{
+  guests: Guest[];
+  responses: RsvpResponse[];
+  companions: Companion[];
+  messages: GuestMessage[];
+}> {
+  const response = await fetch('/api/admin/spacetimedb', {
+    method: 'GET',
+    credentials: 'same-origin',
+    cache: 'no-store',
+  });
+
+  const payload = (await response.json().catch(() => null)) as
+    | { error?: string; snapshot?: AdminSnapshotPayload }
+    | null;
+
+  if (!response.ok || !payload?.snapshot) {
+    throw new Error(payload?.error || 'Unable to load admin dashboard data.');
+  }
+
+  return {
+    guests: payload.snapshot.guests.map(parseGuest),
+    responses: payload.snapshot.responses.map(parseResponse),
+    companions: payload.snapshot.companions.map(parseCompanion),
+    messages: payload.snapshot.messages.map(parseGuestMessage),
+  };
+}
+
 function normalizeCodeFragment(value: string): string {
   const normalized = value.trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
   return normalized.length > 0 ? normalized : 'X';
@@ -416,13 +554,11 @@ function StatCell({ label, value }: { label: string; value: string | number }) {
 }
 
 export default function AdminGuestsPage() {
-  const db = useSpacetimeDB();
-  const connection = db.getConnection() as DbConnection | null;
-
-  const [guests, guestsLoading] = useDebugTable<Guest>('admin.guest', tables.guest);
-  const [responses, responsesLoading] = useDebugTable<RsvpResponse>('admin.rsvp_response', tables.rsvp_response);
-  const [companions, companionsLoading] = useDebugTable<Companion>('admin.companion', tables.companion);
-  const [messages, messagesLoading] = useDebugTable<GuestMessage>('admin.guest_message', tables.guest_message);
+  const [guests, setGuests] = useState<Guest[]>([]);
+  const [responses, setResponses] = useState<RsvpResponse[]>([]);
+  const [companions, setCompanions] = useState<Companion[]>([]);
+  const [messages, setMessages] = useState<GuestMessage[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | RsvpStatus>('all');
@@ -445,7 +581,44 @@ export default function AdminGuestsPage() {
   const [inviteDraft, setInviteDraft] = useState<InvitationWizardDraft>(INITIAL_INVITATION_DRAFT);
   const [createdInvitation, setCreatedInvitation] = useState<CreatedInvitation | null>(null);
   const [shareAction, setShareAction] = useState<'text' | 'qr' | 'bundle' | null>(null);
-  const isLoading = !db.isActive;
+
+  const refreshAdminSnapshot = async () => {
+    const snapshot = await fetchAdminSnapshot();
+    setGuests(snapshot.guests);
+    setResponses(snapshot.responses);
+    setCompanions(snapshot.companions);
+    setMessages(snapshot.messages);
+  };
+
+  useEffect(() => {
+    let cancelled = false;
+    setIsLoading(true);
+
+    fetchAdminSnapshot()
+      .then((snapshot) => {
+        if (cancelled) {
+          return;
+        }
+        setGuests(snapshot.guests);
+        setResponses(snapshot.responses);
+        setCompanions(snapshot.companions);
+        setMessages(snapshot.messages);
+      })
+      .catch((error) => {
+        if (!cancelled) {
+          setActionError(error instanceof Error ? error.message : 'Unable to load admin dashboard data.');
+        }
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setIsLoading(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const responseByGuestId = useMemo(() => {
     const map = new Map<bigint, RsvpResponse>();
@@ -664,8 +837,8 @@ export default function AdminGuestsPage() {
 
   const saveInlineEdit = async () => {
     clearMessages();
-    if (!connection || !draft || editingGuestId === null) {
-      setActionError('Connection is not ready yet.');
+    if (!draft || editingGuestId === null) {
+      setActionError('Guest details are not ready yet.');
       return;
     }
 
@@ -675,21 +848,24 @@ export default function AdminGuestsPage() {
     }
 
     try {
-      await connection.reducers.adminUpdateGuestRsvp({
-        guestId: editingGuestId,
+      await runAdminAction({
+        action: 'updateGuestRsvp',
+        guestId: editingGuestId.toString(),
         rsvpStatus: draft.rsvpStatus,
         dietaryNotes: draft.dietaryNotes || undefined,
         notes: draft.notes || undefined,
         contactEmail: draft.contactEmail || undefined,
         contactPhone: draft.contactPhone || undefined,
         canAddCompanions: draft.canAddCompanions,
-        maxCompanions: BigInt(draft.maxCompanions),
+        maxCompanions: draft.maxCompanions,
       });
 
-      await connection.reducers.adminReplaceGuestCompanions({
-        guestId: editingGuestId,
+      await runAdminAction({
+        action: 'replaceGuestCompanions',
+        guestId: editingGuestId.toString(),
         companions: parseCompanionsText(draft.companionsText),
       });
+      await refreshAdminSnapshot();
 
       setMessageNotice('Guest details saved.');
       setEditingGuestId(null);
@@ -723,20 +899,18 @@ export default function AdminGuestsPage() {
 
   const applyBulkStatus = async () => {
     clearMessages();
-    if (!connection) {
-      setActionError('Connection is not ready yet.');
-      return;
-    }
     if (selectedRows.length === 0) {
       setActionError('Select at least one guest first.');
       return;
     }
 
     try {
-      await connection.reducers.adminBulkSetRsvpStatus({
-        guestIds: selectedRows.map((g) => g.id),
+      await runAdminAction({
+        action: 'bulkSetRsvpStatus',
+        guestIds: selectedRows.map((g) => g.id.toString()),
         rsvpStatus: bulkStatus,
       });
+      await refreshAdminSnapshot();
       setMessageNotice(`Updated ${selectedRows.length} guest(s) to ${bulkStatus}.`);
     } catch (error) {
       setActionError(error instanceof Error ? error.message : 'Bulk action failed.');
@@ -745,10 +919,6 @@ export default function AdminGuestsPage() {
 
   const importGuests = async () => {
     clearMessages();
-    if (!connection) {
-      setActionError('Connection is not ready yet.');
-      return;
-    }
     if (parsedImport.errors.length > 0) {
       setActionError('Fix CSV errors before importing.');
       return;
@@ -769,17 +939,19 @@ export default function AdminGuestsPage() {
         const qrToken = generateQrToken(inviteCode, qrTokens);
         qrTokens.add(qrToken);
 
-        await connection.reducers.adminUpsertGuest({
+        await runAdminAction({
+          action: 'upsertGuest',
           firstName: row.firstName,
           lastName: row.lastName,
           inviteCode,
           qrToken,
           canAddCompanions: false,
-          maxCompanions: 0n,
+          maxCompanions: '0',
           contactEmail: row.contactEmail,
           contactPhone: row.contactPhone,
         });
       }
+      await refreshAdminSnapshot();
       setImportNotice(`Imported ${parsedImport.rows.length} row(s).`);
       setCsvInput('');
     } catch (error) {
@@ -789,11 +961,6 @@ export default function AdminGuestsPage() {
 
   const createInvitation = async () => {
     clearMessages();
-    if (!connection) {
-      setActionError('Connection is not ready yet.');
-      return;
-    }
-
     const validationError = validateInvitationDraft();
     if (validationError) {
       setActionError(validationError);
@@ -818,16 +985,18 @@ export default function AdminGuestsPage() {
       qrTokens.add(qrToken);
 
       try {
-        await connection.reducers.adminUpsertGuest({
+        await runAdminAction({
+          action: 'upsertGuest',
           firstName,
           lastName,
           inviteCode,
           qrToken,
           canAddCompanions,
-          maxCompanions,
+          maxCompanions: maxCompanions.toString(),
           contactEmail,
           contactPhone,
         });
+        await refreshAdminSnapshot();
 
         setCreatedInvitation(buildInvitationRecord({
           firstName,
@@ -856,10 +1025,6 @@ export default function AdminGuestsPage() {
 
   const regenerateSelectedQr = async () => {
     clearMessages();
-    if (!connection) {
-      setActionError('Connection is not ready yet.');
-      return;
-    }
     if (selectedRows.length === 0) {
       setActionError('Select at least one guest first.');
       return;
@@ -867,8 +1032,12 @@ export default function AdminGuestsPage() {
 
     try {
       for (const guest of selectedRows) {
-        await connection.reducers.adminRegenerateGuestQrToken({ guestId: guest.id });
+        await runAdminAction({
+          action: 'regenerateGuestQrToken',
+          guestId: guest.id.toString(),
+        });
       }
+      await refreshAdminSnapshot();
       setMessageNotice(`Regenerated QR token(s) for ${selectedRows.length} guest(s).`);
     } catch (error) {
       setActionError(error instanceof Error ? error.message : 'Unable to regenerate QR token(s).');
@@ -956,12 +1125,13 @@ export default function AdminGuestsPage() {
 
   const updateMessageStatus = async (messageId: bigint, status: MessageStatus) => {
     clearMessages();
-    if (!connection) {
-      setActionError('Connection is not ready yet.');
-      return;
-    }
     try {
-      await connection.reducers.adminSetGuestMessageStatus({ messageId, status });
+      await runAdminAction({
+        action: 'setGuestMessageStatus',
+        messageId: messageId.toString(),
+        status,
+      });
+      await refreshAdminSnapshot();
       setMessageNotice('Message status updated.');
     } catch (error) {
       setActionError(error instanceof Error ? error.message : 'Unable to update message status.');
@@ -1452,12 +1622,12 @@ export default function AdminGuestsPage() {
                                 className="button-secondary admin-guest-action-button"
                                 onClick={async () => {
                                   clearMessages();
-                                  if (!connection) {
-                                    setActionError('Connection is not ready yet.');
-                                    return;
-                                  }
                                   try {
-                                    await connection.reducers.adminRegenerateGuestQrToken({ guestId: guest.id });
+                                    await runAdminAction({
+                                      action: 'regenerateGuestQrToken',
+                                      guestId: guest.id.toString(),
+                                    });
+                                    await refreshAdminSnapshot();
                                     setMessageNotice(`Regenerated QR token for ${guestName}.`);
                                   } catch (error) {
                                     setActionError(

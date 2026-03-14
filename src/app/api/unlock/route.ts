@@ -1,11 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { DbConnection } from '@/module_bindings';
+import { getGuestPreviewByInviteCode } from '@/lib/spacetimedb-procedures';
+import { withSpacetimeConnection } from '@/lib/spacetimedb-server';
 import {
   createUnlockSession,
   readUnlockSession,
   UNLOCK_COOKIE_NAME,
   UNLOCK_SESSION_TTL_SECONDS,
 } from '@/lib/invite-unlock';
+import {
+  consumeRateLimit,
+  getRequestClientKey,
+  resetRateLimit,
+} from '@/lib/request-rate-limit';
 
 export const runtime = 'nodejs';
 
@@ -18,117 +24,26 @@ type UnlockSessionResponse = {
   inviteCode: string | null;
 };
 
-const DEFAULT_QUERY_TIMEOUT_MS = 8000;
+const UNLOCK_RATE_LIMIT = {
+  maxAttempts: 10,
+  windowMs: 10 * 60 * 1000,
+} as const;
 
 function normalizeInviteCode(value: string): string {
   return value.trim().toUpperCase().replace(/[\s-]+/g, '');
 }
 
-function normalizeToWsUri(input: string): string {
-  const parsed = new URL(input);
-  if (parsed.protocol === 'https:') {
-    parsed.protocol = 'wss:';
-  } else if (parsed.protocol === 'http:') {
-    parsed.protocol = 'ws:';
-  }
-  return parsed.toString();
-}
-
-function escapeSqlLiteral(value: string): string {
-  return value.replace(/'/g, "''");
-}
-
-function getSpacetimeConfig(): { host: string; databaseName: string } | null {
-  const host = process.env.SPACETIMEDB_HOST ?? process.env.NEXT_PUBLIC_SPACETIMEDB_HOST ?? '';
-  const databaseName =
-    process.env.SPACETIMEDB_DB_NAME ?? process.env.NEXT_PUBLIC_SPACETIMEDB_DB_NAME ?? '';
-
-  if (!host.trim() || !databaseName.trim()) {
-    return null;
-  }
-
-  return { host: host.trim(), databaseName: databaseName.trim() };
-}
-
 async function inviteCodeExistsInGuestTable(inviteCode: string): Promise<boolean> {
-  const config = getSpacetimeConfig();
-  if (!config) {
-    throw new Error('SpacetimeDB host/database is not configured.');
-  }
-
   const normalizedCode = normalizeInviteCode(inviteCode);
   if (!normalizedCode) {
     return false;
   }
 
-  return new Promise<boolean>((resolve, reject) => {
-    let settled = false;
-    let connection: DbConnection | null = null;
-
-    const timeout = setTimeout(() => {
-      settleReject(new Error('Timed out while validating invite code.'));
-    }, DEFAULT_QUERY_TIMEOUT_MS);
-
-    const cleanup = () => {
-      clearTimeout(timeout);
-      if (connection) {
-        connection.disconnect();
-      }
-    };
-
-    const settleResolve = (value: boolean) => {
-      if (settled) {
-        return;
-      }
-      settled = true;
-      cleanup();
-      resolve(value);
-    };
-
-    const settleReject = (error: Error) => {
-      if (settled) {
-        return;
-      }
-      settled = true;
-      cleanup();
-      reject(error);
-    };
-
-    try {
-      connection = DbConnection.builder()
-        .withUri(normalizeToWsUri(config.host))
-        .withDatabaseName(config.databaseName)
-        .onConnect((ctx) => {
-          const escapedCode = escapeSqlLiteral(normalizedCode);
-          ctx.subscriptionBuilder()
-            .onApplied((subscriptionCtx) => {
-              const guestTable = (subscriptionCtx.db as Record<string, { iter(): Iterable<{ inviteCode: string }> }>)
-                .guest;
-              const isMatch =
-                guestTable !== undefined &&
-                Array.from(guestTable.iter()).some(
-                  (row) => normalizeInviteCode(row.inviteCode) === normalizedCode
-                );
-              settleResolve(isMatch);
-            })
-            .onError((errorCtx) => {
-              const eventError =
-                errorCtx.event instanceof Error
-                  ? errorCtx.event
-                  : new Error('Subscription failed while validating invite code.');
-              settleReject(eventError);
-            })
-            .subscribe([
-              `SELECT * FROM guest WHERE inviteCode = '${escapedCode}'`,
-            ]);
-        })
-        .onConnectError((_ctx, error) => {
-          settleReject(error);
-        })
-        .build();
-    } catch (error) {
-      settleReject(error instanceof Error ? error : new Error('Unable to connect to SpacetimeDB.'));
-    }
+  return withSpacetimeConnection(async (connection) => {
+    const preview = await getGuestPreviewByInviteCode(connection, {
+      inviteCode: normalizedCode,
+    });
+    return preview !== undefined;
   });
 }
 
@@ -145,6 +60,21 @@ function emptyUnlockCookie(response: NextResponse): void {
 }
 
 export async function POST(request: NextRequest) {
+  const clientKey = getRequestClientKey(request);
+  const rateLimit = consumeRateLimit('unlock', clientKey, UNLOCK_RATE_LIMIT);
+  if (!rateLimit.allowed) {
+    return NextResponse.json(
+      { ok: false, error: 'Too many unlock attempts. Please wait a few minutes and try again.' },
+      {
+        status: 429,
+        headers: {
+          'Retry-After': String(rateLimit.retryAfterSeconds),
+          'Cache-Control': 'no-store',
+        },
+      }
+    );
+  }
+
   const body = (await request.json().catch(() => null)) as UnlockRequestBody | null;
   const inviteCode = normalizeInviteCode(typeof body?.inviteCode === 'string' ? body.inviteCode : '');
 
@@ -191,6 +121,7 @@ export async function POST(request: NextRequest) {
     path: '/',
     maxAge: UNLOCK_SESSION_TTL_SECONDS,
   });
+  resetRateLimit('unlock', clientKey);
   return response;
 }
 

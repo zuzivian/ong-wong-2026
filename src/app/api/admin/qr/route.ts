@@ -15,7 +15,8 @@ function getAppBaseUrl(request: NextRequest): string {
 }
 
 export async function GET(request: NextRequest) {
-  const adminCookie = cookies().get(ADMIN_COOKIE_NAME)?.value;
+  const cookieStore = await cookies();
+  const adminCookie = cookieStore.get(ADMIN_COOKIE_NAME)?.value;
   const isAdmin = await readAdminSession(adminCookie);
   if (!isAdmin) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });

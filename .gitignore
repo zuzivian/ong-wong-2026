@@ -24,6 +24,7 @@ pnpm-debug.log*
 .env
 .env.*
 !.env.example
+.spacetimedb-admin-credentials.json
 
 # TypeScript
 *.tsbuildinfo

@@ -1,6 +1,7 @@
 import { SenderError, t } from 'spacetimedb/server';
-import spacetimedb from './schema';
+import spacetimedb, { Companion, Guest, GuestMessage, RsvpResponse } from './schema';
 import { RSVP_CUTOFF_AT_MICROS } from '../../shared/globals';
+import { ADMIN_IDENTITY_BOOTSTRAP_MARKER } from '../../shared/admin-identity';
 
 export { default } from './schema';
 
@@ -15,6 +16,27 @@ const CompanionInput = t.object('CompanionInput', {
   name: t.string(),
   dietaryNotes: t.string().optional(),
   relationship: t.string().optional(),
+});
+
+const GuestPreview = t.object('GuestPreview', {
+  firstName: t.string(),
+  lastName: t.string(),
+  inviteCode: t.string(),
+});
+
+const GuestPortalState = t.object('GuestPortalState', {
+  previewGuest: t.option(GuestPreview),
+  activeGuest: t.option(Guest.rowType),
+  activeRsvp: t.option(RsvpResponse.rowType),
+  companions: t.array(Companion.rowType),
+  messages: t.array(GuestMessage.rowType),
+});
+
+const AdminDashboardSnapshot = t.object('AdminDashboardSnapshot', {
+  guests: t.array(Guest.rowType),
+  responses: t.array(RsvpResponse.rowType),
+  companions: t.array(Companion.rowType),
+  messages: t.array(GuestMessage.rowType),
 });
 
 function normalize(text: string): string {
@@ -55,6 +77,33 @@ function normalizeMessageStatus(status: string): string {
     throw new SenderError('Invalid message status.');
   }
   return normalized;
+}
+
+function requireAdminAccess(
+  ctx: {
+    sender: Parameters<typeof identify_guest_by_token>[0]['sender'];
+    timestamp: Parameters<typeof identify_guest_by_token>[0]['timestamp'];
+    db: Parameters<typeof identify_guest_by_token>[0]['db'];
+  },
+  adminSecret: string
+): void {
+  const configuredAdmin = ctx.db.admin_identity.id.find(0n);
+  if (!configuredAdmin) {
+    if (adminSecret.trim() !== ADMIN_IDENTITY_BOOTSTRAP_MARKER) {
+      throw new SenderError('Admin identity is not initialized.');
+    }
+
+    ctx.db.admin_identity.insert({
+      id: 0n,
+      identity: ctx.sender,
+      claimedAt: ctx.timestamp,
+    });
+    return;
+  }
+
+  if (!configuredAdmin.identity.equals(ctx.sender)) {
+    throw new SenderError('Unauthorized admin action.');
+  }
 }
 
 function requireGuestForSender(ctx: Parameters<typeof identify_guest_by_token>[0]) {
@@ -158,6 +207,27 @@ function upsertGuestSession(
   });
 }
 
+function buildGuestPreview(
+  guest:
+    | {
+        firstName: string;
+        lastName: string;
+        inviteCode: string;
+      }
+    | null
+    | undefined
+) {
+  if (!guest) {
+    return undefined;
+  }
+
+  return {
+    firstName: guest.firstName,
+    lastName: guest.lastName,
+    inviteCode: guest.inviteCode,
+  };
+}
+
 export const init = spacetimedb.init(() => {});
 
 export const on_connect = spacetimedb.clientConnected(() => {});
@@ -217,6 +287,93 @@ export const clear_guest_session = spacetimedb.reducer(ctx => {
     ctx.db.guest_session.sender.delete(ctx.sender);
   }
 });
+
+export const get_guest_preview_by_invite_code = spacetimedb.procedure(
+  {
+    inviteCode: t.string(),
+  },
+  t.option(GuestPreview),
+  (ctx, { inviteCode }) => {
+    const normalizedInviteCode = normalizeInviteCode(inviteCode);
+    if (!normalizedInviteCode) {
+      return undefined;
+    }
+
+    return ctx.withTx(tx => {
+      const guest = tx.db.guest.inviteCode.find(normalizedInviteCode);
+      return buildGuestPreview(guest);
+    });
+  }
+);
+
+export const get_invite_code_by_qr_token = spacetimedb.procedure(
+  {
+    qrToken: t.string(),
+  },
+  t.option(t.string()),
+  (ctx, { qrToken }) => {
+    const normalizedToken = qrToken.trim();
+    if (!normalizedToken) {
+      return undefined;
+    }
+
+    return ctx.withTx(tx => tx.db.guest.qrToken.find(normalizedToken)?.inviteCode);
+  }
+);
+
+export const get_guest_portal_state = spacetimedb.procedure(
+  {
+    inviteCode: t.string().optional(),
+  },
+  GuestPortalState,
+  (ctx, { inviteCode }) => {
+    const normalizedInviteCode = normalizeOptional(inviteCode);
+
+    return ctx.withTx(tx => {
+      const session = tx.db.guest_session.sender.find(tx.sender);
+      const activeGuest = session ? tx.db.guest.id.find(session.guestId) ?? undefined : undefined;
+      const previewGuest = normalizedInviteCode
+        ? buildGuestPreview(tx.db.guest.inviteCode.find(normalizedInviteCode) ?? undefined)
+        : undefined;
+      const activeRsvp = activeGuest
+        ? tx.db.rsvp_response.guestId.find(activeGuest.id) ?? undefined
+        : undefined;
+      const companions = activeGuest
+        ? [...tx.db.companion.companion_guest_id.filter(activeGuest.id)]
+        : [];
+      const messages = activeGuest
+        ? [...tx.db.guest_message.guest_message_guest_id.filter(activeGuest.id)]
+        : [];
+
+      return {
+        previewGuest,
+        activeGuest,
+        activeRsvp,
+        companions,
+        messages,
+      };
+    });
+  }
+);
+
+export const get_admin_dashboard_snapshot = spacetimedb.procedure(
+  {
+    adminSecret: t.string(),
+  },
+  AdminDashboardSnapshot,
+  (ctx, { adminSecret }) => {
+    return ctx.withTx(tx => {
+      requireAdminAccess(tx, adminSecret);
+
+      return {
+        guests: [...tx.db.guest.iter()],
+        responses: [...tx.db.rsvp_response.iter()],
+        companions: [...tx.db.companion.iter()],
+        messages: [...tx.db.guest_message.iter()],
+      };
+    });
+  }
+);
 
 export const update_guest_phone = spacetimedb.reducer(
   {
@@ -369,6 +526,7 @@ export const delete_guest_message = spacetimedb.reducer(
 
 export const admin_update_guest_rsvp = spacetimedb.reducer(
   {
+    adminSecret: t.string(),
     guestId: t.u64(),
     rsvpStatus: t.string(),
     dietaryNotes: t.string().optional(),
@@ -381,6 +539,7 @@ export const admin_update_guest_rsvp = spacetimedb.reducer(
   (
     ctx,
     {
+      adminSecret,
       guestId,
       rsvpStatus,
       dietaryNotes,
@@ -391,6 +550,7 @@ export const admin_update_guest_rsvp = spacetimedb.reducer(
       maxCompanions,
     }
   ) => {
+    requireAdminAccess(ctx, adminSecret);
     const guest = ctx.db.guest.id.find(guestId);
     if (!guest) {
       throw new SenderError('Guest not found.');
@@ -446,10 +606,12 @@ export const admin_update_guest_rsvp = spacetimedb.reducer(
 
 export const admin_replace_guest_companions = spacetimedb.reducer(
   {
+    adminSecret: t.string(),
     guestId: t.u64(),
     companions: t.array(CompanionInput),
   },
-  (ctx, { guestId, companions }) => {
+  (ctx, { adminSecret, guestId, companions }) => {
+    requireAdminAccess(ctx, adminSecret);
     const guest = ctx.db.guest.id.find(guestId);
     if (!guest) {
       throw new SenderError('Guest not found.');
@@ -483,10 +645,12 @@ export const admin_replace_guest_companions = spacetimedb.reducer(
 
 export const admin_bulk_set_rsvp_status = spacetimedb.reducer(
   {
+    adminSecret: t.string(),
     guestIds: t.array(t.u64()),
     rsvpStatus: t.string(),
   },
-  (ctx, { guestIds, rsvpStatus }) => {
+  (ctx, { adminSecret, guestIds, rsvpStatus }) => {
+    requireAdminAccess(ctx, adminSecret);
     const normalizedStatus = normalizeRsvpStatus(rsvpStatus);
     for (const guestId of guestIds) {
       setGuestRsvpStatus(ctx, guestId, normalizedStatus);
@@ -496,6 +660,7 @@ export const admin_bulk_set_rsvp_status = spacetimedb.reducer(
 
 export const admin_upsert_guest = spacetimedb.reducer(
   {
+    adminSecret: t.string(),
     firstName: t.string(),
     lastName: t.string(),
     inviteCode: t.string(),
@@ -506,6 +671,7 @@ export const admin_upsert_guest = spacetimedb.reducer(
     contactPhone: t.string().optional(),
   },
   (ctx, payload) => {
+    requireAdminAccess(ctx, payload.adminSecret);
     const firstName = payload.firstName.trim();
     const lastName = payload.lastName.trim();
     const inviteCode = normalizeInviteCode(payload.inviteCode);
@@ -555,9 +721,11 @@ export const admin_upsert_guest = spacetimedb.reducer(
 
 export const admin_regenerate_guest_qr_token = spacetimedb.reducer(
   {
+    adminSecret: t.string(),
     guestId: t.u64(),
   },
-  (ctx, { guestId }) => {
+  (ctx, { adminSecret, guestId }) => {
+    requireAdminAccess(ctx, adminSecret);
     const guest = ctx.db.guest.id.find(guestId);
     if (!guest) {
       throw new SenderError('Guest not found.');
@@ -586,10 +754,12 @@ export const admin_regenerate_guest_qr_token = spacetimedb.reducer(
 
 export const admin_set_guest_message_status = spacetimedb.reducer(
   {
+    adminSecret: t.string(),
     messageId: t.u64(),
     status: t.string(),
   },
-  (ctx, { messageId, status }) => {
+  (ctx, { adminSecret, messageId, status }) => {
+    requireAdminAccess(ctx, adminSecret);
     const message = ctx.db.guest_message.id.find(messageId);
     if (!message) {
       throw new SenderError('Message not found.');

@@ -50,94 +50,17 @@ import UpdateGuestMessageReducer from "./update_guest_message_reducer";
 import UpdateGuestPhoneReducer from "./update_guest_phone_reducer";
 
 // Import all procedure arg schemas
+import * as GetAdminDashboardSnapshotProcedure from "./get_admin_dashboard_snapshot_procedure";
+import * as GetGuestPortalStateProcedure from "./get_guest_portal_state_procedure";
+import * as GetGuestPreviewByInviteCodeProcedure from "./get_guest_preview_by_invite_code_procedure";
+import * as GetInviteCodeByQrTokenProcedure from "./get_invite_code_by_qr_token_procedure";
 
 // Import all table schema definitions
-import CompanionRow from "./companion_table";
-import GuestRow from "./guest_table";
-import GuestMessageRow from "./guest_message_table";
-import GuestSessionRow from "./guest_session_table";
-import RsvpResponseRow from "./rsvp_response_table";
 
 /** Type-only namespace exports for generated type groups. */
 
 /** The schema information for all tables in this module. This is defined the same was as the tables would have been defined in the server. */
 const tablesSchema = __schema({
-  companion: __table({
-    name: 'companion',
-    indexes: [
-      { accessor: 'companion_guest_id', name: 'companion_guest_id', algorithm: 'btree', columns: [
-        'guestId',
-      ] },
-      { accessor: 'id', name: 'id', algorithm: 'btree', columns: [
-        'id',
-      ] },
-    ],
-    constraints: [
-      { name: 'companion_id_key', constraint: 'unique', columns: ['id'] },
-    ],
-  }, CompanionRow),
-  guest: __table({
-    name: 'guest',
-    indexes: [
-      { accessor: 'id', name: 'id', algorithm: 'btree', columns: [
-        'id',
-      ] },
-      { accessor: 'inviteCode', name: 'inviteCode', algorithm: 'btree', columns: [
-        'inviteCode',
-      ] },
-      { accessor: 'qrToken', name: 'qrToken', algorithm: 'btree', columns: [
-        'qrToken',
-      ] },
-    ],
-    constraints: [
-      { name: 'guest_id_key', constraint: 'unique', columns: ['id'] },
-      { name: 'guest_invite_code_key', constraint: 'unique', columns: ['inviteCode'] },
-      { name: 'guest_qr_token_key', constraint: 'unique', columns: ['qrToken'] },
-    ],
-  }, GuestRow),
-  guest_message: __table({
-    name: 'guest_message',
-    indexes: [
-      { accessor: 'guest_message_guest_id', name: 'guest_message_guest_id', algorithm: 'btree', columns: [
-        'guestId',
-      ] },
-      { accessor: 'id', name: 'id', algorithm: 'btree', columns: [
-        'id',
-      ] },
-    ],
-    constraints: [
-      { name: 'guest_message_id_key', constraint: 'unique', columns: ['id'] },
-    ],
-  }, GuestMessageRow),
-  guest_session: __table({
-    name: 'guest_session',
-    indexes: [
-      { accessor: 'guest_session_guest_id', name: 'guest_session_guest_id', algorithm: 'btree', columns: [
-        'guestId',
-      ] },
-      { accessor: 'sender', name: 'sender', algorithm: 'btree', columns: [
-        'sender',
-      ] },
-    ],
-    constraints: [
-      { name: 'guest_session_sender_key', constraint: 'unique', columns: ['sender'] },
-    ],
-  }, GuestSessionRow),
-  rsvp_response: __table({
-    name: 'rsvp_response',
-    indexes: [
-      { accessor: 'guestId', name: 'guestId', algorithm: 'btree', columns: [
-        'guestId',
-      ] },
-      { accessor: 'id', name: 'id', algorithm: 'btree', columns: [
-        'id',
-      ] },
-    ],
-    constraints: [
-      { name: 'rsvp_response_guest_id_key', constraint: 'unique', columns: ['guestId'] },
-      { name: 'rsvp_response_id_key', constraint: 'unique', columns: ['id'] },
-    ],
-  }, RsvpResponseRow),
 });
 
 /** The schema information for all reducers in this module. This is defined the same way as the reducers would have been defined in the server, except the body of the reducer is omitted in code generation. */
@@ -160,6 +83,10 @@ const reducersSchema = __reducers(
 
 /** The schema information for all procedures in this module. This is defined the same way as the procedures would have been defined in the server. */
 const proceduresSchema = __procedures(
+  __procedureSchema("get_admin_dashboard_snapshot", GetAdminDashboardSnapshotProcedure.params, GetAdminDashboardSnapshotProcedure.returnType),
+  __procedureSchema("get_guest_portal_state", GetGuestPortalStateProcedure.params, GetGuestPortalStateProcedure.returnType),
+  __procedureSchema("get_guest_preview_by_invite_code", GetGuestPreviewByInviteCodeProcedure.params, GetGuestPreviewByInviteCodeProcedure.returnType),
+  __procedureSchema("get_invite_code_by_qr_token", GetInviteCodeByQrTokenProcedure.params, GetInviteCodeByQrTokenProcedure.returnType),
 );
 
 /** The remote SpacetimeDB module schema, both runtime and type information. */
@@ -211,3 +138,4 @@ export class DbConnection extends __DbConnectionImpl<typeof REMOTE_MODULE> {
     return new SubscriptionBuilder(this);
   };
 }
+

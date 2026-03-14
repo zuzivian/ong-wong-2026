@@ -11,7 +11,8 @@ type RsvpByTokenPageProps = {
 };
 
 export default async function RsvpByTokenPage({ params }: RsvpByTokenPageProps) {
-  const unlockCookie = cookies().get(UNLOCK_COOKIE_NAME)?.value;
+  const cookieStore = await cookies();
+  const unlockCookie = cookieStore.get(UNLOCK_COOKIE_NAME)?.value;
   const isUnlocked = await verifyUnlockSession(unlockCookie);
   if (!isUnlocked) {
     redirect(`/api/qr-unlock?token=${encodeURIComponent(params.token)}`);

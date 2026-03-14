@@ -4,8 +4,8 @@ import Link from 'next/link';
 import { FormEvent, useEffect, useMemo, useRef, useState } from 'react';
 import { useSpacetimeDB } from 'spacetimedb/react';
 import Icon from '@/components/icon';
-import { DbConnection, tables } from '@/module_bindings';
-import { useDebugTable } from '@/lib/use-debug-table';
+import { DbConnection } from '@/module_bindings';
+import { loadGuestPortalState, type GuestPortalState } from '@/lib/guest-portal-state';
 import { normalizeInviteCode } from '@/lib/unlock-client';
 import { RSVP_CUTOFF_AT_MICROS } from '../../../shared/globals';
 
@@ -90,7 +90,6 @@ function isValidPhone(phone: string): boolean {
 export default function DashboardPage() {
   const db = useSpacetimeDB();
   const connection = db.getConnection() as DbConnection | null;
-  const senderIdentity = db.identity;
 
   const [messageDraft, setMessageDraft] = useState('');
   const [messageError, setMessageError] = useState('');
@@ -103,9 +102,14 @@ export default function DashboardPage() {
   const [lookupError, setLookupError] = useState('');
   const [lookupStatus, setLookupStatus] = useState('');
   const [isLookingUp, setIsLookingUp] = useState(false);
+  const [portalLoading, setPortalLoading] = useState(true);
   const [unlockInviteCode, setUnlockInviteCode] = useState('');
   const [unlockCodeReady, setUnlockCodeReady] = useState(false);
   const autoLookupAttemptRef = useRef<string | null>(null);
+  const [portalState, setPortalState] = useState<GuestPortalState>({
+    companions: [],
+    messages: [],
+  });
 
   const [editingField, setEditingField] = useState<EditableField | null>(null);
   const [feedbackField, setFeedbackField] = useState<EditableField | null>(null);
@@ -123,93 +127,15 @@ export default function DashboardPage() {
   const [companionStatus, setCompanionStatus] = useState('');
   const [companionError, setCompanionError] = useState('');
   const [isSavingCompanions, setIsSavingCompanions] = useState(false);
-
-  const sessionQuery = useMemo(() => {
-    if (!senderIdentity) {
-      return tables.guest_session.where((row) => row.guestId.eq(0n));
-    }
-    return tables.guest_session.where((row) => row.sender.eq(senderIdentity));
-  }, [senderIdentity]);
-  const [sessionRows] = useDebugTable<any>('dashboard.guest_session', sessionQuery);
-
-  const activeSession = useMemo(() => {
-    return sessionRows[0];
-  }, [sessionRows]);
-  const activeSessionGuestId = activeSession?.guestId as bigint | undefined;
-
-  const guestQuery = useMemo(() => {
-    if (activeSessionGuestId !== undefined) {
-      return tables.guest.where((row) => row.id.eq(activeSessionGuestId));
-    }
-    if (unlockInviteCode) {
-      return tables.guest.where((row) => row.inviteCode.eq(unlockInviteCode));
-    }
-    return tables.guest.where((row) => row.id.eq(0n));
-  }, [activeSessionGuestId, unlockInviteCode]);
-  const [guestRows, guestLoading] = useDebugTable<any>('dashboard.guest', guestQuery);
-
-  const activeGuest = useMemo(
-    () => guestRows[0],
-    [guestRows]
-  );
-
-  const activeGuestId = activeGuest?.id as bigint | undefined;
-
-  const rsvpQuery = useMemo(() => {
-    if (activeGuestId === undefined) {
-      return tables.rsvp_response.where((row) => row.guestId.eq(0n));
-    }
-    return tables.rsvp_response.where((row) => row.guestId.eq(activeGuestId));
-  }, [activeGuestId]);
-  const [rsvpRows] = useDebugTable<any>('dashboard.rsvp_response', rsvpQuery);
-
-  const companionQuery = useMemo(() => {
-    if (activeGuestId === undefined) {
-      return tables.companion.where((row) => row.guestId.eq(0n));
-    }
-    return tables.companion.where((row) => row.guestId.eq(activeGuestId));
-  }, [activeGuestId]);
-  const [companionRows] = useDebugTable<any>('dashboard.companion', companionQuery);
-
-  const messageQuery = useMemo(() => {
-    if (activeGuestId === undefined) {
-      return tables.guest_message.where((row) => row.guestId.eq(0n));
-    }
-    return tables.guest_message.where((row) => row.guestId.eq(activeGuestId));
-  }, [activeGuestId]);
-  const [messageRows] = useDebugTable<any>('dashboard.guest_message', messageQuery);
-
-  const activeRsvp = useMemo(
-    () => (activeGuest ? rsvpRows.find((row) => row.guestId === activeGuest.id) : undefined),
-    [activeGuest, rsvpRows]
-  );
-
-  const detectedGuestByUnlockCode = useMemo(() => {
-    if (!unlockInviteCode) {
-      return undefined;
-    }
-
-    return guestRows.find(
-      (row) => normalizeInviteCode(row.inviteCode) === unlockInviteCode
-    );
-  }, [guestRows, unlockInviteCode]);
-
-  const guestCompanions = useMemo(
-    () => (activeGuest ? companionRows.filter((row) => row.guestId === activeGuest.id) : []),
-    [activeGuest, companionRows]
-  );
-
+  const activeGuest = portalState.activeGuest;
+  const activeRsvp = portalState.activeRsvp;
+  const detectedGuestByUnlockCode = portalState.previewGuest;
+  const guestCompanions = portalState.companions;
   const guestMessages = useMemo(() => {
-    if (!activeGuest) {
-      return [];
-    }
-
-    return messageRows
-      .filter((row) => row.guestId === activeGuest.id)
-      .sort((a, b) =>
-        b.createdAt.microsSinceUnixEpoch > a.createdAt.microsSinceUnixEpoch ? 1 : -1
-      );
-  }, [activeGuest, messageRows]);
+    return [...portalState.messages].sort((a, b) =>
+      b.createdAt.microsSinceUnixEpoch > a.createdAt.microsSinceUnixEpoch ? 1 : -1
+    );
+  }, [portalState.messages]);
 
   useEffect(() => {
     if (editingMessageId === null) {
@@ -316,8 +242,47 @@ export default function DashboardPage() {
     };
   }, []);
 
+  const refreshPortalState = async (inviteCodeOverride?: string) => {
+    if (!connection) {
+      return;
+    }
+
+    const nextState = await loadGuestPortalState(connection, inviteCodeOverride ?? unlockInviteCode);
+    setPortalState(nextState);
+  };
+
   useEffect(() => {
-    if (!connection || !unlockCodeReady || !unlockInviteCode || guestLoading || activeGuest || isLookingUp) {
+    if (!connection || !unlockCodeReady) {
+      return;
+    }
+
+    let cancelled = false;
+    setPortalLoading(true);
+
+    loadGuestPortalState(connection, unlockInviteCode)
+      .then((nextState) => {
+        if (!cancelled) {
+          setPortalState(nextState);
+        }
+      })
+      .catch((error) => {
+        if (!cancelled) {
+          setLookupError(toErrorMessage(error, 'Unable to load your invitation details.'));
+        }
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setPortalLoading(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [connection, unlockCodeReady, unlockInviteCode]);
+
+  useEffect(() => {
+    if (!connection || !unlockCodeReady || !unlockInviteCode || portalLoading || activeGuest || isLookingUp) {
       return;
     }
 
@@ -339,7 +304,8 @@ export default function DashboardPage() {
       lastName: detectedGuestByUnlockCode.lastName,
       inviteCode: unlockInviteCode,
     })
-      .then(() => {
+      .then(async () => {
+        await refreshPortalState(unlockInviteCode);
         setLookupStatus('Verification successful. Loading your dashboard...');
       })
       .catch((error) => {
@@ -353,8 +319,8 @@ export default function DashboardPage() {
     activeGuest,
     connection,
     detectedGuestByUnlockCode,
-    guestLoading,
     isLookingUp,
+    portalLoading,
     unlockCodeReady,
     unlockInviteCode,
   ]);
@@ -452,6 +418,7 @@ export default function DashboardPage() {
       contactPhone: nextContactPhone,
       companions: nextAttendance ? companionPayload : [],
     });
+    await refreshPortalState();
   };
 
   const onConfirmAttendance = async () => {
@@ -551,6 +518,7 @@ export default function DashboardPage() {
       await connection.reducers.updateGuestPhone({
         contactPhone: normalizedPhone,
       });
+      await refreshPortalState();
       setFieldSuccess(field, 'Contact phone updated.');
     } catch (error) {
       setFieldFailure(field, toErrorMessage(error, 'Unable to update phone number.'));
@@ -577,6 +545,7 @@ export default function DashboardPage() {
 
     try {
       await connection.reducers.sendGuestMessage({ message: trimmed });
+      await refreshPortalState();
       setMessageDraft('');
       setMessageStatus('Thank you. Your note has been sent.');
     } catch (error) {
@@ -619,6 +588,7 @@ export default function DashboardPage() {
         messageId,
         message: trimmed,
       });
+      await refreshPortalState();
       setMessageActionStatus('Your note was updated.');
       setEditingMessageId(null);
       setEditingMessageDraft('');
@@ -642,6 +612,7 @@ export default function DashboardPage() {
     setIsSavingMessageAction(true);
     try {
       await connection.reducers.deleteGuestMessage({ messageId });
+      await refreshPortalState();
       setMessageActionStatus('Your note was deleted.');
       if (editingMessageId === messageId) {
         setEditingMessageId(null);
@@ -762,6 +733,7 @@ export default function DashboardPage() {
         contactPhone: normalizeOptionalInput(activeGuest.contactPhone),
         companions: nextCompanions,
       });
+      await refreshPortalState();
       setCompanionStatus('Loved ones attending were updated.');
       setIsEditingCompanions(false);
     } catch (error) {

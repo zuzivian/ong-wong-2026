@@ -10,11 +10,11 @@ import {
   type Infer as __Infer,
 } from "spacetimedb";
 
-export default __t.row({
-  id: __t.u64().primaryKey(),
-  guestId: __t.u64(),
-  attendance: __t.bool(),
-  dietaryNotes: __t.option(__t.string()),
-  notes: __t.option(__t.string()),
-  updatedAt: __t.timestamp(),
-});
+import {
+  AdminDashboardSnapshot,
+} from "./types";
+
+export const params = {
+  adminSecret: __t.string(),
+};
+export const returnType = AdminDashboardSnapshot

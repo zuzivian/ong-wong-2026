@@ -10,16 +10,11 @@ import {
   type Infer as __Infer,
 } from "spacetimedb";
 
-export default __t.row({
-  id: __t.u64().primaryKey(),
-  firstName: __t.string(),
-  lastName: __t.string(),
+import {
+  GuestPreview,
+} from "./types";
+
+export const params = {
   inviteCode: __t.string(),
-  qrToken: __t.string(),
-  canAddCompanions: __t.bool(),
-  maxCompanions: __t.u64(),
-  contactEmail: __t.option(__t.string()),
-  contactPhone: __t.option(__t.string()),
-  rsvpStatus: __t.string(),
-  updatedAt: __t.timestamp(),
-});
+};
+export const returnType = __t.option(GuestPreview)

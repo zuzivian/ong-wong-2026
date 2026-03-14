@@ -11,5 +11,6 @@ import {
 } from "spacetimedb";
 
 export default {
+  adminSecret: __t.string(),
   guestId: __t.u64(),
 };

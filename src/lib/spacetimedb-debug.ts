@@ -78,7 +78,7 @@ export function logExpectedTableSchema(): void {
   }
 
   tableSchemaLogged = true;
-  const schema = Object.entries(tables).map(([accessorName, table]) => ({
+  const schema = Object.entries(tables as Record<string, { sourceName: string; toSql(): string }>).map(([accessorName, table]) => ({
     accessorName,
     sourceName: table.sourceName,
     query: table.toSql(),

@@ -1,4 +1,4 @@
-const DEV_FALLBACK_UNLOCK_SECRET = 'dev-only-unlock-secret-change-before-production';
+import { getSessionSigningSecret } from './session-secret';
 
 export const UNLOCK_COOKIE_NAME = 'wedding_unlock';
 export const UNLOCK_SESSION_TTL_SECONDS = 60 * 60 * 24 * 180; // 180 days
@@ -13,21 +13,8 @@ export type UnlockSession = {
   inviteCode?: string;
 };
 
-function isProduction(): boolean {
-  return process.env.NODE_ENV === 'production';
-}
-
 function getUnlockSecret(): string | undefined {
-  const configuredSecret = process.env.WEDDING_UNLOCK_SECRET?.trim();
-  if (configuredSecret) {
-    return configuredSecret;
-  }
-
-  if (isProduction()) {
-    return undefined;
-  }
-
-  return DEV_FALLBACK_UNLOCK_SECRET;
+  return getSessionSigningSecret();
 }
 
 function timingSafeEqual(left: string, right: string): boolean {
@@ -124,7 +111,7 @@ function parseUnlockPayload(rawPayload: string): UnlockSession | undefined {
 async function signPayload(payload: string): Promise<string> {
   const secret = getUnlockSecret();
   if (!secret) {
-    throw new Error('WEDDING_UNLOCK_SECRET must be set in production.');
+    throw new Error('SESSION_SIGNING_SECRET must be set in production.');
   }
 
   const key = await crypto.subtle.importKey(

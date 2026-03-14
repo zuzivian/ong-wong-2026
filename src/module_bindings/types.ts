@@ -10,6 +10,22 @@ import {
   type Infer as __Infer,
 } from "spacetimedb";
 
+export const AdminDashboardSnapshot = __t.object("AdminDashboardSnapshot", {
+  get guests() {
+    return __t.array(Guest);
+  },
+  get responses() {
+    return __t.array(RsvpResponse);
+  },
+  get companions() {
+    return __t.array(Companion);
+  },
+  get messages() {
+    return __t.array(GuestMessage);
+  },
+});
+export type AdminDashboardSnapshot = __Infer<typeof AdminDashboardSnapshot>;
+
 export const Companion = __t.object("Companion", {
   id: __t.u64(),
   guestId: __t.u64(),
@@ -50,6 +66,32 @@ export const GuestMessage = __t.object("GuestMessage", {
   createdAt: __t.timestamp(),
 });
 export type GuestMessage = __Infer<typeof GuestMessage>;
+
+export const GuestPortalState = __t.object("GuestPortalState", {
+  get previewGuest() {
+    return __t.option(GuestPreview);
+  },
+  get activeGuest() {
+    return __t.option(Guest);
+  },
+  get activeRsvp() {
+    return __t.option(RsvpResponse);
+  },
+  get companions() {
+    return __t.array(Companion);
+  },
+  get messages() {
+    return __t.array(GuestMessage);
+  },
+});
+export type GuestPortalState = __Infer<typeof GuestPortalState>;
+
+export const GuestPreview = __t.object("GuestPreview", {
+  firstName: __t.string(),
+  lastName: __t.string(),
+  inviteCode: __t.string(),
+});
+export type GuestPreview = __Infer<typeof GuestPreview>;
 
 export const GuestSession = __t.object("GuestSession", {
   sender: __t.identity(),

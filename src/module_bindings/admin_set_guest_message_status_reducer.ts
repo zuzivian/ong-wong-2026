@@ -11,6 +11,7 @@ import {
 } from "spacetimedb";
 
 export default {
+  adminSecret: __t.string(),
   messageId: __t.u64(),
   status: __t.string(),
 };
