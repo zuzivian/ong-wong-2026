@@ -61,3 +61,33 @@ test('ADMINGUESTS-02 ADMINGUESTS-03 A11Y-01 A11Y-09 admin guests renders tab con
   await expect(page.getByRole('tab', { name: 'Messages' })).toBeVisible();
   await expectNoHorizontalOverflow(page);
 });
+
+test('ADMINLOGIN-05 rate-limit returns a clear retry message after too many failed attempts', async ({
+  page,
+}) => {
+  // Mock a 429 response to test the UI's handling without consuming server-side rate limit budget
+  await page.route('**/api/admin/auth', (route) =>
+    route.fulfill({
+      status: 429,
+      contentType: 'application/json',
+      body: JSON.stringify({ error: 'Too many admin login attempts. Please wait a while and try again.' }),
+    })
+  );
+
+  await page.goto('/admin/login');
+  await page.getByLabel('Admin PIN').fill('wrong-pin');
+  await page.getByRole('button', { name: 'Enter' }).click();
+
+  await expect(page.getByRole('alert').filter({ hasText: /Too many/i })).toBeVisible();
+});
+
+test('ADMINGUESTS-05 default guest tab is usable at desktop width without clipping', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await addAdminCookie(page.context());
+  await page.goto('/admin/guests');
+
+  await expect(page.getByRole('tab', { name: 'Guest list' })).toBeVisible();
+  await expectNoHorizontalOverflow(page);
+});

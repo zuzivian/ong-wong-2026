@@ -20,6 +20,14 @@ export type RsvpCompanion = {
 const DIETARY_OPTIONS_PREFIX = 'Dietary options:';
 const DIETARY_OTHER_PREFIX = 'Other notes:';
 
+function normalizeOptionalInput(text: string | undefined | null): string | undefined {
+  if (text == null) {
+    return undefined;
+  }
+  const trimmed = text.trim();
+  return trimmed.length > 0 ? trimmed : undefined;
+}
+
 export const RSVP_STEP_META = [
   {
     title: 'Step 1: Welcome and Confirm Invitation',
@@ -385,15 +393,15 @@ export function useRsvpWorkflow(
     await connection.reducers.submitRsvp({
       attendance: nextAttendance === 'attending',
       dietaryNotes: composeDietaryNotes(nextDietaryMode, nextDietaryOptions, nextDietaryNotes),
-      notes: null,
-      contactEmail: null,
-      contactPhone: null,
+      notes: undefined,
+      contactEmail: undefined,
+      contactPhone: undefined,
       companions:
         nextAttendance === 'attending'
           ? nextCompanions.map((companion) => ({
               name: companion.name.trim(),
-              dietaryNotes: companion.dietaryNotes.trim() || null,
-              relationship: null,
+              dietaryNotes: normalizeOptionalInput(companion.dietaryNotes),
+              relationship: undefined,
             }))
           : [],
       submitted: false,
@@ -501,15 +509,15 @@ export function useRsvpWorkflow(
       await connection!.reducers.submitRsvp({
         attendance: attendance === 'attending',
         dietaryNotes: composeDietaryNotes(dietaryMode, dietaryOptionsSelected, dietaryNotes),
-        notes: null,
-        contactEmail: null,
-        contactPhone: null,
+        notes: undefined,
+        contactEmail: undefined,
+        contactPhone: undefined,
         companions:
           attendance === 'attending'
             ? companions.map((companion) => ({
                 name: companion.name.trim(),
-                dietaryNotes: companion.dietaryNotes.trim() || null,
-                relationship: null,
+                dietaryNotes: normalizeOptionalInput(companion.dietaryNotes),
+                relationship: undefined,
               }))
             : [],
         submitted: true,

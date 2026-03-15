@@ -1,4 +1,4 @@
-# Wedding Frontend Design Doc (v1.7)
+# Wedding Frontend Design Doc (v1.8)
 
 ## 1. Product Summary
 
@@ -176,32 +176,54 @@ Current baseline in code: `/admin/guests` is now the live admin operations surfa
 4. **Operational planning views** — expand current summary cards into explicit planning exports for venue/vendors.
 5. ~~**Guest message inbox workflow**~~ — implemented with per-message status transitions (`new`, `in_progress`, `resolved`). ✓
 
-**P2 / deprioritized nice additions**
+**P2 / deprioritized nice additions** (tracked in §15)
 
 7. Export mode for venue and planner handoff.
 8. Reminder workflow for pending RSVP contacts.
 9. Audit log of admin edits for traceability.
 
-## 15. Immediate Next Steps
+## 15. Outstanding Work
 
-1. ~~**Finalize visual design**~~ — Heirloom selected, others removed. ✓
-2. ~~**Remove design-review artifacts from public nav**~~ — `/design-lab` removed. ✓
-3. ~~**Secure admin routes**~~ — PIN-gated via `ADMIN_PIN` env variable; 8-hour signed session cookie; `/admin/login` entry point; protected layout and rate-limited auth endpoint. ✓
-4. ~~**Finalize and freeze production content**~~ — final copy for schedule wording, dress code, FAQ answers, venue details. ✓
-5. ~~**Decide home-page content density**~~ ✓ — Single-page: all event content (schedule, venue, transport, what to expect) lives on `/` when unlocked. `/event-details` redirects to `/`.
-6. ~~**Set the RSVP cutoff date**~~ — fixed in `shared/globals.ts` at 31 May 2026 23:59 Singapore time. ✓
-7. ~~**Build admin RSVP dashboard**~~ — operational dashboard now live at `/admin/guests` with editing, import, bulk status, and message management. ✓
-8. **Seed real guest data** — load all invited guests into SpacetimeDB before launch.
-9. **Deliver remaining admin P0 follow-ups** — stronger planning/reporting views.
-10. ~~**Add Google Calendar invite link on the invitation card**~~ ✓ Added to the unlocked home CTA row and invitation card with the wedding date/time/location prefilled.
+### Priority 1 — Before invitations are distributed
 
-### Production Readiness TODO
+1. **Harden admin auth and credential handling** — `ADMIN_IDENTITY_BOOTSTRAP_MARKER = 'wedding-admin-bootstrap-v1'` is hardcoded in version control and is the `adminSecret` passed on every server-to-SpacetimeDB admin call. Move it to a `SPACETIMEDB_ADMIN_SECRET` env var (alongside `SESSION_SIGNING_SECRET` and `ADMIN_PIN`) so it cannot be read from the repository.
 
-12. **Consolidate guest session data loading** — shared guest-session summary loading now dedupes layout/home/nav reads; dashboard still hydrates its full portal state client-side for live editing.
-13. **Harden admin auth and credential handling** — replace the current bootstrap-marker/shared-secret approach and avoid persisting reusable SpacetimeDB admin credentials on the app filesystem in production.
-14. ~~**Scale the admin data surface**~~ ✓ Guest and message tabs now use paginated, scoped fetches with server-side filtering/search instead of loading the full snapshot on first paint.
-15. **Refactor large client workflows** — split `/dashboard` and the RSVP flow into smaller hooks/components so state orchestration, reducer calls, and rendering are easier to test and maintain.
-16. ~~**Add CI production gates**~~ ✓ GitHub Actions now runs unit tests, production build, and a smoke end-to-end suite covering unlock-cookie, RSVP, dashboard, and admin login happy paths.
+2. **Seed real guest data** — all invited guests must be loaded into SpacetimeDB (via `/admin/guests` import or `admin_upsert_guest`) before QR codes or paper invitations are distributed. Nothing in the RSVP flow works until guest records exist.
+
+### Priority 2 — Before RSVP opens
+
+3. **Write operational runbook** — document day-of procedures: how to verify SpacetimeDB is healthy, how to add a last-minute guest from a phone, what logs to check when a guest cannot unlock their invitation, and how to recover from an expired admin session.
+
+4. **Acceptance test coverage for A11Y-02 through A11Y-08** — eight accessibility criteria in `docs/route-acceptance-criteria.md` are currently untested. Automatable priority: A11Y-07 (all meaningful images carry non-empty `alt` text), then A11Y-05 (all form inputs have associated labels and inline error text). A11Y-02/03/04/06/08 require manual review or specialist tooling.
+
+5. **Live SpacetimeDB acceptance tests** — RSVP-05 (submitted guests can update), DASH-03 (dashboard renders full guest data), DASH-05 (edit feedback not color-only), and ADMINGUESTS-04 (inline edit and bulk action feedback) require a real guest record to exercise. Run these after priority 2 guest seeding is complete.
+
+### Priority 3 — Post-RSVP or low urgency
+
+6. **Operational planning views** — expand admin summary cards into explicit planning exports for venue/vendor handoff (confirmed head count, dietary breakdown by type, per-table arrangement).
+
+7. **Consolidate guest session data loading** — shared guest-session summary loading already deduplicates layout/home/nav reads; the dashboard still hydrates its full portal state client-side for live editing. Remaining optimisation opportunity.
+
+8. **Refactor large client workflows** — split `use-rsvp-workflow.ts` and `use-dashboard-workflow.ts` (~664 lines each) into smaller hooks and components so state orchestration, reducer calls, and rendering are easier to extend and test independently.
+
+### Deprioritised (P2)
+
+9. Export mode for venue and planner handoff.
+10. Reminder workflow for pending RSVP contacts.
+11. Audit log of admin edits for traceability.
+
+### Completed
+
+- ~~**Finalize visual design**~~ — Heirloom selected, others removed. ✓
+- ~~**Remove design-review artifacts from public nav**~~ — `/design-lab` removed. ✓
+- ~~**Secure admin routes**~~ — PIN-gated via `ADMIN_PIN` env variable; 8-hour signed session cookie; `/admin/login` entry point; protected layout and rate-limited auth endpoint. ✓
+- ~~**Finalize and freeze production content**~~ — final copy for schedule wording, dress code, FAQ answers, venue details. ✓
+- ~~**Decide home-page content density**~~ — Single-page: all event content lives on `/` when unlocked. `/event-details` redirects to `/`. ✓
+- ~~**Set the RSVP cutoff date**~~ — fixed in `shared/globals.ts` at 31 May 2026 23:59 Singapore time. ✓
+- ~~**Build admin RSVP dashboard**~~ — live at `/admin/guests` with editing, import, bulk status, and message management. ✓
+- ~~**Add Google Calendar invite link**~~ — Added to the unlocked home CTA row and invitation card. ✓
+- ~~**Scale the admin data surface**~~ — Guest and message tabs use paginated, scoped fetches with server-side filtering/search. ✓
+- ~~**Add CI production gates**~~ — GitHub Actions runs unit tests, production build, smoke e2e, and acceptance tests on every push. ✓
 
 ## 16. Known Bugs and UX Issues
 

@@ -62,3 +62,15 @@ test('FAQ-02 FAQ-03 A11Y-01 A11Y-09 unlocked FAQ renders the current content set
   await expect(page.getByRole('heading', { name: /Whom should I contact if I need assistance/i })).toBeVisible();
   await expectNoHorizontalOverflow(page);
 });
+
+test('RSVPCODE-02 RSVPCODE-03 /rsvp/[inviteCode] redirects home cleanly for a mismatched code', async ({
+  page,
+}) => {
+  await gotoUnlocked(page, '/rsvp/wrongcode', 'TESTCODE');
+
+  await expect(page).toHaveURL(/\/$/);
+  // RSVPCODE-02: home page with a recoverable path is shown
+  await expect(page.getByRole('heading', { name: 'Samuel & Natasha' })).toBeVisible();
+  // RSVPCODE-03: no raw error text exposed
+  await expect(page.getByText(/Error:/i)).not.toBeVisible();
+});
