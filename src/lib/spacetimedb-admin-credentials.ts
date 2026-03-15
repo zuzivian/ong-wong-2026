@@ -46,15 +46,17 @@ export async function readSpacetimeAdminCredentials(): Promise<SpacetimeAdminCre
 export async function writeSpacetimeAdminCredentials(
   credentials: SpacetimeAdminCredentials
 ): Promise<void> {
-  // In serverless environments, we can't write files, so skip writing
-  // The credentials should be set via environment variables instead
-  if (process.env.NODE_ENV === 'production' || process.env.VERCEL) {
-    return;
+  try {
+    await writeFile(ADMIN_CREDENTIALS_PATH, `${JSON.stringify(credentials, null, 2)}\n`, {
+      encoding: 'utf8',
+      mode: 0o600,
+    });
+  } catch (error) {
+    const code = (error as NodeJS.ErrnoException).code;
+    if (code === 'EROFS' || code === 'EACCES' || code === 'EPERM') {
+      // Read-only filesystem (e.g. Vercel/Lambda) — credentials come from env vars, safe to ignore
+      return;
+    }
+    throw error;
   }
-
-  // For local development, still write to file
-  await writeFile(ADMIN_CREDENTIALS_PATH, `${JSON.stringify(credentials, null, 2)}\n`, {
-    encoding: 'utf8',
-    mode: 0o600,
-  });
 }
