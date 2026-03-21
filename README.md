@@ -1,7 +1,7 @@
 # ong-wong-2026
 
 Wedding website + RSVP app for Samuel and Natasha.
-Current version: **0.0.2** with live-code updates through **March 14, 2026**
+Current version: **0.0.2** with live-code updates through **March 21, 2026**
 
 ## Tech Stack
 
@@ -30,8 +30,8 @@ Core implemented capabilities:
 - QR-first RSVP with fallback lookup (`firstName + lastName + inviteCode`)
 - Guest portal state management across home, RSVP, dashboard, and QR unlock flows
 - Multi-step RSVP submission (attendance, dietary, optional contact, companions)
-- Guest dashboard with RSVP summary, companion list, invite-code-aware refresh, and guest messaging
-- Admin guest operations dashboard with search, inline RSVP/contact editing, companion replacement, bulk RSVP actions, guest creation/import, QR tools, and message triage
+- Guest dashboard with RSVP summary, companion list, and invite-code-aware refresh
+- Admin guest operations dashboard with search, inline RSVP/contact editing, companion replacement, bulk RSVP actions, guest creation/import, QR tools, and CSV export
 - Fixed RSVP cutoff in `shared/globals.ts` (31 May 2026, 11:59 PM Singapore time)
 
 ## Project Structure

@@ -158,7 +158,7 @@ export default async function HomePage() {
                     rel="noopener noreferrer"
                   >
                     <Icon name="calendar_month" className="button-icon" /> Add
-                    to Calendar
+                    to Google Calendar
                   </a>
                   <a href="#schedule" className="button-secondary">
                     <Icon name="event_note" className="button-icon" /> Event

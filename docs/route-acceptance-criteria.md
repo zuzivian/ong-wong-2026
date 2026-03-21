@@ -1,6 +1,6 @@
 # Route Acceptance Criteria
 
-Last updated: **March 14, 2026**
+Last updated: **March 21, 2026**
 
 This document defines the minimum release bar for each live route in the wedding app. It complements the product/design brief and is intended to be used for QA, pre-launch checks, and regression review.
 
@@ -81,7 +81,7 @@ Acceptance criteria:
 
 - `DASH-01` Locked visitors are redirected to `/`.
 - `DASH-02` Unlocked visitors see the dashboard shell immediately and a clear loading/recovery state while invitation data resolves.
-- `DASH-03` RSVP summary, invitation details, companion management, guest messages, and quick links render when guest data is present.
+- `DASH-03` RSVP summary, invitation details, companion management, and quick links render when guest data is present.
 - `DASH-04` If guest lookup fails, the page explains how to recover by returning home to unlock again.
 - `DASH-05` Editing controls surface success and failure messages in text, not color alone.
 
@@ -93,7 +93,7 @@ Acceptance criteria:
 
 - `FAQ-01` Locked visitors are redirected to `/`.
 - `FAQ-02` Page presents the current FAQ set in a readable single-column layout.
-- `FAQ-03` FAQ content includes guest guidance for timing, venue, parking, dietary updates, companions, RSVP edits, invite-code recovery, and contact help.
+- `FAQ-03` FAQ content includes guest guidance for timing, venue, parking, dietary updates, companions, RSVP edits, invite-code recovery, and invitation help.
 - `FAQ-04` Heading hierarchy and link labels remain understandable when read out of visual context.
 
 ## `/admin/login`
@@ -116,6 +116,6 @@ Acceptance criteria:
 
 - `ADMINGUESTS-01` Missing or expired admin session redirects to `/admin/login`.
 - `ADMINGUESTS-02` Authenticated admins can reach the dashboard shell and tab controls.
-- `ADMINGUESTS-03` Search, filter, bulk, and message tabs expose accessible labels and tab state.
+- `ADMINGUESTS-03` Search, filter, guest-list actions, and bulk import controls expose accessible labels and tab state.
 - `ADMINGUESTS-04` Inline edit and bulk actions provide success/failure text feedback.
 - `ADMINGUESTS-05` The default guest tab is usable at desktop and tablet widths without clipping primary controls.

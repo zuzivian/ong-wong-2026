@@ -27,17 +27,6 @@ function formatOptional(text: string | undefined): string {
   return trimmed.length > 0 ? trimmed : 'Not provided';
 }
 
-function toMessageStatusLabel(status: string): string {
-  const normalizedStatus = status.trim().toLowerCase();
-  if (!normalizedStatus || normalizedStatus === 'new') {
-    return 'Awaiting response';
-  }
-  if (normalizedStatus === 'updated') {
-    return 'Updated';
-  }
-  return status;
-}
-
 export default function DashboardPage() {
   const db = useSpacetimeDB();
   const connection = db.getConnection() as DbConnection | null;
@@ -55,45 +44,26 @@ export default function DashboardPage() {
     detectedGuestByUnlockCode,
     dietaryDraft,
     editingField,
-    editingMessageDraft,
-    editingMessageId,
     feedbackField,
     fieldError,
     fieldStatus,
     guestCompanions,
-    guestMessages,
     isAttending,
     isEditingCompanions,
     isLookingUp,
     isSavingCompanions,
     isSavingField,
-    isSavingMessageAction,
     lookupError,
     lookupStatus,
     maxCompanions,
-    messageActionError,
-    messageActionStatus,
-    messageDraft,
-    messageError,
-    messageStatus,
-    notesDraft,
     unlockCodeReady,
     unlockInviteCode,
     setAttendanceDraft,
     setDietaryDraft,
-    setEditingMessageDraft,
-    setMessageDraft,
-    setNotesDraft,
     openEditor,
     cancelEditor,
     onConfirmAttendance,
     onConfirmDietaryNotes,
-    onConfirmNotes,
-    onSendMessage,
-    openMessageEditor,
-    cancelMessageEditor,
-    onSaveEditedMessage,
-    onDeleteMessage,
     openCompanionEditor,
     cancelCompanionEditor,
     addCompanionDraft,
@@ -124,7 +94,7 @@ export default function DashboardPage() {
           <Icon name="how_to_reg" className="heading-icon" />
           <span>Your RSVP</span>
         </h1>
-        <p>Welcome. You can update your RSVP details, loved ones, and notes to us here anytime.</p>
+        <p>Welcome. You can update your RSVP details and loved ones here anytime while edits remain open.</p>
       </section>
 
       {!activeGuest ? (
@@ -290,52 +260,6 @@ export default function DashboardPage() {
                 {renderFieldFeedback('dietaryNotes')}
               </fieldset>
 
-              <fieldset>
-                <legend>Additional Notes</legend>
-                <p>
-                  <strong>Current value:</strong> {formatOptional(activeRsvp?.notes)}
-                </p>
-                {editingField === 'notes' ? (
-                  <div className="form-stack">
-                    <label>
-                      Additional notes
-                      <textarea
-                        rows={3}
-                        value={notesDraft}
-                        onChange={(event) => setNotesDraft(event.target.value)}
-                        placeholder="Any extra context for the hosts"
-                      />
-                    </label>
-                    <div className="cta-row">
-                      <button type="button" className="button-secondary" onClick={cancelEditor}>
-                        <Icon name="close" className="button-icon" /> Cancel
-                      </button>
-                      <button
-                        type="button"
-                        className="button-primary"
-                        onClick={onConfirmNotes}
-                        disabled={isSavingField}
-                      >
-                        <Icon name="check" className="button-icon" /> Confirm
-                      </button>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="cta-row">
-                    <button
-                      type="button"
-                      className="button-secondary edit-action-button"
-                      onClick={() => openEditor('notes')}
-                      disabled={!canEditRsvpDetails}
-                    >
-                      <Icon name="edit" className="button-icon" /> Edit
-                    </button>
-                  </div>
-                )}
-                {!canEditRsvpDetails ? <p className="small-note">Set attendance first to edit this field.</p> : null}
-                {renderFieldFeedback('notes')}
-              </fieldset>
-
             </div>
           </section>
 
@@ -480,104 +404,6 @@ export default function DashboardPage() {
             ) : null}
             {companionError ? <p className="small-note">{companionError}</p> : null}
             {companionStatus ? <p className="small-note">{companionStatus}</p> : null}
-          </section>
-
-          <section className="card">
-            <h2 className="heading-with-icon">
-              <Icon name="mail" className="heading-icon" />
-              <span>Questions &amp; Well Wishes</span>
-            </h2>
-            <p className="small-note">Share any questions or kind notes. We will respond with care.</p>
-            <h3>Your notes</h3>
-            {guestMessages.length > 0 ? (
-              <ol className="faq-list">
-                {guestMessages.map((message) => (
-                  <li key={message.id.toString()} className="dashboard-message-item">
-                    {editingMessageId === message.id ? (
-                      <div className="form-stack">
-                        <label>
-                          Edit your question or well wish
-                          <textarea
-                            rows={4}
-                            value={editingMessageDraft}
-                            onChange={(event) => setEditingMessageDraft(event.target.value)}
-                          />
-                        </label>
-                        <div className="cta-row">
-                          <button
-                            type="button"
-                            className="button-secondary edit-action-button"
-                            onClick={cancelMessageEditor}
-                            disabled={isSavingMessageAction}
-                          >
-                            <Icon name="close" className="button-icon" /> Cancel
-                          </button>
-                          <button
-                            type="button"
-                            className="button-primary"
-                            onClick={() => {
-                              void onSaveEditedMessage(message.id);
-                            }}
-                            disabled={isSavingMessageAction}
-                          >
-                            <Icon name="check" className="button-icon" />
-                            {isSavingMessageAction ? 'Saving...' : 'Save Changes'}
-                          </button>
-                        </div>
-                      </div>
-                    ) : (
-                      <>
-                        <p>{message.message}</p>
-                        <p className="small-note">
-                          Sent {formatTimestamp(message.createdAt.microsSinceUnixEpoch)} |{' '}
-                          {toMessageStatusLabel(message.status)}
-                        </p>
-                        <div className="cta-row">
-                          <button
-                            type="button"
-                            className="button-secondary edit-action-button"
-                            onClick={() => openMessageEditor(message.id, message.message)}
-                            disabled={isSavingMessageAction}
-                          >
-                            <Icon name="edit" className="button-icon" /> Edit
-                          </button>
-                          <button
-                            type="button"
-                            className="button-secondary edit-action-button danger-action-button"
-                            onClick={() => {
-                              void onDeleteMessage(message.id);
-                            }}
-                            disabled={isSavingMessageAction}
-                          >
-                            <Icon name="delete" className="button-icon" /> Delete
-                          </button>
-                        </div>
-                      </>
-                    )}
-                  </li>
-                ))}
-              </ol>
-            ) : (
-              <p className="small-note">No questions or well wishes yet. You can share one below.</p>
-            )}
-            {messageActionError ? <p className="small-note">{messageActionError}</p> : null}
-            {messageActionStatus ? <p className="small-note">{messageActionStatus}</p> : null}
-            <form className="form-stack" onSubmit={onSendMessage}>
-              <label>
-                Question or well wish
-                <textarea
-                  rows={5}
-                  placeholder="Share a question, note, or well wish..."
-                  value={messageDraft}
-                  onChange={(event) => setMessageDraft(event.target.value)}
-                />
-              </label>
-              {messageError ? <p className="small-note">{messageError}</p> : null}
-              {messageStatus ? <p className="small-note">{messageStatus}</p> : null}
-              <button type="submit" className="button-primary">
-                <Icon name="send" className="button-icon" /> Send Note
-              </button>
-            </form>
           </section>
 
           <section className="card">

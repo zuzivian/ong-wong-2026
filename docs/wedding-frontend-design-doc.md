@@ -45,8 +45,7 @@ Wedding date: **15 August 2026**
 - Fallback access: **first name + last name + invite code**
 - RSVP depth: attendance + dietary + optional contact details + companion details
 - Companion policy: all guests can invite up to 5 companions
-- Dashboard: view/edit RSVP + free-text message form
-- Guest messaging copy: "We'll respond as soon as possible"
+- Dashboard: view/edit RSVP details and companion list
 - FAQ tone: formal
 - Home tone: formal with light personal warmth
 - Session persistence: signed unlock cookie persisted for 180 days, with invite code embedded for preview/loading flows
@@ -115,8 +114,6 @@ Implemented entities:
   - `id`, `guestId (unique)`, `attendance`, `dietaryNotes?`, `notes?`, `updatedAt`
 - `Companion`
   - `id`, `guestId`, `name`, `dietaryNotes?`, `relationship?`, `updatedAt`
-- `GuestMessage`
-  - `id`, `guestId`, `message`, `status`, `createdAt`
 - `GuestSession`
   - `sender (identity PK)`, `guestId`, `verifiedAt`
 - `AdminIdentity`
@@ -144,7 +141,7 @@ Implemented entities:
 - `/rsvp` and `/rsvp/[inviteCode]`
   - Full stepper flow, validation, reducer calls, guest portal state loading, and cutoff-aware submit behavior
 - `/dashboard`
-  - RSVP status summary, cutoff awareness, companion display, invite code recovery, message create/edit/delete, and event/FAQ links
+  - RSVP status summary, cutoff awareness, companion display, invite code recovery, and event/FAQ links
 - `/faq`
   - Seeded with 6 formal questions and answers
 - `/admin`
@@ -152,7 +149,7 @@ Implemented entities:
 - `/admin/login`
   - PIN form posting to `/api/admin/auth`, rate-limited, and setting admin session cookie
 - `/admin/guests`
-  - Live operations dashboard for guest search, invitation creation/import, inline RSVP/contact edits, companion management, bulk status changes, and message triage
+  - Live operations dashboard for guest search, invitation creation/import, inline RSVP/contact edits, companion management, bulk status changes, and CSV export
 
 ## 13. Outstanding Decisions
 
@@ -174,7 +171,7 @@ Current baseline in code: `/admin/guests` is now the live admin operations surfa
 2. ~~**Inline RSVP editing**~~ — implemented for RSVP status, dietary notes, contact fields, companion access, and companion list updates. ✓
 3. ~~**Table-level actions**~~ — implemented for bulk row selection and bulk RSVP status changes; guest create/import flows now ship from the dashboard. ✓
 4. **Operational planning views** — expand current summary cards into explicit planning exports for venue/vendors.
-5. ~~**Guest message inbox workflow**~~ — implemented with per-message status transitions (`new`, `in_progress`, `resolved`). ✓
+5. ~~**Guest export workflow**~~ — implemented with filtered CSV export from the guest operations dashboard. ✓
 
 **P2 / deprioritized nice additions** (tracked in §15)
 
@@ -200,7 +197,7 @@ Current baseline in code: `/admin/guests` is now the live admin operations surfa
 
 ### Priority 3 — Post-RSVP or low urgency
 
-6. **Operational planning views** — expand admin summary cards into explicit planning exports for venue/vendor handoff (confirmed head count, dietary breakdown by type, per-table arrangement).
+6. **Operational planning views** — expand admin summary cards and the current CSV export into explicit planning exports for venue/vendor handoff (confirmed head count, dietary breakdown by type, per-table arrangement).
 
 7. **Consolidate guest session data loading** — shared guest-session summary loading already deduplicates layout/home/nav reads; the dashboard still hydrates its full portal state client-side for live editing. Remaining optimisation opportunity.
 
@@ -220,9 +217,9 @@ Current baseline in code: `/admin/guests` is now the live admin operations surfa
 - ~~**Finalize and freeze production content**~~ — final copy for schedule wording, dress code, FAQ answers, venue details. ✓
 - ~~**Decide home-page content density**~~ — Single-page: all event content lives on `/` when unlocked. `/event-details` redirects to `/`. ✓
 - ~~**Set the RSVP cutoff date**~~ — fixed in `shared/globals.ts` at 31 May 2026 23:59 Singapore time. ✓
-- ~~**Build admin RSVP dashboard**~~ — live at `/admin/guests` with editing, import, bulk status, and message management. ✓
+- ~~**Build admin RSVP dashboard**~~ — live at `/admin/guests` with editing, import, bulk status, and CSV export. ✓
 - ~~**Add Google Calendar invite link**~~ — Added to the unlocked home CTA row and invitation card. ✓
-- ~~**Scale the admin data surface**~~ — Guest and message tabs use paginated, scoped fetches with server-side filtering/search. ✓
+- ~~**Scale the admin data surface**~~ — Guest operations use paginated, scoped fetches with server-side filtering/search and filtered CSV export. ✓
 - ~~**Add CI production gates**~~ — GitHub Actions runs unit tests, production build, smoke e2e, and acceptance tests on every push. ✓
 
 ## 16. Known Bugs and UX Issues

@@ -1,11 +1,11 @@
 'use client';
 
-import { FormEvent, useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { DbConnection } from '@/module_bindings';
 import { loadGuestPortalState, type GuestPortalState } from '@/lib/guest-portal-state';
 import { normalizeInviteCode } from '@/lib/unlock-client';
 
-export type EditableField = 'attendance' | 'dietaryNotes' | 'notes';
+export type EditableField = 'attendance' | 'dietaryNotes';
 
 export type CompanionDraft = {
   name: string;
@@ -16,7 +16,6 @@ export type CompanionDraft = {
 type SubmitPatch = {
   attendance?: boolean;
   dietaryNotes?: string | undefined;
-  notes?: string | undefined;
 };
 
 type UnlockCookieResponse = {
@@ -40,14 +39,6 @@ export function useDashboardWorkflow(
   connection: DbConnection | null,
   isRsvpClosed: boolean
 ) {
-  const [messageDraft, setMessageDraft] = useState('');
-  const [messageError, setMessageError] = useState('');
-  const [messageStatus, setMessageStatus] = useState('');
-  const [editingMessageId, setEditingMessageId] = useState<bigint | null>(null);
-  const [editingMessageDraft, setEditingMessageDraft] = useState('');
-  const [messageActionError, setMessageActionError] = useState('');
-  const [messageActionStatus, setMessageActionStatus] = useState('');
-  const [isSavingMessageAction, setIsSavingMessageAction] = useState(false);
   const [lookupError, setLookupError] = useState('');
   const [lookupStatus, setLookupStatus] = useState('');
   const [isLookingUp, setIsLookingUp] = useState(false);
@@ -68,7 +59,6 @@ export function useDashboardWorkflow(
 
   const [attendanceDraft, setAttendanceDraft] = useState<boolean | undefined>(undefined);
   const [dietaryDraft, setDietaryDraft] = useState('');
-  const [notesDraft, setNotesDraft] = useState('');
   const [companionDrafts, setCompanionDrafts] = useState<CompanionDraft[]>([]);
   const [isEditingCompanions, setIsEditingCompanions] = useState(false);
   const [companionStatus, setCompanionStatus] = useState('');
@@ -79,22 +69,6 @@ export function useDashboardWorkflow(
   const activeRsvp = portalState.activeRsvp;
   const detectedGuestByUnlockCode = portalState.previewGuest;
   const guestCompanions = portalState.companions;
-  const guestMessages = useMemo(() => {
-    return [...portalState.messages].sort((a, b) =>
-      b.createdAt.microsSinceUnixEpoch > a.createdAt.microsSinceUnixEpoch ? 1 : -1
-    );
-  }, [portalState.messages]);
-
-  useEffect(() => {
-    if (editingMessageId === null) {
-      return;
-    }
-    const messageStillExists = guestMessages.some((message) => message.id === editingMessageId);
-    if (!messageStillExists) {
-      setEditingMessageId(null);
-      setEditingMessageDraft('');
-    }
-  }, [editingMessageId, guestMessages]);
 
   const companionPayload = useMemo(
     () =>
@@ -116,13 +90,6 @@ export function useDashboardWorkflow(
     setFeedbackField(null);
     setFieldError('');
     setFieldStatus('');
-    setMessageDraft('');
-    setMessageError('');
-    setMessageStatus('');
-    setEditingMessageId(null);
-    setEditingMessageDraft('');
-    setMessageActionError('');
-    setMessageActionStatus('');
     setCompanionStatus('');
     setCompanionError('');
     setIsEditingCompanions(false);
@@ -277,10 +244,6 @@ export function useDashboardWorkflow(
     }
     if (field === 'dietaryNotes') {
       setDietaryDraft(activeRsvp?.dietaryNotes ?? '');
-      return;
-    }
-    if (field === 'notes') {
-      setNotesDraft(activeRsvp?.notes ?? '');
     }
   };
 
@@ -317,8 +280,6 @@ export function useDashboardWorkflow(
 
     const hasAttendance = Object.prototype.hasOwnProperty.call(patch, 'attendance');
     const hasDietaryNotes = Object.prototype.hasOwnProperty.call(patch, 'dietaryNotes');
-    const hasNotes = Object.prototype.hasOwnProperty.call(patch, 'notes');
-
     const nextAttendance = hasAttendance ? patch.attendance : activeRsvp?.attendance;
     if (nextAttendance === undefined) {
       throw new Error('Please set attendance first before editing this field.');
@@ -328,12 +289,10 @@ export function useDashboardWorkflow(
       ? patch.dietaryNotes
       : normalizeOptionalInput(activeRsvp?.dietaryNotes);
 
-    const nextNotes = hasNotes ? patch.notes : normalizeOptionalInput(activeRsvp?.notes);
-
     await connection.reducers.submitRsvp({
       attendance: nextAttendance,
       dietaryNotes: nextDietaryNotes,
-      notes: nextNotes,
+      notes: normalizeOptionalInput(activeRsvp?.notes),
       contactEmail: normalizeOptionalInput(activeGuest.contactEmail),
       contactPhone: normalizeOptionalInput(activeGuest.contactPhone),
       companions: nextAttendance ? companionPayload : [],
@@ -374,119 +333,6 @@ export function useDashboardWorkflow(
       setFieldFailure(field, toErrorMessage(error, 'Unable to update dietary notes.'));
     } finally {
       setIsSavingField(false);
-    }
-  };
-
-  const onConfirmNotes = async () => {
-    const field: EditableField = 'notes';
-    clearFieldFeedback();
-    setIsSavingField(true);
-
-    try {
-      await submitRsvpPatch({ notes: normalizeOptionalInput(notesDraft) });
-      setFieldSuccess(field, 'Additional notes updated.');
-    } catch (error) {
-      setFieldFailure(field, toErrorMessage(error, 'Unable to update additional notes.'));
-    } finally {
-      setIsSavingField(false);
-    }
-  };
-
-  const onSendMessage = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    setMessageError('');
-    setMessageStatus('');
-
-    if (!connection) {
-      setMessageError('Connection is still starting. Please try again.');
-      return;
-    }
-
-    const trimmed = messageDraft.trim();
-    if (!trimmed) {
-      setMessageError('Please enter a question or well wish.');
-      return;
-    }
-
-    try {
-      await connection.reducers.sendGuestMessage({ message: trimmed });
-      await refreshPortalState();
-      setMessageDraft('');
-      setMessageStatus('Thank you. Your note has been sent.');
-    } catch (error) {
-      setMessageError(toErrorMessage(error, 'Unable to send message.'));
-    }
-  };
-
-  const clearMessageActionFeedback = () => {
-    setMessageActionError('');
-    setMessageActionStatus('');
-  };
-
-  const openMessageEditor = (messageId: bigint, messageText: string) => {
-    clearMessageActionFeedback();
-    setEditingMessageId(messageId);
-    setEditingMessageDraft(messageText);
-  };
-
-  const cancelMessageEditor = () => {
-    clearMessageActionFeedback();
-    setEditingMessageId(null);
-    setEditingMessageDraft('');
-  };
-
-  const onSaveEditedMessage = async (messageId: bigint) => {
-    clearMessageActionFeedback();
-    const trimmed = editingMessageDraft.trim();
-    if (!trimmed) {
-      setMessageActionError('Please enter a question or well wish.');
-      return;
-    }
-    if (!connection) {
-      setMessageActionError('Connection is still starting. Please try again.');
-      return;
-    }
-
-    setIsSavingMessageAction(true);
-    try {
-      await connection.reducers.updateGuestMessage({
-        messageId,
-        message: trimmed,
-      });
-      await refreshPortalState();
-      setMessageActionStatus('Your note was updated.');
-      setEditingMessageId(null);
-      setEditingMessageDraft('');
-    } catch (error) {
-      setMessageActionError(toErrorMessage(error, 'Unable to update your note.'));
-    } finally {
-      setIsSavingMessageAction(false);
-    }
-  };
-
-  const onDeleteMessage = async (messageId: bigint) => {
-    clearMessageActionFeedback();
-    if (!connection) {
-      setMessageActionError('Connection is still starting. Please try again.');
-      return;
-    }
-    if (!window.confirm('Delete this question or well wish? This cannot be undone.')) {
-      return;
-    }
-
-    setIsSavingMessageAction(true);
-    try {
-      await connection.reducers.deleteGuestMessage({ messageId });
-      await refreshPortalState();
-      setMessageActionStatus('Your note was deleted.');
-      if (editingMessageId === messageId) {
-        setEditingMessageId(null);
-        setEditingMessageDraft('');
-      }
-    } catch (error) {
-      setMessageActionError(toErrorMessage(error, 'Unable to delete your note.'));
-    } finally {
-      setIsSavingMessageAction(false);
     }
   };
 
@@ -617,46 +463,27 @@ export function useDashboardWorkflow(
     detectedGuestByUnlockCode,
     dietaryDraft,
     editingField,
-    editingMessageDraft,
-    editingMessageId,
     feedbackField,
     fieldError,
     fieldStatus,
     guestCompanions,
-    guestMessages,
     isAttending,
     isEditingCompanions,
     isLookingUp,
     isSavingCompanions,
     isSavingField,
-    isSavingMessageAction,
     lookupError,
     lookupStatus,
     maxCompanions,
-    messageActionError,
-    messageActionStatus,
-    messageDraft,
-    messageError,
-    messageStatus,
-    notesDraft,
     portalLoading,
     unlockCodeReady,
     unlockInviteCode,
     setAttendanceDraft,
     setDietaryDraft,
-    setEditingMessageDraft,
-    setMessageDraft,
-    setNotesDraft,
     openEditor,
     cancelEditor,
     onConfirmAttendance,
     onConfirmDietaryNotes,
-    onConfirmNotes,
-    onSendMessage,
-    openMessageEditor,
-    cancelMessageEditor,
-    onSaveEditedMessage,
-    onDeleteMessage,
     openCompanionEditor,
     cancelCompanionEditor,
     addCompanionDraft,

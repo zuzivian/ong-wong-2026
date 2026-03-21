@@ -39,12 +39,12 @@ export default async function FaqPage() {
     {
       question: 'May I bring a companion or family member?',
       answer:
-        'If your invitation allows loved ones, you can add them during the "Add Loved Ones" step in RSVP. The form will guide you based on your invitation settings, including companion limits if applicable. If you are unsure, feel free to send us a message through the dashboard and we will gladly help.',
+        'If your invitation allows loved ones, you can add them during the "Add Loved Ones" step in RSVP. The form will guide you based on your invitation settings, including companion limits if applicable. If you are unsure, please refer to your invitation details and RSVP page carefully before confirming.',
     },
     {
       question: 'Can I update my RSVP after I submit it?',
       answer:
-        'Yes, you may revisit your RSVP and make updates while edits are still open. Availability depends on the global RSVP cutoff date set for planning and catering. If you need help with a change, please send a message and we will do our best to assist quickly.',
+        'Yes, you may revisit your RSVP and make updates while edits are still open. Availability depends on the global RSVP cutoff date set for planning and catering. Please review your details carefully before the cutoff so everything is captured accurately for planning.',
     },
     {
       question: 'I cannot find my invite code. What should I do?',
@@ -64,7 +64,7 @@ export default async function FaqPage() {
     {
       question: 'Whom should I contact if I need assistance?',
       answer:
-        'Please send questions through the message form in your Guest Information page. We will respond as soon as possible and do our best to support what you need. Thank you for your patience and kindness as we coordinate final details.',
+        'Please refer to the invitation details already shared with you for the best contact path if you need help. Thank you for your patience and kindness as we coordinate final details.',
     },
   ];
 
