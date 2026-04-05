@@ -139,12 +139,9 @@ export default async function HomePage() {
       >
         <div className="container jumbo-inner">
           <div className="jumbo-content">
-            <p className="eyebrow">15 August 2026 • Singapore</p>
+            <p className="eyebrow">Saturday • 15 August 2026<br />Thomson Road Baptist Church</p>
             <h1 className="jumbo-title">Samuel & Natasha</h1>
-            <p className="jumbo-date">A quiet, joyful celebration with the people we love most.</p>
-            <p className="jumbo-subtitle">
-              A simple place for the day&apos;s details, your invitation, and RSVP.
-            </p>
+            <p className="jumbo-date jumbo-date-lg">We look forward to having you with us on this special day as we enter into holy matrimony.</p>
             <div className="cta-row">
               {isUnlocked ? (
                 <>
@@ -176,30 +173,30 @@ export default async function HomePage() {
       <section className="section-band home-photo-band">
         <div className="container home-photo-layout">
           <div className="home-photo-copy">
-            <p className="eyebrow">A little glimpse</p>
-            <h2>Moments that led us here</h2>
+            <h2 className="heading-with-icon">
+              <Icon name="auto_awesome" className="heading-icon" />
+              <span>Welcome</span>
+            </h2>
             <p>
-              The day itself will move quickly, so we wanted the homepage to
-              hold a few quieter moments too: one from the journey, and one from
-              the promise we are preparing to make.
+              Please enter your invite code to view more details and submit your
+              RSVP. Kindly RSVP by <strong>28 April 2026</strong>.
+            </p>
+            <p>
+              You may revisit the page anytime using your personalised code to
+              update your RSVP before the deadline.
+            </p>
+            <p>
+              For changes after 28 April 2026, please reach out to Samuel or
+              Natasha.
             </p>
           </div>
-          <div className="home-photo-stack" aria-label="Engagement photos">
+          <div className="home-photo-stack" aria-label="Ring photo">
             <figure className="home-photo-frame home-photo-frame-detail">
               <Image
                 src="/photos/photo-3.jpg"
                 alt="Close-up of Samuel and Natasha holding hands, showing Natasha's engagement ring."
                 fill
                 sizes="(max-width: 760px) 100vw, (max-width: 980px) 42vw, 24vw"
-                className="home-photo-image"
-              />
-            </figure>
-            <figure className="home-photo-frame home-photo-frame-portrait">
-              <Image
-                src="/photos/photo-1.jpg"
-                alt="Samuel and Natasha standing together on a forest boardwalk."
-                fill
-                sizes="(max-width: 760px) 100vw, (max-width: 980px) 60vw, 34vw"
                 className="home-photo-image"
               />
             </figure>
@@ -417,50 +414,7 @@ export default async function HomePage() {
             </div>
           </section>
         </>
-      ) : (
-        <section className="section-band">
-          <div className="container section-grid home-intro-grid">
-            <article className="home-info-card">
-              <h2 className="heading-with-icon">
-                <Icon name="auto_awesome" className="heading-icon" />
-                <span>Welcome</span>
-              </h2>
-              <p>
-                We warmly invite you to celebrate our covenant service and reception. Your love,
-                prayers, and presence mean a great deal to us and our families.
-              </p>
-              <p>
-                Our wedding is on <strong>15 Aug 2026</strong>. Once you enter your invite code,
-                you will see ceremony timing, venue details, RSVP, and your guest information.
-              </p>
-            </article>
-            <article className="home-info-card">
-              <h2 className="heading-with-icon">
-                <Icon name="schedule" className="heading-icon" />
-                <span>Before You Submit Your RSVP</span>
-              </h2>
-              <ol className="mini-timeline">
-                <li>
-                  Confirm your availability for Saturday,{" "}
-                  <strong>15 Aug 2026</strong> before submitting.
-                </li>
-                <li>
-                  Prepare details for each invited guest, including attendance,
-                  meal preferences, and any access needs.
-                </li>
-                <li>
-                  Use your invite code to unlock your private page with ceremony
-                  timing, venue guidance, and the RSVP form.
-                </li>
-                <li>
-                  If your plans change, return to your dashboard to review and
-                  update your response.
-                </li>
-              </ol>
-            </article>
-          </div>
-        </section>
-      )}
+      ) : null}
     </div>
   );
 }

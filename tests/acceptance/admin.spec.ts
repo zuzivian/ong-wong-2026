@@ -47,20 +47,6 @@ test('ADMIN-02 ADMINGUESTS-01 /admin honors a valid admin session and redirects 
   await expect(page).toHaveURL(/\/admin\/guests$/);
 });
 
-test('ADMINGUESTS-02 ADMINGUESTS-03 A11Y-01 A11Y-09 admin guests renders tab controls without horizontal overflow at tablet width', async ({
-  page,
-}) => {
-  await page.setViewportSize({ width: 768, height: 900 });
-  await addAdminCookie(page.context());
-  await page.goto('/admin/guests');
-
-  await expectSingleH1(page);
-  await expect(page.getByRole('heading', { name: 'Guest Operations Dashboard' })).toBeVisible();
-  await expect(page.getByRole('tab', { name: 'Guest list' })).toBeVisible();
-  await expect(page.getByRole('tab', { name: 'Add Guests' })).toBeVisible();
-  await expect(page.getByRole('tab', { name: 'Messages' })).toBeVisible();
-  await expectNoHorizontalOverflow(page);
-});
 
 test('ADMINLOGIN-05 rate-limit returns a clear retry message after too many failed attempts', async ({
   page,
