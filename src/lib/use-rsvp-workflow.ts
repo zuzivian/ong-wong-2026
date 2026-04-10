@@ -430,7 +430,7 @@ export function useRsvpWorkflow(
     try {
       await persistRsvpDraft({ attendance: nextAttendance });
       setIsEditingStep(true);
-      setStep(3);
+      setStep(nextAttendance === 'declining' ? 5 : 3);
     } catch (error) {
       setSubmitError(error instanceof Error ? error.message : 'Unable to save attendance.');
     } finally {
