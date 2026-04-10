@@ -39,7 +39,6 @@ export default async function RootLayout({
                 <Link href="/" className="brand">
                   <span className="brand-text">
                     <span className="brand-title">Samuel & Natasha</span>
-                    <span className="brand-subtext">Wedding Celebration</span>
                   </span>
                 </Link>
                 <nav className="top-nav" aria-label="Primary navigation">

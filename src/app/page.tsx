@@ -12,106 +12,75 @@ import { UNLOCK_COOKIE_NAME, readUnlockSession } from "@/lib/invite-unlock";
 const SCHEDULE_ITEMS = [
   {
     icon: "meeting_room",
-    time: "9:30 AM",
+    time: "10:00 AM",
     title: "Doors Open",
-    description: "Guest check-in begins and ushers will assist with seating.",
+    description: "Guests are warmly welcomed to arrive and register before the ceremony begins.",
   },
   {
     icon: "chair_alt",
-    time: "9:50 AM",
+    time: "10:25 AM",
     title: "Be Seated By",
-    description: "Please be seated before the bridal procession begins.",
+    description: "Kindly be seated as we prepare to begin the ceremony shortly.",
   },
   {
     icon: "favorite",
-    time: "10:00 AM",
-    title: "Service Starts",
+    time: "10:30 AM",
+    title: "Ceremony Begins",
     description:
-      "Wedding service at The Singapore Thomson Road Baptist Church.",
+      "Join us as we begin the wedding ceremony and exchange of vows.",
   },
   {
     icon: "celebration",
-    time: "12:00 PM",
+    time: "11:30 AM",
     title: "Reception",
-    description: "Reception to follow in the church hall.",
+    description: "Celebrate with us over food, drinks, and joyful moments following the ceremony.",
   },
 ] as const;
 
-const BUS_STOPS = [
+const BUS_ROUTES = [
   {
-    name: "Opp United Sq",
-    stopCode: "50029",
     road: "Thomson Road",
-    walkMinutes: 3,
-    services: "56, 57, 131, 131A, 141, 166, 851, 980",
-  },
-  {
-    name: "United Sq / Bef Novena Stn",
-    stopCode: "50021",
-    road: "Thomson Road",
-    walkMinutes: 4,
+    stops:
+      "United Sq / Bef Novena Stn (50021) - 3 min walk (250m) | Opp United Sq (50029) - 9 min walk (650m).",
     services: "56, 57, 131, 141, 166, 851, 980",
   },
   {
-    name: "St. Joseph Instn Jnr",
-    stopCode: "50119",
+    road: "Bukit Timah Road",
+    stops:
+      "Aft Makepeace Rd (40029) - 10 min walk (700m) | Bef Winstedt Rd (50021) - 13 min walk (900m).",
+    services: "48, 67, 170, 960",
+  },
+  {
     road: "Moulmein Road",
-    walkMinutes: 6,
+    stops: "St. Joseph Instn Jnr (50119) - 9 min walk (650m).",
     services: "21, 124, 518, 518A, 680, 681, 682, 683",
   },
 ] as const;
 
-const MALL_PARKING_OPTIONS = [
+const PARKING_OPTIONS = [
   {
     name: "United Square",
-    address: "101 Thomson Road",
     walkMinutes: 4,
+    distance: "350m",
     mapUrl: "https://maps.google.com/?q=101+Thomson+Road+Singapore",
   },
   {
+    name: "Goldhill Plaza",
+    walkMinutes: 6,
+    distance: "450m",
+    mapUrl: "https://maps.google.com/?q=1+Goldhill+Plaza+Singapore",
+  },
+  {
     name: "Velocity @ Novena Square",
-    address: "238 Thomson Road",
     walkMinutes: 8,
+    distance: "550m",
     mapUrl: "https://maps.google.com/?q=238+Thomson+Road+Singapore",
   },
   {
     name: "Square 2",
-    address: "10 Sinaran Drive",
-    walkMinutes: 10,
-    mapUrl: "https://maps.google.com/?q=10+Sinaran+Drive+Singapore",
-  },
-  {
-    name: "Goldhill Plaza",
-    address: "1 Goldhill Plaza",
-    walkMinutes: 6,
-    mapUrl: "https://maps.google.com/?q=1+Goldhill+Plaza+Singapore",
-  },
-] as const;
-
-const HDB_PARKING_OPTIONS = [
-  {
-    carpark: "KJM1",
-    address: "Blk 37A Cambridge Road",
-    walkMinutes: 7,
-    note: "Multi-storey, short-term WHOLE DAY parking",
-  },
-  {
-    carpark: "KJ3",
-    address: "Blk 48/48A Durham Road",
-    walkMinutes: 9,
-    note: "Surface lot, short-term WHOLE DAY parking",
-  },
-  {
-    carpark: "KJ2",
-    address: "Blk 49/50 Dorset Road",
-    walkMinutes: 11,
-    note: "Surface lot, short-term WHOLE DAY parking",
-  },
-  {
-    carpark: "BR9",
-    address: "Blk 69 Moulmein Road",
     walkMinutes: 12,
-    note: "Surface lot, short-term WHOLE DAY parking",
+    distance: "850m",
+    mapUrl: "https://maps.google.com/?q=10+Sinaran+Drive+Singapore",
   },
 ] as const;
 
@@ -139,7 +108,7 @@ export default async function HomePage() {
       >
         <div className="container jumbo-inner">
           <div className="jumbo-content">
-            <p className="eyebrow">Saturday • 15 August 2026<br />Thomson Road Baptist Church</p>
+            <p className="eyebrow">Saturday • 15 August 2026<br />Singapore Thomson Road Baptist Church</p>
             <h1 className="jumbo-title">Samuel & Natasha</h1>
             <p className="jumbo-date jumbo-date-lg">We look forward to having you with us on this special day as we enter into holy matrimony.</p>
             <div className="cta-row">
@@ -214,9 +183,6 @@ export default async function HomePage() {
               <article className="invitation-card">
                 <p className="eyebrow">Invitation</p>
                 <h2 className="invitation-card-title">Samuel &amp; Natasha</h2>
-                <p className="invitation-card-subtitle">
-                  We would be honored by your presence as we celebrate our wedding day.
-                </p>
                 <dl className="invitation-card-grid">
                   <div className="invitation-card-item">
                     <dt>Name</dt>
@@ -228,19 +194,19 @@ export default async function HomePage() {
                   </div>
                   <div className="invitation-card-item">
                     <dt>Date and time</dt>
-                    <dd>Saturday, 15 Aug 2026 at 10:00 AM</dd>
+                    <dd>Saturday, 15 Aug 2026 at 10:30 AM</dd>
                   </div>
                   <div className="invitation-card-item">
                     <dt>Location</dt>
-                    <dd>The Singapore Thomson Road Baptist Church</dd>
+                    <dd>Singapore Thomson Road Baptist Church</dd>
                   </div>
                   <div className="invitation-card-item">
                     <dt>Attire</dt>
-                    <dd>Formal</dd>
+                    <dd>Semi-formal</dd>
                   </div>
                   <div className="invitation-card-item">
                     <dt>Refreshments</dt>
-                    <dd>Refreshments will be served after the ceremony.</dd>
+                    <dd>Buffet lunch will be catered after the ceremony</dd>
                   </div>
                 </dl>
                 <div className="invitation-card-footer">
@@ -298,8 +264,9 @@ export default async function HomePage() {
                 <Icon name="location_on" className="heading-icon" />
                 <span>Venue</span>
               </h2>
-              <p>The Singapore Thomson Road Baptist Church</p>
+              <p>Singapore Thomson Road Baptist Church</p>
               <p>45 Thomson Road, Singapore 307584</p>
+              <p>Main Sanctuary (Level 2) - Accessible via lift and staircase on the ground floor</p>
               <div className="map-wrap">
                 <iframe
                   title="The Singapore Thomson Road Baptist Church map"
@@ -328,88 +295,43 @@ export default async function HomePage() {
                   <Icon name="local_taxi" className="heading-icon" />
                   <span>Getting There and Parking</span>
                 </h2>
+                <p className="detail-strong">🚇 By MRT</p>
                 <p>
-                  The closest MRT is <strong>Novena (NS20)</strong>. If you are
-                  taking taxi or ride-hail, set drop-off as{" "}
-                  <strong>45 Thomson Road, Singapore 307584</strong>.
+                  Nearest MRT Station: <strong>Novena MRT (NS20)</strong>.
+                  Take an 8 minute walk (600m) from Exit B / Velocity to arrive
+                  at the venue. Please note that the United Square exit is
+                  closed due to construction works.
                 </p>
-                <p className="detail-strong">By MRT (recommended)</p>
-                <ol className="mini-timeline">
-                  <li>Take the North-South Line to Novena (NS20).</li>
-                  <li>Use Exit A toward Velocity / United Square.</li>
-                  <li>
-                    Walk south along Thomson Road for about 8 to 10 minutes
-                    (around 700m).
-                  </li>
-                  <li>
-                    The church is at 45 Thomson Road, before the Balestier Road
-                    junction.
-                  </li>
-                </ol>
-                <p className="detail-strong">By bus (closest stops)</p>
+                <p className="detail-strong">🚌 By bus</p>
                 <ul className="mini-timeline">
-                  {BUS_STOPS.map((stop) => (
-                    <li key={stop.stopCode}>
-                      <strong>
-                        {stop.name} ({stop.stopCode})
-                      </strong>{" "}
-                      on {stop.road} - about {stop.walkMinutes} minutes&apos;
-                      walk. Services: {stop.services}.
+                  {BUS_ROUTES.map((route) => (
+                    <li key={route.road}>
+                      <strong>{route.road}:</strong> {route.stops} Services:{" "}
+                      {route.services}.
                     </li>
                   ))}
                 </ul>
-                <p className="detail-strong">Nearby mall parking</p>
+                <p className="detail-strong">🚖 By private hire</p>
+                <p>
+                  Please use <strong>Singapore Thomson Road Baptist Church</strong>{" "}
+                  or <strong>Thomson Road Baptist Church</strong>.
+                </p>
+                <p className="detail-strong">🚘 By car</p>
+                <p>
+                  Limited parking at Singapore Thomson Road Baptist Church (20
+                  lots).
+                </p>
+                <p className="detail-strong">Alternative parking</p>
                 <ul className="mini-timeline">
-                  {MALL_PARKING_OPTIONS.map((option) => (
+                  {PARKING_OPTIONS.map((option) => (
                     <li key={option.name}>
                       <a href={option.mapUrl} target="_blank" rel="noreferrer">
                         <strong>{option.name}</strong>
                       </a>{" "}
-                      ({option.address}) - around {option.walkMinutes}{" "}
-                      minutes&apos; walk.
+                      - {option.walkMinutes} min walk ({option.distance}).
                     </li>
                   ))}
                 </ul>
-                <p className="detail-strong">Nearby HDB parking alternatives</p>
-                <ul className="mini-timeline">
-                  {HDB_PARKING_OPTIONS.map((option) => (
-                    <li key={option.carpark}>
-                      <strong>
-                        HDB {option.carpark} - {option.address}
-                      </strong>{" "}
-                      ({option.note}), around {option.walkMinutes} minutes&apos;
-                      walk.
-                    </li>
-                  ))}
-                </ul>
-                <p>
-                  Church parking is limited. We strongly recommend allowing a
-                  small buffer for weekend traffic and parking queues.
-                </p>
-                <p className="small-note">
-                  Transport and parking details were cross-checked on 1 Mar
-                  2026.
-                </p>
-              </div>
-              <div className="card">
-                <h2 className="heading-with-icon">
-                  <Icon name="style" className="heading-icon" />
-                  <span>What to Expect</span>
-                </h2>
-                <p>
-                  We are so grateful to celebrate this joyful day with you.
-                  Please come as you are, arrive a little early, and settle in
-                  before the service begins.
-                </p>
-                <p>
-                  Our ceremony is a Christian wedding service held at Thomson
-                  Road Baptist Church, shaped by the faith community Samuel
-                  calls home at Bethesda Bedok Tampines Church. You can expect
-                  worship songs, a short Bible message, prayers, and the
-                  exchange of vows. After the service, we&apos;ll continue the
-                  celebration with refreshments, photos, and fellowship in the
-                  church hall.
-                </p>
               </div>
             </div>
           </section>

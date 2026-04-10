@@ -46,6 +46,7 @@ import IdentifyGuestByFallbackReducer from "./identify_guest_by_fallback_reducer
 import SendGuestMessageReducer from "./send_guest_message_reducer";
 import SubmitRsvpReducer from "./submit_rsvp_reducer";
 import UpdateGuestMessageReducer from "./update_guest_message_reducer";
+import UpdateGuestNameReducer from "./update_guest_name_reducer";
 import UpdateGuestPhoneReducer from "./update_guest_phone_reducer";
 
 // Import all procedure arg schemas
@@ -78,6 +79,7 @@ const reducersSchema = __reducers(
   __reducerSchema("send_guest_message", SendGuestMessageReducer),
   __reducerSchema("submit_rsvp", SubmitRsvpReducer),
   __reducerSchema("update_guest_message", UpdateGuestMessageReducer),
+  __reducerSchema("update_guest_name", UpdateGuestNameReducer),
   __reducerSchema("update_guest_phone", UpdateGuestPhoneReducer),
 );
 
@@ -140,3 +142,4 @@ export class DbConnection extends __DbConnectionImpl<typeof REMOTE_MODULE> {
     return new SubscriptionBuilder(this);
   };
 }
+

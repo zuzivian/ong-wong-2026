@@ -24,4 +24,4 @@ export const params = {
   hasCompanions: __t.option(__t.string()),
   messageStatus: __t.option(__t.string()),
 };
-export const returnType = AdminGuestPage;
+export const returnType = AdminGuestPage

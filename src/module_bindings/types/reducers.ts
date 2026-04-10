@@ -18,6 +18,7 @@ import IdentifyGuestByFallbackReducer from "../identify_guest_by_fallback_reduce
 import SendGuestMessageReducer from "../send_guest_message_reducer";
 import SubmitRsvpReducer from "../submit_rsvp_reducer";
 import UpdateGuestMessageReducer from "../update_guest_message_reducer";
+import UpdateGuestNameReducer from "../update_guest_name_reducer";
 import UpdateGuestPhoneReducer from "../update_guest_phone_reducer";
 
 export type AdminBulkSetRsvpStatusParams = __Infer<typeof AdminBulkSetRsvpStatusReducer>;
@@ -32,4 +33,6 @@ export type IdentifyGuestByFallbackParams = __Infer<typeof IdentifyGuestByFallba
 export type SendGuestMessageParams = __Infer<typeof SendGuestMessageReducer>;
 export type SubmitRsvpParams = __Infer<typeof SubmitRsvpReducer>;
 export type UpdateGuestMessageParams = __Infer<typeof UpdateGuestMessageReducer>;
+export type UpdateGuestNameParams = __Infer<typeof UpdateGuestNameReducer>;
 export type UpdateGuestPhoneParams = __Infer<typeof UpdateGuestPhoneReducer>;
+

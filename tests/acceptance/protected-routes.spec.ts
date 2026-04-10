@@ -21,8 +21,8 @@ test('RSVP-02 RSVP-03 unlocked RSVP loads with five visible steps and progress t
   await gotoUnlocked(page, '/rsvp');
 
   await expectSingleH1(page);
-  await expect(page.getByText('Step 1: Welcome and Confirm Invitation')).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Welcome and Confirm Invitation' })).toBeVisible();
+  await expect(page.getByText('Step 1: Name')).toBeVisible();
+  await expect(page.getByRole('button', { name: '1 Name' })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Attendance' })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Dietary Requirements' })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Add Loved Ones' })).toBeVisible();
@@ -30,13 +30,13 @@ test('RSVP-02 RSVP-03 unlocked RSVP loads with five visible steps and progress t
   await expect(page.getByText('Step 1 of 5')).toBeVisible();
 });
 
-test('RSVPCODE-01 unlocked /rsvp/[inviteCode] resumes the RSVP flow when the cookie matches', async ({
+test('RSVPCODE-01 unlocked /rsvp/[inviteCode] redirects home cleanly when the cookie matches', async ({
   page,
 }) => {
   await gotoUnlocked(page, '/rsvp/test-code', 'TESTCODE');
 
-  await expect(page.getByText('Step 1: Welcome and Confirm Invitation')).toBeVisible();
-  await expect(page.getByText('Invite code found:')).toBeVisible();
+  await expect(page).toHaveURL(/\/$/);
+  await expect(page.locator('h1', { hasText: 'Samuel & Natasha' })).toBeVisible();
 });
 
 test('DASH-02 DASH-04 A11Y-01 dashboard shows a recovery state when guest data is unresolved', async ({
@@ -57,9 +57,9 @@ test('FAQ-02 FAQ-03 A11Y-01 A11Y-09 unlocked FAQ renders the current content set
 
   await expectSingleH1(page);
   await expect(page.getByRole('heading', { name: 'Frequently Asked Questions' })).toBeVisible();
-  await expect(page.getByRole('heading', { name: /What time should guests arrive/i })).toBeVisible();
-  await expect(page.getByRole('heading', { name: /Where is the ceremony and reception venue located/i })).toBeVisible();
-  await expect(page.getByRole('heading', { name: /Whom should I contact if I need assistance/i })).toBeVisible();
+  await expect(page.getByRole('heading', { name: /What is the dress code/i })).toBeVisible();
+  await expect(page.getByRole('heading', { name: /dietary requirements/i })).toBeVisible();
+  await expect(page.getByRole('heading', { name: /bring a companion or family member/i })).toBeVisible();
   await expectNoHorizontalOverflow(page);
 });
 

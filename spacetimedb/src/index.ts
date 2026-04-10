@@ -348,6 +348,34 @@ export const identify_guest_by_fallback = spacetimedb.reducer(
   }
 );
 
+export const update_guest_name = spacetimedb.reducer(
+  {
+    firstName: t.string(),
+    lastName: t.string(),
+    inviteCode: t.string(),
+  },
+  (ctx, { firstName, lastName, inviteCode }) => {
+    const normalizedInviteCode = normalizeInviteCode(inviteCode);
+    if (!normalizedInviteCode) {
+      throw new SenderError('Invite code is required.');
+    }
+
+    const trimmedFirst = firstName.trim();
+    const trimmedLast = lastName.trim();
+    if (!trimmedFirst || !trimmedLast) {
+      throw new SenderError('First and last name are required.');
+    }
+
+    const guest = ctx.db.guest.inviteCode.find(normalizedInviteCode);
+    if (!guest) {
+      throw new SenderError('Invitation record not found.');
+    }
+
+    ctx.db.guest.id.update({ ...guest, firstName: trimmedFirst, lastName: trimmedLast, updatedAt: ctx.timestamp });
+    upsertGuestSession(ctx, guest.id);
+  }
+);
+
 export const clear_guest_session = spacetimedb.reducer(ctx => {
   const existing = ctx.db.guest_session.sender.find(ctx.sender);
   if (existing) {

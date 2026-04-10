@@ -25,3 +25,4 @@ export type GetGuestPortalStateArgs = __Infer<typeof GetGuestPortalStateProcedur
 export type GetGuestPortalStateResult = __Infer<typeof GetGuestPortalStateProcedure.returnType>;
 export type GetGuestPreviewByInviteCodeArgs = __Infer<typeof GetGuestPreviewByInviteCodeProcedure.params>;
 export type GetGuestPreviewByInviteCodeResult = __Infer<typeof GetGuestPreviewByInviteCodeProcedure.returnType>;
+

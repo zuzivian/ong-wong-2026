@@ -170,7 +170,7 @@ export async function GET(request: NextRequest) {
 
     try {
       const session = await issueUnlockSession(inviteCode);
-      const redirectUrl = new URL(`/rsvp/${encodeURIComponent(inviteCode)}`, request.url);
+      const redirectUrl = new URL('/', request.url);
       const response = NextResponse.redirect(redirectUrl);
       applyUnlockSessionCookie(response, session);
       resetRateLimit('unlock', clientKey);

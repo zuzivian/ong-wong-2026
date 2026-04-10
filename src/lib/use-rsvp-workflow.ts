@@ -30,20 +30,20 @@ function normalizeOptionalInput(text: string | undefined | null): string | undef
 
 export const RSVP_STEP_META = [
   {
-    title: 'Step 1: Welcome and Confirm Invitation',
+    title: 'Step 1: Name',
     guidance: 'We found your invitation details from your invite code. Please confirm your name to continue.',
   },
   {
     title: 'Step 2: Attendance',
-    guidance: 'Let us know if you can celebrate with us or need to decline.',
+    guidance: '',
   },
   {
     title: 'Step 3: Dietary Requirements',
-    guidance: 'Share any dietary needs so we can care for you well.',
+    guidance: '',
   },
   {
     title: 'Step 4: Add Loved Ones',
-    guidance: 'Add loved ones if your invitation includes them.',
+    guidance: 'Add loved ones if your invitation includes them. As we have limited seating, we are unable to extend an invitation to all plus ones. If you’d like to bring a guest, please reach out to us to clarify.',
   },
   {
     title: 'Step 5: Review and Submit',
@@ -293,6 +293,17 @@ export function useRsvpWorkflow(
   };
 
   const applyDefaultForStep = (targetStep: number) => {
+    if (targetStep === 1) {
+      const defaultFirstName = detectedGuestByInviteCode?.firstName ?? activeGuest?.firstName ?? '';
+      const defaultLastName = detectedGuestByInviteCode?.lastName ?? activeGuest?.lastName ?? '';
+      setLookupFirstName(defaultFirstName);
+      setLookupLastName(defaultLastName);
+      setVerificationState('idle');
+      setVerificationMessage('');
+      setLookupError('');
+      return;
+    }
+
     if (targetStep === 2) {
       setAttendance((currentAttendance) => currentAttendance || 'attending');
       return;
@@ -448,11 +459,19 @@ export function useRsvpWorkflow(
       setVerificationState('verifying');
       setVerificationMessage('Verifying invitation details...');
       try {
-        await connection!.reducers.identifyGuestByFallback({
-          firstName: lookupFirstName.trim(),
-          lastName: lookupLastName.trim(),
-          inviteCode: normalizedInviteCode,
-        });
+        if (isEditingStep) {
+          await connection!.reducers.updateGuestName({
+            firstName: lookupFirstName.trim(),
+            lastName: lookupLastName.trim(),
+            inviteCode: normalizedInviteCode,
+          });
+        } else {
+          await connection!.reducers.identifyGuestByFallback({
+            firstName: lookupFirstName.trim(),
+            lastName: lookupLastName.trim(),
+            inviteCode: normalizedInviteCode,
+          });
+        }
         await refreshPortalState(normalizedInviteCode);
       } catch (error) {
         setVerificationState('failed');
@@ -612,6 +631,24 @@ export function useRsvpWorkflow(
     setStep(targetStep);
   };
 
+  const setLookupFirstNameAndReset = (value: string) => {
+    setLookupFirstName(value);
+    if (step === 1) {
+      setVerificationState('idle');
+      setVerificationMessage('');
+      setLookupError('');
+    }
+  };
+
+  const setLookupLastNameAndReset = (value: string) => {
+    setLookupLastName(value);
+    if (step === 1) {
+      setVerificationState('idle');
+      setVerificationMessage('');
+      setLookupError('');
+    }
+  };
+
   return {
     activeGuest,
     attendance,
@@ -655,8 +692,8 @@ export function useRsvpWorkflow(
     setDietaryNotes,
     setDietaryOptionsSelected,
     setIsEditingStep,
-    setLookupFirstName,
-    setLookupLastName,
+    setLookupFirstName: setLookupFirstNameAndReset,
+    setLookupLastName: setLookupLastNameAndReset,
     setStep,
     addCompanion,
     chooseAttendanceAndContinue,

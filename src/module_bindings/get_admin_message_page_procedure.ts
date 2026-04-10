@@ -21,4 +21,4 @@ export const params = {
   search: __t.option(__t.string()),
   status: __t.option(__t.string()),
 };
-export const returnType = AdminMessagePage;
+export const returnType = AdminMessagePage

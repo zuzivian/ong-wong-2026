@@ -18,13 +18,8 @@ type RsvpFlowProps = {
 
 const DIETARY_OPTIONS = [
   'Vegetarian',
-  'Vegan',
   'Halal',
-  'Kosher',
-  'Gluten-free',
-  'Dairy-free',
-  'Nut allergy',
-  'Shellfish allergy',
+  'Others',
 ] as const;
 
 export default function RsvpFlow({ initialInviteCode = '' }: RsvpFlowProps) {
@@ -156,20 +151,8 @@ export default function RsvpFlow({ initialInviteCode = '' }: RsvpFlowProps) {
       <form onSubmit={onSubmit} className="form-stack">
         {step === 1 ? (
           <fieldset>
-            <legend>Confirm Your Invitation</legend>
-            <p className="small-note">We are using the invite code from your unlocked invitation.</p>
-            {normalizedInviteCode ? (
-              <p className="small-note">
-                Invite code found:
-                {' '}
-                <span className="detail-pill">{normalizedInviteCode}</span>
-              </p>
-            ) : (
-              <p className="small-note">
-                We could not find an unlocked invite code. Please return to <Link href="/">Home</Link> and unlock your invitation first.
-              </p>
-            )}
-            {showNameEditor ? (
+            <legend>Confirm Your Name</legend>
+                        {showNameEditor ? (
               <>
                 <p className="small-note">
                   Please update your name if anything needs correcting before verification.
@@ -195,12 +178,23 @@ export default function RsvpFlow({ initialInviteCode = '' }: RsvpFlowProps) {
               </>
             ) : (
               <p className="small-note">
-                Name detected from invitation list:
+                Name found from invitation list:
                 {' '}
                 <strong className="detail-strong">
                   {detectedGuestByInviteCode?.firstName || lookupFirstName}{' '}
                   {detectedGuestByInviteCode?.lastName || lookupLastName}
                 </strong>
+              </p>
+            )}
+            {normalizedInviteCode ? (
+              <p className="small-note">
+                Invite code:
+                {' '}
+                <span className="detail-pill">{normalizedInviteCode}</span>
+              </p>
+            ) : (
+              <p className="small-note">
+                We could not find an invite code. Please return to <Link href="/">Home</Link> and unlock your invitation first.
               </p>
             )}
             {verificationState === 'verified' ? (
@@ -225,7 +219,7 @@ export default function RsvpFlow({ initialInviteCode = '' }: RsvpFlowProps) {
         {step === 3 ? (
           <fieldset>
             <legend>Dietary Requirements</legend>
-            <p className="small-note">Please choose one path so this step is not skipped.</p>
+            <p className="small-note">Please choose one option to continue.</p>
             <div className="option-row">
               <button
                 type="button"
@@ -372,14 +366,20 @@ export default function RsvpFlow({ initialInviteCode = '' }: RsvpFlowProps) {
 
         {step < totalSteps ? (
           <div className="cta-row">
-            <button
-              type="button"
-              className="button-back-small"
-              disabled={step === 1 || isVerifying || isSavingProgress}
-              onClick={() => setStep((currentStep) => currentStep - 1)}
-            >
-              <Icon name="arrow_back" className="button-icon" /> Back
-            </button>
+            {step === 1 ? (
+              <Link href="/" className="button-back-small">
+                <Icon name="arrow_back" className="button-icon" /> Back
+              </Link>
+            ) : (
+              <button
+                type="button"
+                className="button-back-small"
+                disabled={isVerifying || isSavingProgress}
+                onClick={() => setStep((currentStep) => currentStep - 1)}
+              >
+                <Icon name="arrow_back" className="button-icon" /> Back
+              </button>
+            )}
 
             {step === 2 ? (
               <>

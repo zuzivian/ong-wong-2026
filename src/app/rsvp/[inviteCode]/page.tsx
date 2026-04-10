@@ -1,7 +1,5 @@
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
-import RsvpFlow from '@/components/rsvp-flow';
-import { getVariantMeta } from '@/lib/design-variant';
 import { normalizeInviteCode } from '@/lib/unlock-client';
 import { readUnlockSession, UNLOCK_COOKIE_NAME } from '@/lib/invite-unlock';
 
@@ -25,10 +23,5 @@ export default async function RsvpByInviteCodePage({ params }: RsvpByInviteCodeP
     redirect(`/api/unlock?inviteCode=${encodeURIComponent(inviteCode)}`);
   }
 
-  const meta = getVariantMeta();
-  return (
-    <div className={`theme-page ${meta.themeClass}`}>
-      <RsvpFlow initialInviteCode={unlockSession?.inviteCode ?? inviteCode} />
-    </div>
-  );
+  redirect('/');
 }

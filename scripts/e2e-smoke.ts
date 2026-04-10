@@ -126,7 +126,7 @@ async function main() {
     headers: { Cookie: unlockCookieHeader },
     expectedStatus: 200,
   });
-  assert.match(rsvp, /Step 1: Welcome and Confirm Invitation/i);
+  assert.match(rsvp, /Step 1: Name/i);
 
   const adminDashboard = await readText('/admin/guests', {
     headers: { Cookie: adminCookieHeader },

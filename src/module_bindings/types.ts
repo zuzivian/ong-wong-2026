@@ -61,18 +61,17 @@ export const AdminGuestPage = __t.object("AdminGuestPage", {
 });
 export type AdminGuestPage = __Infer<typeof AdminGuestPage>;
 
+export const AdminIdentity = __t.object("AdminIdentity", {
+  id: __t.u64(),
+  identity: __t.identity(),
+  claimedAt: __t.timestamp(),
+});
+export type AdminIdentity = __Infer<typeof AdminIdentity>;
+
 export const AdminInviteCodes = __t.object("AdminInviteCodes", {
   inviteCodes: __t.array(__t.string()),
 });
 export type AdminInviteCodes = __Infer<typeof AdminInviteCodes>;
-
-export const AdminMessageStats = __t.object("AdminMessageStats", {
-  total: __t.i32(),
-  newCount: __t.i32(),
-  inProgressCount: __t.i32(),
-  resolvedCount: __t.i32(),
-});
-export type AdminMessageStats = __Infer<typeof AdminMessageStats>;
 
 export const AdminMessagePage = __t.object("AdminMessagePage", {
   totalMessages: __t.i32(),
@@ -91,12 +90,13 @@ export const AdminMessagePage = __t.object("AdminMessagePage", {
 });
 export type AdminMessagePage = __Infer<typeof AdminMessagePage>;
 
-export const AdminIdentity = __t.object("AdminIdentity", {
-  id: __t.u64(),
-  identity: __t.identity(),
-  claimedAt: __t.timestamp(),
+export const AdminMessageStats = __t.object("AdminMessageStats", {
+  total: __t.i32(),
+  newCount: __t.i32(),
+  inProgressCount: __t.i32(),
+  resolvedCount: __t.i32(),
 });
-export type AdminIdentity = __Infer<typeof AdminIdentity>;
+export type AdminMessageStats = __Infer<typeof AdminMessageStats>;
 
 export const Companion = __t.object("Companion", {
   id: __t.u64(),
@@ -179,3 +179,4 @@ export const RsvpResponse = __t.object("RsvpResponse", {
   updatedAt: __t.timestamp(),
 });
 export type RsvpResponse = __Infer<typeof RsvpResponse>;
+

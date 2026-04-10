@@ -94,7 +94,7 @@ export default function DashboardPage() {
           <Icon name="how_to_reg" className="heading-icon" />
           <span>Your RSVP</span>
         </h1>
-        <p>Welcome. You can update your RSVP details and loved ones here anytime while edits remain open.</p>
+        <p>You may use this page to view or update your RSVP details. Please also reach out to Samuel or Natasha for changes after 28 April 2026.</p>
       </section>
 
       {!activeGuest ? (
@@ -158,9 +158,6 @@ export default function DashboardPage() {
               <Icon name="edit_square" className="heading-icon" />
               <span>Update Your RSVP</span>
             </h2>
-            <p className="small-note">
-              Please adjust anything that helps us care for you well on the day.
-            </p>
 
             <div className="rsvp-edit-grid">
               <fieldset>
@@ -276,6 +273,7 @@ export default function DashboardPage() {
             {isAttending ? (
               <>
                 <p className="small-note">
+                  As we have limited seating, we are unable to extend an invitation to all plus ones. If you’d like to bring a guest, please reach out to us to clarify.
                   Currently added: {guestCompanions.length}.
                 </p>
                 {isEditingCompanions ? (
