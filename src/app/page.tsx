@@ -211,7 +211,6 @@ export default async function HomePage() {
                 </dl>
                 <div className="invitation-card-footer">
                   <HomeRsvpCta
-                    inviteCode={unlockSession?.inviteCode ?? ""}
                     initialSubmitted={rsvpSubmitted}
                     hideWhenSubmitted
                     className="button-primary invitation-card-rsvp"
