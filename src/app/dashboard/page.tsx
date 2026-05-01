@@ -94,7 +94,7 @@ export default function DashboardPage() {
           <Icon name="how_to_reg" className="heading-icon" />
           <span>Your RSVP</span>
         </h1>
-        <p>You may use this page to view or update your RSVP details. Please also reach out to Samuel or Natasha for changes after 28 April 2026.</p>
+        <p>You may use this page to view or update your RSVP details. Please also reach out to Samuel or Natasha for changes after 31 May 2026.</p>
       </section>
 
       {!activeGuest ? (

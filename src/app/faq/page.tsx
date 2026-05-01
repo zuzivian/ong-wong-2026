@@ -29,7 +29,7 @@ export default async function FaqPage() {
     {
       question: 'I have changes to my RSVP, can I update my RSVP after I have submitted it?',
       answer:
-        'Yes, you may revisit your RSVP and make updates. For changes after 28 April 2026, please also reach out to Samuel or Natasha.',
+        'Yes, you may revisit your RSVP and make updates. For changes after 31 May 2026, please also reach out to Samuel or Natasha.',
     },
   ];
 

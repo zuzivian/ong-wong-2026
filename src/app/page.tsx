@@ -148,14 +148,14 @@ export default async function HomePage() {
             </h2>
             <p>
               Please enter your invite code to view more details and submit your
-              RSVP. Kindly RSVP by <strong>28 April 2026</strong>.
+              RSVP. Kindly RSVP by <strong>31 May 2026</strong>.
             </p>
             <p>
               You may revisit the page anytime using your personalised code to
               update your RSVP before the deadline.
             </p>
             <p>
-              For changes after 28 April 2026, please reach out to Samuel or
+              For changes after 31 May 2026, please reach out to Samuel or
               Natasha.
             </p>
           </div>
