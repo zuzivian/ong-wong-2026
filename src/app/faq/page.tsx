@@ -57,6 +57,7 @@ export default async function FaqPage() {
               </li>
             ))}
           </ol>
+          <p className="faq-footer-note">You made it to the bottom of the page! This website was lovingly made by Natasha&apos;s brother 🤝💻</p>
         </div>
       </section>
     </>

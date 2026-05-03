@@ -280,7 +280,7 @@ a {
 .jumbo {
   --jumbo-image: var(--hero-image, url('/photos/photo-2.jpg'));
   position: relative;
-  min-height: calc(95svh - var(--site-header-height));
+  min-height: calc(80svh - var(--site-header-height));
   display: grid;
   align-items: stretch;
   border-bottom: 1px solid var(--line);
@@ -294,13 +294,52 @@ a {
 }
 
 .jumbo-fullscreen {
-  min-height: calc(100svh - var(--site-header-height));
+  min-height: calc(84svh - var(--site-header-height));
 }
 
 .jumbo-fullscreen .jumbo-inner {
-  min-height: calc(100svh - var(--site-header-height));
+  min-height: calc(84svh - var(--site-header-height));
   align-items: center;
   padding-block: 2.2rem;
+}
+
+.jumbo-scroll-hint {
+  position: absolute;
+  bottom: 1.8rem;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0;
+  color: rgba(255, 255, 255, 0.9);
+  z-index: 2;
+  pointer-events: none;
+  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.5);
+  white-space: nowrap;
+}
+
+.jumbo-scroll-hint-text {
+  font-size: 0.88rem;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  margin-bottom: 0.2rem;
+}
+
+.jumbo-scroll-hint-arrow {
+  font-size: 2rem;
+  line-height: 1;
+  animation: scrollBounce 1.5s ease-in-out infinite;
+}
+
+.jumbo-scroll-hint-arrow:last-child {
+  animation-delay: 0.18s;
+}
+
+@keyframes scrollBounce {
+  0%, 100% { transform: translateY(0); opacity: 0.6; }
+  50% { transform: translateY(7px); opacity: 1; }
 }
 
 .jumbo::before {
@@ -1505,6 +1544,14 @@ textarea {
 .faq-answer {
   color: color-mix(in srgb, var(--ink) 88%, var(--ink-muted));
   line-height: 1.62;
+}
+
+.faq-footer-note {
+  text-align: center;
+  font-size: 0.78rem;
+  color: var(--ink-muted);
+  padding-block: 2rem 1rem;
+  opacity: 0.65;
 }
 
 .companion-stack {
