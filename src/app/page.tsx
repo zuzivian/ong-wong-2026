@@ -137,6 +137,11 @@ export default async function HomePage() {
             </div>
           </div>
         </div>
+        <div className="jumbo-scroll-hint" aria-hidden="true">
+          <span className="jumbo-scroll-hint-text">More information below</span>
+          <Icon name="keyboard_arrow_down" className="jumbo-scroll-hint-arrow" />
+          <Icon name="keyboard_arrow_down" className="jumbo-scroll-hint-arrow" />
+        </div>
       </section>
 
       <section className="section-band home-photo-band">
