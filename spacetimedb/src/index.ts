@@ -1,6 +1,6 @@
 import { SenderError, t } from 'spacetimedb/server';
 import spacetimedb, { Companion, Guest, GuestMessage, RsvpResponse } from './schema';
-import { RSVP_CUTOFF_AT_MICROS } from '../../shared/globals';
+import { RSVP_CUTOFF_BACKEND_AT_MICROS } from '../../shared/globals';
 import { ADMIN_IDENTITY_BOOTSTRAP_MARKER } from '../../shared/admin-identity';
 
 export { default } from './schema';
@@ -193,7 +193,7 @@ function requireGuestMessageForSender(
 }
 
 function isRsvpCutoffReached(ctx: ModuleContext): boolean {
-  return ctx.timestamp.microsSinceUnixEpoch > RSVP_CUTOFF_AT_MICROS;
+  return ctx.timestamp.microsSinceUnixEpoch > RSVP_CUTOFF_BACKEND_AT_MICROS;
 }
 
 function setGuestRsvpStatus(
