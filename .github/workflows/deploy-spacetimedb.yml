@@ -28,10 +28,21 @@ jobs:
         run: npm install
         working-directory: spacetimedb
 
+      - name: Debug token format
+        run: |
+          echo "Token length: ${#SPACETIME_TOKEN}"
+          echo "Token prefix (first 10 chars): ${SPACETIME_TOKEN:0:10}"
+          echo "Token suffix (last 10 chars): ${SPACETIME_TOKEN: -10}"
+          echo "Dot count: $(echo "$SPACETIME_TOKEN" | tr -cd '.' | wc -c)"
+        env:
+          SPACETIME_TOKEN: ${{ secrets.SPACETIME_TOKEN }}
+
       - name: Publish module to maincloud
         run: |
           mkdir -p "$HOME/.config/spacetime"
           printf 'default_server = "maincloud"\nspacetimedb_token = "%s"\n\n[[server_configs]]\nnickname = "maincloud"\nhost = "maincloud.spacetimedb.com"\nprotocol = "https"\n' "$SPACETIME_TOKEN" > "$HOME/.config/spacetime/cli.toml"
+          echo "--- cli.toml (token redacted) ---"
+          sed 's/spacetimedb_token = ".*"/spacetimedb_token = "<redacted>"/' "$HOME/.config/spacetime/cli.toml"
           spacetime publish --server maincloud --module-path spacetimedb -y
         env:
           SPACETIME_TOKEN: ${{ secrets.SPACETIME_TOKEN }}
