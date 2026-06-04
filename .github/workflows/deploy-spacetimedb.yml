@@ -17,10 +17,21 @@ jobs:
 
       - name: Install SpacetimeDB CLI
         run: |
-          curl -fsSL https://install.spacetimedb.com | bash
-          echo "$HOME/.spacetime/bin" >> "$GITHUB_PATH"
+          curl -fL "https://github.com/clockworklabs/SpacetimeDB/releases/download/v2.4.0/spacetime-x86_64-unknown-linux-gnu.tar.gz" -o /tmp/spacetime.tar.gz
+          tar -xzf /tmp/spacetime.tar.gz -C /tmp
+          mkdir -p "$HOME/.local/bin"
+          mv /tmp/spacetimedb-cli "$HOME/.local/bin/spacetime"
+          chmod +x "$HOME/.local/bin/spacetime"
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
 
-      - name: Publish module to maincloud
-        run: npm run spacetime:publish
+      - name: Authenticate with maincloud
+        run: spacetime login --token "$SPACETIME_TOKEN"
         env:
           SPACETIME_TOKEN: ${{ secrets.SPACETIME_TOKEN }}
+
+      - name: Install module dependencies
+        run: npm install
+        working-directory: spacetimedb
+
+      - name: Publish module to maincloud
+        run: spacetime publish --server maincloud --module-path spacetimedb -y
