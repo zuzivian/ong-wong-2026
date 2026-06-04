@@ -1,0 +1,26 @@
+name: Deploy SpacetimeDB Module
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - 'spacetimedb/**'
+      - 'shared/**'
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install SpacetimeDB CLI
+        run: |
+          curl -fsSL https://install.spacetimedb.com | bash
+          echo "$HOME/.spacetime/bin" >> "$GITHUB_PATH"
+
+      - name: Publish module to maincloud
+        run: npm run spacetime:publish
+        env:
+          SPACETIME_TOKEN: ${{ secrets.SPACETIME_TOKEN }}
