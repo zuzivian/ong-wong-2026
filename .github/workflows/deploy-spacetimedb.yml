@@ -31,15 +31,7 @@ jobs:
       - name: Publish module to maincloud
         run: |
           mkdir -p "$HOME/.config/spacetime"
-          cat > "$HOME/.config/spacetime/cli.toml" <<EOF
-          default_server = "maincloud"
-          spacetimedb_token = "$SPACETIME_TOKEN"
-
-          [[server_configs]]
-          nickname = "maincloud"
-          host = "maincloud.spacetimedb.com"
-          protocol = "https"
-          EOF
+          printf 'default_server = "maincloud"\nspacetimedb_token = "%s"\n\n[[server_configs]]\nnickname = "maincloud"\nhost = "maincloud.spacetimedb.com"\nprotocol = "https"\n' "$SPACETIME_TOKEN" > "$HOME/.config/spacetime/cli.toml"
           spacetime publish --server maincloud --module-path spacetimedb -y
         env:
           SPACETIME_TOKEN: ${{ secrets.SPACETIME_TOKEN }}
