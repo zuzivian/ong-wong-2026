@@ -24,14 +24,22 @@ jobs:
           chmod +x "$HOME/.local/bin/spacetime"
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
 
-      - name: Authenticate with maincloud
-        run: spacetime login --token "$SPACETIME_TOKEN"
-        env:
-          SPACETIME_TOKEN: ${{ secrets.SPACETIME_TOKEN }}
-
       - name: Install module dependencies
         run: npm install
         working-directory: spacetimedb
 
       - name: Publish module to maincloud
-        run: spacetime publish --server maincloud --module-path spacetimedb -y
+        run: |
+          mkdir -p "$HOME/.config/spacetime"
+          cat > "$HOME/.config/spacetime/cli.toml" <<EOF
+          default_server = "maincloud"
+          spacetimedb_token = "$SPACETIME_TOKEN"
+
+          [[server_configs]]
+          nickname = "maincloud"
+          host = "maincloud.spacetimedb.com"
+          protocol = "https"
+          EOF
+          spacetime publish --server maincloud --module-path spacetimedb -y
+        env:
+          SPACETIME_TOKEN: ${{ secrets.SPACETIME_TOKEN }}
