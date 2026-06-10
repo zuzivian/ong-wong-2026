@@ -2626,8 +2626,7 @@ select:focus {
   }
 
   .media-grid,
-  .quick-links,
-  .step-ribbon {
+  .quick-links {
     grid-template-columns: 1fr;
   }
 
