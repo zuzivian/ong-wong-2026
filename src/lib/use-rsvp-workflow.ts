@@ -19,6 +19,25 @@ export type RsvpCompanion = {
 
 const DIETARY_OPTIONS_PREFIX = 'Dietary options:';
 const DIETARY_OTHER_PREFIX = 'Other notes:';
+const VERIFICATION_TIMEOUT_MS = 15_000;
+const VERIFICATION_TIMEOUT_MESSAGE =
+  'Verification is taking longer than expected. Please check your connection and try again.';
+
+function withTimeout<T>(promise: Promise<T>, timeoutMs: number, timeoutMessage: string): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error(timeoutMessage)), timeoutMs);
+    promise.then(
+      (value) => {
+        clearTimeout(timer);
+        resolve(value);
+      },
+      (error) => {
+        clearTimeout(timer);
+        reject(error);
+      }
+    );
+  });
+}
 
 function normalizeOptionalInput(text: string | undefined | null): string | undefined {
   if (text == null) {
@@ -460,19 +479,27 @@ export function useRsvpWorkflow(
       setVerificationMessage('Verifying invitation details...');
       try {
         if (isEditingStep) {
-          await connection!.reducers.updateGuestName({
-            firstName: lookupFirstName.trim(),
-            lastName: lookupLastName.trim(),
-            inviteCode: normalizedInviteCode,
-          });
+          await withTimeout(
+            connection!.reducers.updateGuestName({
+              firstName: lookupFirstName.trim(),
+              lastName: lookupLastName.trim(),
+              inviteCode: normalizedInviteCode,
+            }),
+            VERIFICATION_TIMEOUT_MS,
+            VERIFICATION_TIMEOUT_MESSAGE
+          );
         } else {
-          await connection!.reducers.identifyGuestByFallback({
-            firstName: lookupFirstName.trim(),
-            lastName: lookupLastName.trim(),
-            inviteCode: normalizedInviteCode,
-          });
+          await withTimeout(
+            connection!.reducers.identifyGuestByFallback({
+              firstName: lookupFirstName.trim(),
+              lastName: lookupLastName.trim(),
+              inviteCode: normalizedInviteCode,
+            }),
+            VERIFICATION_TIMEOUT_MS,
+            VERIFICATION_TIMEOUT_MESSAGE
+          );
         }
-        await refreshPortalState(normalizedInviteCode);
+        await withTimeout(refreshPortalState(normalizedInviteCode), VERIFICATION_TIMEOUT_MS, VERIFICATION_TIMEOUT_MESSAGE);
       } catch (error) {
         setVerificationState('failed');
         setVerificationMessage('');
